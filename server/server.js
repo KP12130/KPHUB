@@ -158,7 +158,6 @@ app.get('/api/test-db', async (req, res) => {
 // Grid Health Heartbeat
 app.get('/api/health', (req, res) => {
     const { db } = require('./config/firebase');
-    const { db } = require('./config/firebase');
     // Check if db is a mock (has no _settings or internal props usually found in Firestore)
     // Or just check if it's the specific mock object we created
     let isMock = false;
