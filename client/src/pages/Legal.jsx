@@ -23,18 +23,18 @@ const Legal = () => {
             case 'ABOUT':
                 return (
                     <div className="space-y-8 animate-fade-in">
-                        <h2 className="text-3xl font-black text-white tracking-tighter italic uppercase">Grid_Origins</h2>
+                        <h2 className="text-3xl font-black text-white tracking-tighter italic uppercase">Mission_Briefing</h2>
                         <div className="space-y-6 text-gray-400 font-mono text-xs leading-relaxed">
-                            <p>KPHUB was baptized in the neon-stained alleyways of the digital underground. We didn't just build a platform; we engineered a sanctuary for architects who speak in binary and dream in GLSL.</p>
-                            <p>Our mission is simple: Total decentralization of creative power. Whether you're deploying a micro-module or a sprawling meta-system, KPHUB provides the high-bandwidth infrastructure you need to pulse, monetize, and dominate the discovery grid.</p>
+                            <p>KPHUB is a decentralized platform designed for developers to showcase, share, and collaborate on software projects. Our mission is to provide a robust infrastructure for the open-source community, enabling seamless discovery and interaction.</p>
+                            <p>We believe in the power of code to transform the digital landscape. KPHUB offers a suite of tools for version control, project management, and community engagement, all wrapped in a high-performance interface.</p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-8">
                                 <div className="p-6 bg-white/5 border border-white/10 rounded-2xl">
-                                    <h3 className="text-neon-green font-black mb-2 uppercase tracking-widest">Pulse_First</h3>
-                                    <p className="opacity-60">Engagement isn't just a number; it's the lifeblood of the grid. We prioritize quality transmissions over static noise.</p>
+                                    <h3 className="text-neon-green font-black mb-2 uppercase tracking-widest">Innovation</h3>
+                                    <p className="opacity-60">Fostering creativity through cutting-edge tools and a supportive environment for experimental development.</p>
                                 </div>
                                 <div className="p-6 bg-white/5 border border-white/10 rounded-2xl">
-                                    <h3 className="text-neon-blue font-black mb-2 uppercase tracking-widest">Architect_Sovereignty</h3>
-                                    <p className="opacity-60">You own your binary. Our licensing protocols ensure your intellectual assets remain under your command.</p>
+                                    <h3 className="text-neon-blue font-black mb-2 uppercase tracking-widest">Community</h3>
+                                    <p className="opacity-60">Building a network of architects and engineers who share knowledge and resources to elevate the collective standard.</p>
                                 </div>
                             </div>
                         </div>
@@ -43,66 +43,93 @@ const Legal = () => {
             case 'TERMS':
                 return (
                     <div className="space-y-8 animate-fade-in text-gray-400 font-mono text-xs leading-relaxed">
-                        <h2 className="text-3xl font-black text-white tracking-tighter italic uppercase">Terms_Of_Sync</h2>
-                        <p className="text-neon-blue uppercase text-[10px] font-black">Last Sync: 2026.02.17</p>
+                        <h2 className="text-3xl font-black text-white tracking-tighter italic uppercase">Terms_Of_Service</h2>
+                        <p className="text-neon-blue uppercase text-[10px] font-black">Last Updated: 2026.02.18</p>
+
                         <section className="space-y-4">
-                            <h3 className="text-white uppercase font-bold text-sm tracking-widest">01. Acceptance_Protocol</h3>
-                            <p>By initializing a connection to the KPHUB mainframe, you agree to abide by the Grid conduct requirements. Unauthorized packet manipulation or system injections are strictly prohibited.</p>
+                            <h3 className="text-white uppercase font-bold text-sm tracking-widest">1. Acceptance of Terms</h3>
+                            <p>By accessing or using KPHUB, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our platform. We reserve the right to modify these terms at any time.</p>
                         </section>
+
                         <section className="space-y-4">
-                            <h3 className="text-white uppercase font-bold text-sm tracking-widest">02. Transmission_Ownership</h3>
-                            <p>Architects retain full sovereignty over their uploaded transmissions. KPHUB serves as the relay node but does not claim ownership of the binary streams.</p>
+                            <h3 className="text-white uppercase font-bold text-sm tracking-widest">2. User Conduct</h3>
+                            <p>You agree to use KPHUB only for lawful purposes. You are prohibited from posting content that is illegal, offensive, or infringes on the intellectual property rights of others. Harassment, spamming, and the distribution of malware are strictly forbidden.</p>
                         </section>
+
                         <section className="space-y-4">
-                            <h3 className="text-white uppercase font-bold text-sm tracking-widest">03. Monetization_Integrity</h3>
-                            <p>Revenue share protocols are non-negotiable. Pro and Elite citizens are entitled to their respective credit withdraws as specified in the Monetization Engine.</p>
+                            <h3 className="text-white uppercase font-bold text-sm tracking-widest">3. Intellectual Property</h3>
+                            <p>Users retain ownership of the content they upload to KPHUB. By posting content, you grant KPHUB a non-exclusive license to display, distribute, and promote your content within the platform. KPHUB respects the intellectual property rights of others and expects users to do the same.</p>
+                        </section>
+
+                        <section className="space-y-4">
+                            <h3 className="text-white uppercase font-bold text-sm tracking-widest">4. Limitation of Liability</h3>
+                            <p>KPHUB is provided "as is" without warranties of any kind. We are not liable for any damages arising from your use of the platform, including but not limited to data loss, service interruptions, or unauthorized access.</p>
                         </section>
                     </div>
                 );
             case 'PRIVACY':
                 return (
                     <div className="space-y-8 animate-fade-in text-gray-400 font-mono text-xs leading-relaxed">
-                        <h2 className="text-3xl font-black text-white tracking-tighter italic uppercase">Encryption_Policy</h2>
+                        <h2 className="text-3xl font-black text-white tracking-tighter italic uppercase">Privacy_Policy</h2>
+
                         <div className="p-4 bg-neon-green/10 border border-neon-green/30 rounded-xl flex items-center gap-4 mb-8">
                             <Shield className="w-8 h-8 text-neon-green" />
                             <div>
-                                <p className="text-white font-black text-[10px] uppercase">Zero_Knowledge_Architecture</p>
-                                <p className="opacity-60 text-[9px]">We do not monitor your private syncs or encrypted transmissions.</p>
+                                <p className="text-white font-black text-[10px] uppercase">Data Protection Protocol</p>
+                                <p className="opacity-60 text-[9px]">Your privacy is paramount. We adhere to strict data security standards.</p>
                             </div>
                         </div>
-                        <p>We collect essential telemetry only to optimize grid performance. Your identity is masked behind your chosen architect handle, and personal data is never shared with third-party corp-entities.</p>
-                        <p>All passwords and sensitive tokens are salted, hashed, and stored in protected sectors of the mainframe.</p>
+
+                        <section className="space-y-4">
+                            <h3 className="text-white uppercase font-bold text-sm tracking-widest">1. Information Collection</h3>
+                            <p>We collect information you provide directly to us, such as when you create an account, update your profile, or communicate with us. This may include your username, email address, and profile content. We also automatically collect certain technical data, such as your IP address and device information, to ensure system stability.</p>
+                        </section>
+
+                        <section className="space-y-4">
+                            <h3 className="text-white uppercase font-bold text-sm tracking-widest">2. Use of Cookies</h3>
+                            <p>KPHUB uses cookies and similar technologies to enhance your experience, analyze usage patterns, and personalize content. We may use third-party services, such as Google Analytics and Google AdSense, which may also place cookies on your device to serve relevant advertisements.</p>
+                        </section>
+
+                        <section className="space-y-4">
+                            <h3 className="text-white uppercase font-bold text-sm tracking-widest">3. Third-Party Sharing</h3>
+                            <p>We do not sell your personal information. We may share aggregated, non-personally identifiable information with partners or advertisers. We may also disclose information if required by law or to protect our rights and safety.</p>
+                        </section>
+
+                        <section className="space-y-4">
+                            <h3 className="text-white uppercase font-bold text-sm tracking-widest">4. Data Security</h3>
+                            <p>We implement appropriate technical and organizational measures to protect your data against unauthorized access, alteration, or destruction. However, no method of transmission over the internet is 100% secure.</p>
+                        </section>
                     </div>
                 );
             case 'CONTACT':
                 return (
                     <div className="space-y-8 animate-fade-in text-gray-400 font-mono text-xs leading-relaxed">
-                        <h2 className="text-3xl font-black text-white tracking-tighter italic uppercase">Transmission_Line</h2>
-                        <p>Need a direct uplink to the administrators? Use the protocols below to bypass the standard support relays.</p>
+                        <h2 className="text-3xl font-black text-white tracking-tighter italic uppercase">Contact_Us</h2>
+                        <p>If you have any questions about these Terms or our Privacy Policy, please contact us.</p>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="space-y-6">
                                 <div className="flex items-start gap-4 p-6 bg-white/5 border border-white/10 rounded-2xl">
                                     <Mail className="w-5 h-5 text-neon-blue" />
                                     <div>
-                                        <h4 className="text-white font-black uppercase text-[10px] tracking-widest mb-1">Direct_Uplink</h4>
-                                        <p className="opacity-60">nexus@kphub.network</p>
+                                        <h4 className="text-white font-black uppercase text-[10px] tracking-widest mb-1">Email_Support</h4>
+                                        <p className="opacity-60">support@kphub.example.com</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-4 p-6 bg-white/5 border border-white/10 rounded-2xl">
                                     <MapPin className="w-5 h-5 text-neon-green" />
                                     <div>
-                                        <h4 className="text-white font-black uppercase text-[10px] tracking-widest mb-1">Node_Location</h4>
-                                        <p className="opacity-60">High-Pulse District, Sector 7<br />Neo-Tokyo Grid</p>
+                                        <h4 className="text-white font-black uppercase text-[10px] tracking-widest mb-1">HQ_Location</h4>
+                                        <p className="opacity-60">Digital Innovation Park<br />Sector 7, Neo-Tokyo</p>
                                     </div>
                                 </div>
                             </div>
                             <form className="space-y-4 p-8 bg-terminal border border-gray-900 rounded-3xl">
-                                <input placeholder="Your_Architect_Handle" className="w-full bg-void border border-gray-800 rounded-xl px-4 py-3 text-xs outline-none focus:border-neon-blue" />
-                                <input placeholder="Secure_Return_Address" className="w-full bg-void border border-gray-800 rounded-xl px-4 py-3 text-xs outline-none focus:border-neon-blue" />
-                                <textarea placeholder="Message_Binary..." rows={4} className="w-full bg-void border border-gray-800 rounded-xl px-4 py-3 text-xs outline-none focus:border-neon-blue resize-none font-mono" />
+                                <input placeholder="Your Name" className="w-full bg-void border border-gray-800 rounded-xl px-4 py-3 text-xs outline-none focus:border-neon-blue" />
+                                <input placeholder="Your Email" className="w-full bg-void border border-gray-800 rounded-xl px-4 py-3 text-xs outline-none focus:border-neon-blue" />
+                                <textarea placeholder="Message..." rows={4} className="w-full bg-void border border-gray-800 rounded-xl px-4 py-3 text-xs outline-none focus:border-neon-blue resize-none font-mono" />
                                 <button type="button" className="w-full py-4 bg-neon-blue text-black font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-white transition-all">
-                                    Broadcast_Message
+                                    Send Message
                                 </button>
                             </form>
                         </div>
