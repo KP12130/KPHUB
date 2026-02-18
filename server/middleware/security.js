@@ -44,7 +44,8 @@ const securityMiddleware = (req, res, next) => {
     // 2. Add security headers (Extra layer)
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;");
+    // REMOVED MANUAL CSP - Handled by Helmet in server.js
+    // res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;");
 
     next();
 };
