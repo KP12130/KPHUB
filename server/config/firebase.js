@@ -17,28 +17,14 @@ try {
 
         const cleanKey = (key) => {
             if (!key) return key;
-            // 1. Remove wrapping quotes and literal \n sequences
-            let k = key.trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
-
-            // 2. Extract just the base64 data (strip headers, footers, and any existing newlines)
-            const base64Data = k
-                .replace('-----BEGIN PRIVATE KEY-----', '')
-                .replace('-----END PRIVATE KEY-----', '')
-                .replace(/\s+/g, '');
-
-            // 3. Reconstruct standard PEM format (64 chars per line)
-            const lineLength = 64;
-            let formatted = '-----BEGIN PRIVATE KEY-----\n';
-            for (let i = 0; i < base64Data.length; i += lineLength) {
-                formatted += base64Data.substring(i, i + lineLength) + '\n';
-            }
-            formatted += '-----END PRIVATE KEY-----\n';
-            return formatted;
+            // Simple quote removal and newline replacement
+            // This is safer than rebuilding the PEM from scratch which might corrupt specific key types
+            return key.trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
         };
 
         const pk = cleanKey(process.env.FIREBASE_PRIVATE_KEY);
-        console.log(`Firebase: Private Key normalized. Lines: ${pk.split('\n').length}`);
-        console.log(`Firebase: Private Key Check - Header: ${pk.substring(0, 27)} - Tail: ...${pk.substring(pk.length - 26).trim()}`);
+        console.log(`Firebase: Private Key scrubbed. Header: ${pk.substring(0, 27)}...`);
+        console.log(`Firebase: Identity Check - Project: ${process.env.FIREBASE_PROJECT_ID} | Email: ${process.env.FIREBASE_CLIENT_EMAIL}`);
 
         serviceAccount = {
             projectId: process.env.FIREBASE_PROJECT_ID,
