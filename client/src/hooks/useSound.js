@@ -4,11 +4,13 @@ const useSound = () => {
     // Lazy initialization ref
     const audioCtxRef = useRef(null);
 
-    // Initialize only on first user interaction
+    // Initialize only on first user interaction, with strict checks
     const initAudio = useCallback(() => {
+        if (typeof window === 'undefined') return;
+
         if (audioCtxRef.current) {
             if (audioCtxRef.current.state === 'suspended') {
-                audioCtxRef.current.resume().catch(e => console.warn(e));
+                audioCtxRef.current.resume().catch(() => { });
             }
             return;
         }
@@ -19,7 +21,7 @@ const useSound = () => {
                 audioCtxRef.current = new AudioContext();
             }
         } catch (e) {
-            console.warn('AudioContext not supported or blocked:', e);
+            // Silently fail if blocked or not supported
         }
     }, []);
 
