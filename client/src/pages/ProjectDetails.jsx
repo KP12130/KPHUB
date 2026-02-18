@@ -18,6 +18,7 @@ import AIAssistant from '../components/AIAssistant';
 import Devlog from '../components/Devlog';
 import ShowcaseEmbed from '../components/ShowcaseEmbed';
 import SponsoredAd from '../components/SponsoredAd';
+import DonationModal from '../components/DonationModal';
 import { getReputationTitle } from '../utils/reputation';
 
 // --- Reusable Glass Components ---
@@ -260,6 +261,29 @@ const ProjectDetails = () => {
     };
 
 
+    // Donation Modal State
+    const [isDonationOpen, setIsDonationOpen] = useState(false);
+
+    // Review Request State
+    const [isRequestOpen, setIsRequestOpen] = useState(false);
+    const [reviewRequest, setReviewRequest] = useState({ comments: '', type: 'GENERAL' });
+
+    const handleRequestReview = async () => {
+        try {
+            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+            await axios.post(`${API_BASE}/api/reviews/request`, {
+                userId: currentUser.uid,
+                projectId: id,
+                comments: reviewRequest.comments,
+                type: reviewRequest.type
+            });
+            toast.success("AUDIT_REQUEST: Sent to community grid.");
+            setIsRequestOpen(false);
+        } catch (err) {
+            toast.error(err.response?.data?.error || "Request failed.");
+        }
+    };
+
     if (loading) return (
         <div className="min-h-screen bg-void flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
@@ -334,6 +358,13 @@ const ProjectDetails = () => {
                         initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}
                         className="flex gap-4"
                     >
+                        <button
+                            onClick={() => setIsDonationOpen(true)}
+                            className="h-14 px-6 bg-purple-600/20 border border-purple-500/50 text-white font-black uppercase tracking-widest rounded-2xl flex items-center gap-2 hover:bg-purple-600 hover:scale-105 transition-all shadow-[0_0_20px_rgba(168,85,247,0.3)]"
+                        >
+                            <CreditCard className="w-5 h-5" /> Support
+                        </button>
+
                         <button
                             onClick={handleLike}
                             className={`h-14 w-14 rounded-2xl flex items-center justify-center border transition-all ${liked ? 'bg-red-500 text-white border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)]' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'}`}
@@ -548,9 +579,17 @@ const ProjectDetails = () => {
                             </button>
 
                             {currentUser?.uid === project.author?.uid && (
-                                <Link to={`/edit/${id}`} className="block w-full py-3 bg-white/10 text-white text-center font-bold uppercase text-xs tracking-widest rounded-xl hover:bg-white/20 transition-colors border border-white/10">
-                                    Modify Protocol
-                                </Link>
+                                <>
+                                    <Link to={`/edit/${id}`} className="block w-full py-3 bg-white/10 text-white text-center font-bold uppercase text-xs tracking-widest rounded-xl hover:bg-white/20 transition-colors border border-white/10">
+                                        Modify Protocol
+                                    </Link>
+                                    <button
+                                        onClick={() => setIsRequestOpen(true)}
+                                        className="block w-full py-3 bg-neon-blue/20 text-neon-blue text-center font-bold uppercase text-xs tracking-widest rounded-xl hover:bg-neon-blue hover:text-black transition-colors border border-neon-blue/30"
+                                    >
+                                        Request Audit
+                                    </button>
+                                </>
                             )}
                         </GlassCard>
 
@@ -595,6 +634,63 @@ const ProjectDetails = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Donation Modal */}
+            {isDonationOpen && (
+                <DonationModal
+                    targetUser={project.author}
+                    onClose={() => setIsDonationOpen(false)}
+                />
+            )}
+
+            {/* Request Review Modal */}
+            {isRequestOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                    <div className="bg-terminal border border-neon-blue/30 rounded-2xl p-6 max-w-lg w-full relative shadow-[0_0_50px_rgba(59,130,246,0.15)]">
+                        <button
+                            onClick={() => setIsRequestOpen(false)}
+                            className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                        <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter mb-4">Request Audit</h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase block mb-2">Audit Type</label>
+                                <div className="flex gap-2 flex-wrap">
+                                    {['GENERAL', 'SECURITY', 'OPTIMIZATION', 'BUG_HUNT'].map(type => (
+                                        <button
+                                            key={type}
+                                            onClick={() => setReviewRequest({ ...reviewRequest, type })}
+                                            className={`px-3 py-1 rounded text-[10px] font-bold uppercase tracking-widest border transition-all ${reviewRequest.type === type
+                                                    ? 'bg-neon-blue text-black border-neon-blue'
+                                                    : 'bg-white/5 text-gray-400 border-white/10 hover:border-white/30'
+                                                }`}
+                                        >
+                                            {type}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase block mb-2">Instructions</label>
+                                <textarea
+                                    value={reviewRequest.comments}
+                                    onChange={(e) => setReviewRequest({ ...reviewRequest, comments: e.target.value })}
+                                    className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white focus:border-neon-blue outline-none h-32 font-mono text-sm"
+                                    placeholder="Describe specific areas needing inspection..."
+                                />
+                            </div>
+                            <button
+                                onClick={handleRequestReview}
+                                className="w-full py-3 bg-neon-blue text-black font-black uppercase tracking-widest rounded-xl hover:bg-white hover:scale-[1.02] transition-all"
+                            >
+                                Submit Request
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

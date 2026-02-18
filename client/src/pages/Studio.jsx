@@ -292,9 +292,15 @@ const Studio = () => {
 
                             {view === 'ANALYTICS' && (
                                 <div className="space-y-6">
-                                    <GlassCard className="h-[400px]">
-                                        <AnalyticsChart data={stats.history || []} />
-                                    </GlassCard>
+                                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                                        <GlassCard className="h-[400px]">
+                                            <AnalyticsChart data={stats.history || []} label="Views" dataKey="views" color="#39FF14" />
+                                        </GlassCard>
+                                        <GlassCard className="h-[400px]">
+                                            <AnalyticsChart data={stats.history || []} label="Revenue" dataKey="revenue" color="#A855F7" />
+                                        </GlassCard>
+                                    </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <GlassCard>
                                             <h3 className="text-lg font-black text-white mb-4">Ad Revenue</h3>

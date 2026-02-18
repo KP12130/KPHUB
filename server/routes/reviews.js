@@ -3,9 +3,10 @@ const router = express.Router();
 const { db, admin } = require('../config/firebase');
 
 // POST /api/reviews/request - Request a code review
+// POST /api/reviews/request - Request a code review
 router.post('/request', async (req, res) => {
     try {
-        const { userId, projectId, comments } = req.body;
+        const { userId, projectId, comments, type } = req.body; // type: SECURITY, OPTIMIZATION, BUG_HUNT, GENERAL
 
         if (!userId || !projectId) {
             return res.status(400).json({ error: "Missing required fields." });
@@ -41,6 +42,7 @@ router.post('/request', async (req, res) => {
             authorName: projectData.author.name,
             authorAvatar: projectData.author.avatar,
             requestComment: comments || "Please review my code logic and structure.",
+            type: type || 'GENERAL',
             status: 'OPEN', // OPEN, COMPLETED
             reviews: [], // Array of review comments
             createdAt: admin.firestore.FieldValue.serverTimestamp()
@@ -59,9 +61,14 @@ router.post('/request', async (req, res) => {
 // GET /api/reviews - List open review requests
 router.get('/', async (req, res) => {
     try {
-        const snapshot = await db.collection('reviews')
-            .where('status', '==', 'OPEN')
-            .get();
+        const { type } = req.query;
+        let query = db.collection('reviews').where('status', '==', 'OPEN');
+
+        if (type && type !== 'ALL') {
+            query = query.where('type', '==', type);
+        }
+
+        const snapshot = await query.get();
 
         const reviews = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
