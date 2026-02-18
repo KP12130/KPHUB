@@ -28,6 +28,14 @@ export const AuthProvider = ({ children }) => {
                 try {
                     const res = await axios.get(`${API_BASE}/api/users/${user.uid}`);
                     const firestoreData = res.data;
+
+                    // Sanitize avatar URL if it's pointing to localhost in production
+                    if (firestoreData.photoURL && firestoreData.photoURL.includes('localhost:5000') && !import.meta.env.DEV) {
+                        // Extract the path part (e.g., /api/users/...)
+                        const path = firestoreData.photoURL.split('localhost:5000')[1];
+                        firestoreData.photoURL = `${API_BASE}${path}`;
+                    }
+
                     // Merge Firebase Auth user with Firestore data
                     setCurrentUser({ ...user, ...firestoreData });
                 } catch (err) {
