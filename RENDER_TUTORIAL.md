@@ -35,8 +35,18 @@ Kattints az **Advanced** gombra, majd az **Add Environment Variable** gombra min
 | `R2_ACCESS_KEY_ID` | *Cloudflare Key* | R2 beállításokból |
 | `R2_SECRET_ACCESS_KEY` | *Cloudflare Secret* | R2 beállításokból |
 | `R2_BUCKET_NAME` | `codex-spark` | A bucket neve |
+| `R2_BUCKET_NAME` | `codex-spark` | A bucket neve |
 
-## 5. Lépés: Deploy! 🛡️
+### ⚠️ Fontos megjegyzés a Firebase kulcshoz:
+A `FIREBASE_PRIVATE_KEY` értékét a Firebase JSON fájljából másold ki. Tartalmaznia kell a `-----BEGIN PRIVATE KEY-----\n...` részt is. Ha hibát kapsz, próbáld meg idézőjelek közé tenni az értéket a Render felületén!
+
+## 5. Lépés: Hibaelhárítás (Troubleshooting) 🛠️
+Ha a szerver nem indul el (`Firebase Admin NOT initialized` vagy `TypeError` hiba):
+1. Ellenőrizd, hogy a Render dashboardon az **Environment Variables** fülön minden kulcsot és értéket helyesen adtál-e meg.
+2. Győződj meg róla, hogy nincs felesleges szóköz az értékek előtt vagy után.
+3. A `FIREBASE_PRIVATE_KEY` legyen egy sorban (ne törd el a Render beviteli mezőjében).
+
+## 6. Lépés: Deploy! 🛡️
 Kattints a **Create Web Service** gombra az oldal alján. A Render elkezdi építeni a rendszert.
 
 ---

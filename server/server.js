@@ -16,11 +16,11 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-            "connect-src": ["'self'", "https://api.dicebear.com", "http://localhost:5000"],
+            "connect-src": ["'self'", "https://api.dicebear.com", "http://localhost:5000", "*.render.com"],
             "img-src": ["'self'", "data:", "https://api.dicebear.com"],
-            "cross-origin-resource-policy": { policy: "cross-origin" }
         },
     },
+    crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 app.use(cors({
     origin: [

@@ -16,7 +16,7 @@ try {
         console.log("Firebase: Using individual environment variables.");
         serviceAccount = {
             projectId: process.env.FIREBASE_PROJECT_ID,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+            privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n').replace(/^"(.*)"$/, '$1'),
             clientEmail: process.env.FIREBASE_CLIENT_EMAIL
         };
     }
