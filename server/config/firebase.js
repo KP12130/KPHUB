@@ -18,15 +18,19 @@ try {
         const cleanKey = (key) => {
             if (!key) return key;
             let k = key.trim();
-            if ((k.startsWith('"') && k.endsWith('"')) || (k.startsWith("'") && k.endsWith("'"))) {
-                k = k.substring(1, k.length - 1);
+            // Handle double quotes wrapping, potentially multiple times
+            while ((k.startsWith('"') && k.endsWith('"')) || (k.startsWith("'") && k.endsWith("'"))) {
+                k = k.substring(1, k.length - 1).trim();
             }
-            return k.replace(/\\n/g, '\n');
+            // Resolve literal \n sequences to actual newlines
+            k = k.replace(/\\n/g, '\n');
+            // Remove any carriage returns and extra spaces around the whole block
+            return k.replace(/\r/g, '').trim();
         };
 
         const pk = cleanKey(process.env.FIREBASE_PRIVATE_KEY);
-        console.log(`Firebase: Private Key Header Check - ${pk.startsWith('-----BEGIN PRIVATE KEY-----') ? '✅ VALID' : '❌ INVALID'}`);
-        console.log(`Firebase: Private Key Length - ${pk.length} chars`);
+        console.log(`Firebase: Private Key scrubbed. Header: ${pk.substring(0, 27)}... Tail: ...${pk.substring(pk.length - 25)}`);
+        console.log(`Firebase: Private Key Newline Count: ${(pk.match(/\n/g) || []).length}`);
 
         serviceAccount = {
             projectId: process.env.FIREBASE_PROJECT_ID,
