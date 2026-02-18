@@ -46,6 +46,9 @@ try {
 
         const pk = cleanKey(process.env.FIREBASE_PRIVATE_KEY);
         console.log(`Firebase: Key Diagnostics - Length: ${pk ? pk.length : 0}`);
+        if (!process.env.FIREBASE_CLIENT_EMAIL?.includes('gserviceaccount.com')) {
+            console.error(`Firebase: CRITICAL WARNING - FIREBASE_CLIENT_EMAIL (${process.env.FIREBASE_CLIENT_EMAIL}) does not look like a Service Account email! It should usually end in .iam.gserviceaccount.com`);
+        }
         console.log(`Firebase: Identity Check - Project: ${process.env.FIREBASE_PROJECT_ID} | Email: ${process.env.FIREBASE_CLIENT_EMAIL}`);
 
         serviceAccount = {
