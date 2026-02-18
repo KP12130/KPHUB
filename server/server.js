@@ -1,13 +1,12 @@
+dotenv.config();
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const dotenv = require('dotenv');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { db } = require('./config/firebase');
 const { securityMiddleware, sanitizeInput } = require('./middleware/security');
-
-dotenv.config();
 
 const app = express();
 
@@ -118,11 +117,12 @@ app.get('/api', (req, res) => {
 });
 
 // SPA Catch-all (Must be after API routes)
-app.get('(.*)', (req, res) => {
-    // If it's an API route that didn't match, don't serve index.html
-    if (req.url.startsWith('/api')) {
-        return res.status(404).json({ error: 'API_ENDPOINT_NOT_FOUND' });
+app.use((req, res, next) => {
+    // If it's an API route that didn't match, or not a GET request, move on
+    if (req.url.startsWith('/api') || req.method !== 'GET') {
+        return next();
     }
+    // Serve index.html for all other GET requests (SPA)
     res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 

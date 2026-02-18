@@ -1,7 +1,7 @@
-const admin = require('firebase-admin');
 const dotenv = require('dotenv');
-
 dotenv.config();
+
+const admin = require('firebase-admin');
 
 let serviceAccount;
 let db;
