@@ -14,9 +14,23 @@ try {
     // 2. Try individual environment variables
     else if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
         console.log("Firebase: Using individual environment variables.");
+
+        const cleanKey = (key) => {
+            if (!key) return key;
+            let k = key.trim();
+            if ((k.startsWith('"') && k.endsWith('"')) || (k.startsWith("'") && k.endsWith("'"))) {
+                k = k.substring(1, k.length - 1);
+            }
+            return k.replace(/\\n/g, '\n');
+        };
+
+        const pk = cleanKey(process.env.FIREBASE_PRIVATE_KEY);
+        console.log(`Firebase: Private Key Header Check - ${pk.startsWith('-----BEGIN PRIVATE KEY-----') ? '✅ VALID' : '❌ INVALID'}`);
+        console.log(`Firebase: Private Key Length - ${pk.length} chars`);
+
         serviceAccount = {
             projectId: process.env.FIREBASE_PROJECT_ID,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n').replace(/^["']([\s\S]*)["']$/, '$1').trim(),
+            privateKey: pk,
             clientEmail: process.env.FIREBASE_CLIENT_EMAIL
         };
     }
