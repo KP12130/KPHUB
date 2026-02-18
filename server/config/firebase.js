@@ -17,38 +17,35 @@ try {
 
         const cleanKey = (key) => {
             if (!key) return key;
-            // 1. Initial cleanup: trimming and basic newline replacement
-            // Use regex to locate the header and footer, allowing for variations (e.g. RSA PRIVATE KEY)
-            const k = key.trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
 
-            const headerMatch = k.match(/^(-+BEGIN[^-]+-+)/);
-            const footerMatch = k.match(/(-+END[^-]+-+)$/);
+            // 1. Basic cleanup: Trim and remove wrapping quotes
+            let k = key.trim().replace(/^["']|["']$/g, '');
 
-            if (!headerMatch || !footerMatch) {
-                // Determine type based on content or default to standard Private Key if completely stripped
-                console.warn("Firebase: Key Clean Utility - Could not find clear PEM headers. Attempting default wrap.");
-                return k;
+            // 2. Aggressive Newline Normalization
+            // Replace literal \n with real newlines, and also normal newlines
+            k = k.replace(/\\n/g, '\n');
+
+            // 3. Ensure Headers have correct spacing (Critical for DECODER error)
+            // Make sure there is a newline after BEGIN and before END
+            const header = '-----BEGIN PRIVATE KEY-----';
+            const footer = '-----END PRIVATE KEY-----';
+
+            if (k.includes(header) && k.includes(footer)) {
+                // Strip existing headers to isolate body
+                let body = k.replace(header, '').replace(footer, '').trim();
+                // Ensure body has no spaces (sometimes copy-paste introduces holes)
+                // BUT do not strip newlines from body if they are already correct
+                // ACTUALLY: safest is to strip all whitespace from body and let standard parsers handle it? 
+                // No, standard parsers often need newlines. 
+                // Let's just ensure headers are separated.
+                return `${header}\n${body}\n${footer}\n`;
             }
 
-            const header = headerMatch[1];
-            const footer = footerMatch[1];
-
-            // 2. Extract Body: Remove header, footer, and ALL whitespace from what remains
-            const body = k.replace(header, '').replace(footer, '').replace(/\s+/g, '');
-
-            // 3. Rebuild with strict 64-char lines
-            const lineLength = 64;
-            let formatted = `${header}\n`;
-            for (let i = 0; i < body.length; i += lineLength) {
-                formatted += body.substring(i, i + lineLength) + '\n';
-            }
-            formatted += `${footer}\n`;
-
-            return formatted;
+            return k;
         };
 
         const pk = cleanKey(process.env.FIREBASE_PRIVATE_KEY);
-        console.log(`Firebase: Private Key rebuilt. Headers detected: ${pk.split('\n')[0]}`);
+        console.log(`Firebase: Key Diagnostics - Length: ${pk ? pk.length : 0}`);
         console.log(`Firebase: Identity Check - Project: ${process.env.FIREBASE_PROJECT_ID} | Email: ${process.env.FIREBASE_CLIENT_EMAIL}`);
 
         serviceAccount = {
