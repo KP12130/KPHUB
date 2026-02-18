@@ -3,25 +3,33 @@ import axios from 'axios';
 import { Trophy, Medal, Star, Shield, Code, User, Crown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getReputationTitle } from '../utils/reputation';
+import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-hot-toast';
+import confetti from 'canvas-confetti';
 
 const Leaderboard = () => {
+    const { currentUser } = useAuth();
     const [users, setUsers] = useState([]);
     const [auditLeaders, setAuditLeaders] = useState([]);
+    const [candidates, setCandidates] = useState([]);
+    const [hasVoted, setHasVoted] = useState(false);
+    const [votedProjectId, setVotedProjectId] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
-                const [repRes, auditRes] = await Promise.all([
+                const [repRes, auditRes, voteRes] = await Promise.all([
                     axios.get(`${API_BASE}/api/users/leaderboard`),
-                    axios.get(`${API_BASE}/api/reviews/leaderboard`) // Assuming this endpoint exists or I'll just mock/filter users
+                    axios.get(`${API_BASE}/api/reviews/leaderboard`),
+                    axios.get(`${API_BASE}/api/voting/candidates?userId=${currentUser?.uid || ''}`)
                 ]);
                 setUsers(repRes.data);
-
-                // If backend endpoint for audit leaderboard doesn't exist yet, we can filter users who have 'auditScore' or similar
-                // But let's assume the endpoint returns data or we fallback
                 setAuditLeaders(auditRes.data || []);
+                setCandidates(voteRes.data.candidates || []);
+                setHasVoted(voteRes.data.hasVoted);
+                setVotedProjectId(voteRes.data.votedProjectId);
             } catch (err) {
                 console.error("Leaderboard fetch error", err);
             } finally {
@@ -37,6 +45,27 @@ const Leaderboard = () => {
             case 1: return <Medal className="w-6 h-6 text-gray-300" />;
             case 2: return <Medal className="w-6 h-6 text-amber-600" />;
             default: return <span className="font-mono text-gray-500 font-bold">#{index + 1}</span>;
+        }
+    };
+
+    const handleVote = async (projectId) => {
+        if (!currentUser) return toast.error("Login required to vote.");
+        if (hasVoted) return toast.error("You have already voted this month.");
+
+        try {
+            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+            await axios.post(`${API_BASE}/api/voting/vote`, {
+                userId: currentUser.uid,
+                projectId
+            });
+
+            setHasVoted(true);
+            setVotedProjectId(projectId);
+            setCandidates(prev => prev.map(p => p.id === projectId ? { ...p, votes: (p.votes || 0) + 1 } : p));
+            toast.success("VOTE CAST: Neural link established.");
+            confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
+        } catch (err) {
+            toast.error(err.response?.data?.error || "Voting failed.");
         }
     };
 
@@ -56,6 +85,61 @@ const Leaderboard = () => {
                 <p className="text-gray-400 font-mono text-sm max-w-2xl mx-auto">
                     The highest reputation architects and protocol auditors.
                 </p>
+            </div>
+
+            {/* Voting Section */}
+            <div className="mb-16">
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-3">
+                        <Star className="w-6 h-6 text-yellow-400 fill-yellow-400 animate-pulse" />
+                        <div>
+                            <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter">Project Of The Month</h2>
+                            <p className="text-xs text-gray-500 font-mono">Community Vote // Cycle: {new Date().toLocaleString('default', { month: 'long' }).toUpperCase()}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    {candidates.map((project, i) => (
+                        <div key={project.id} className={`group relative bg-terminal border ${votedProjectId === project.id ? 'border-neon-green shadow-[0_0_15px_rgba(57,255,20,0.3)]' : 'border-gray-800 hover:border-gray-600'} rounded-xl overflow-hidden transition-all`}>
+                            {/* Rank Badge */}
+                            <div className="absolute top-2 left-2 z-10 bg-black/80 backdrop-blur text-white text-[10px] font-black px-2 py-0.5 rounded border border-white/10">
+                                #{i + 1}
+                            </div>
+
+                            {/* Thumbnail */}
+                            <div className="h-24 bg-gray-900 relative">
+                                {project.thumbnail ? (
+                                    <img src={project.thumbnail} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center"><Code className="text-gray-700" /></div>
+                                )}
+                            </div>
+
+                            {/* Info */}
+                            <div className="p-4">
+                                <h3 className="font-bold text-white text-sm truncate mb-1">{project.title}</h3>
+                                <p className="text-[10px] text-gray-500 mb-3">by {project.author?.name || 'Unknown'}</p>
+
+                                <div className="flex items-center justify-between">
+                                    <div className="text-xs font-mono text-neon-green">
+                                        {project.votes || 0} VOTES
+                                    </div>
+                                    <button
+                                        onClick={() => handleVote(project.id)}
+                                        disabled={hasVoted}
+                                        className={`px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest transition-all ${votedProjectId === project.id
+                                            ? 'bg-neon-green text-black'
+                                            : 'bg-white/10 hover:bg-white/20 text-white disabled:opacity-50 disabled:cursor-not-allowed'
+                                            }`}
+                                    >
+                                        {votedProjectId === project.id ? 'VOTED' : 'VOTE'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

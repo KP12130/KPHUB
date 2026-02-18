@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { User, Calendar, Award, Code, Trophy, ArrowLeft, Github, Twitter, Globe, ExternalLink } from 'lucide-react';
 import ProjectCard from '../components/ProjectCard';
 import { getReputationTitle } from '../utils/reputation';
+import GitHubCalendar from 'react-activity-calendar';
 
 const PublicProfile = () => {
     const { username } = useParams();
@@ -213,6 +214,39 @@ const PublicProfile = () => {
                     </div>
                 </div>
             </motion.div>
+
+            {/* GitHub Activity Section */}
+            {user.socials?.github && (() => {
+                // Extract username whether it's a full URL or just a handle
+                const githubLink = user.socials.github;
+                const githubUsername = githubLink.split('/').pop();
+                // Simple extraction: assumes "username" or "github.com/username" or "https://github.com/username"
+                // Better regex:
+                const cleanUsername = githubLink.replace(/^(https?:\/\/)?(www\.)?github\.com\//, '').replace(/\/$/, '');
+
+                return (
+                    <div className="mb-12">
+                        <div className="flex items-center gap-2 mb-6">
+                            <Github className="w-5 h-5 text-white" />
+                            <h2 className="text-xl font-black text-white uppercase tracking-widest">Neural Commit Stream</h2>
+                        </div>
+                        <div className="bg-terminal border border-gray-800 rounded-2xl p-6 overflow-hidden overflow-x-auto custom-scrollbar">
+                            <div className="min-w-[700px]">
+                                <GitHubCalendar
+                                    username={cleanUsername}
+                                    colorScheme="dark"
+                                    theme={{
+                                        dark: ['#1a1a1a', '#0e4429', '#006d32', '#26a641', '#39d353'],
+                                    }}
+                                    fontSize={10}
+                                    blockSize={10}
+                                    blockMargin={4}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
 
             <div>
                 <div className="flex items-center justify-between mb-8">

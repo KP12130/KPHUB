@@ -88,9 +88,10 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/comments', commentsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/activity', activityRoutes);
-app.use('/api/bounties', bountyRoutes);
-app.use('/api/hackathons', hackathonRoutes);
-app.use('/api/reviews', reviewRoutes);
+app.use('/api/bounties', require('./routes/bounties'));
+app.use('/api/hackathons', require('./routes/hackathons'));
+app.use('/api/reviews', require('./routes/reviews'));
+app.use('/api/voting', require('./routes/voting'));
 
 // Static File Hosting (Frontend)
 const distPath = path.join(__dirname, '../client/dist');
