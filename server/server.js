@@ -118,7 +118,7 @@ app.get('/api', (req, res) => {
 });
 
 // SPA Catch-all (Must be after API routes)
-app.get('/:any*', (req, res) => {
+app.get('(.*)', (req, res) => {
     // If it's an API route that didn't match, don't serve index.html
     if (req.url.startsWith('/api')) {
         return res.status(404).json({ error: 'API_ENDPOINT_NOT_FOUND' });
