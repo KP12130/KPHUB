@@ -147,6 +147,19 @@ app.get('/api/test-db', async (req, res) => {
     }
 });
 
+// Grid Health Heartbeat
+app.get('/api/health', (req, res) => {
+    const { db } = require('./config/firebase');
+    const isMock = db.toString().includes('Firebase not initialized') || (db.collection && db.collection().get.toString().includes('throw'));
+
+    res.json({
+        status: 'ONLINE',
+        firebase: isMock ? 'DISCONNECTED (Mock Mode)' : 'CONNECTED',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
+
 const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, '0.0.0.0', () => {
@@ -199,6 +212,15 @@ process.on('unhandledRejection', (reason, promise) => {
 // Global Error Handler
 app.use((err, req, res, next) => {
     console.error('[FIREWALL_LOG] UNCAUGHT_ERROR:', err.stack);
+
+    // Specific check for Firebase init failure to help deployment
+    if (err.message && err.message.includes('Firebase not initialized')) {
+        return res.status(503).json({
+            error: 'SERVICE_UNAVAILABLE',
+            message: 'GRID_DATABASE_OFFLINE: Firebase environment variables (PROJECT_ID, PRIVATE_KEY, etc.) are missing or malformed on Render.'
+        });
+    }
+
     res.status(500).json({
         error: 'INTERNAL_GRID_ERROR',
         message: process.env.NODE_ENV === 'development' ? err.message : 'Shields holding, but an anomaly occurred.'
