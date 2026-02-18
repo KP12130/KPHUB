@@ -19,7 +19,7 @@ app.use(helmet({
         directives: {
             "default-src": ["'self'"],
             "connect-src": ["'self'", "https://api.dicebear.com", "http://localhost:5000", "*.render.com", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com"],
-            "img-src": ["'self'", "data:", "https://api.dicebear.com", "https://*.googleusercontent.com", "https://www.svgrepo.com", "https://www.transparenttextures.com", "https://images.unsplash.com"],
+            "img-src": ["'self'", "data:", "https://api.dicebear.com", "https://*.googleusercontent.com", "https://www.svgrepo.com", "https://www.transparenttextures.com", "https://images.unsplash.com", "https://*.r2.cloudflarestorage.com"],
             "script-src": ["'self'", "'unsafe-inline'", "https://apis.google.com", "https://accounts.google.com", "https://www.gstatic.com"],
             "script-src-elem": ["'self'", "'unsafe-inline'", "https://apis.google.com", "https://accounts.google.com", "https://www.gstatic.com"],
             "frame-src": ["'self'", "https://accounts.google.com", "https://kphub-12130.firebaseapp.com", "https://*.firebaseapp.com"],
@@ -30,7 +30,7 @@ app.use(helmet({
     },
 
     crossOriginResourcePolicy: { policy: "cross-origin" },
-    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
+    // crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" } // Temporarily disabled to fix MessagePort error
 }));
 app.use(cors({
     origin: [
