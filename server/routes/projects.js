@@ -178,7 +178,7 @@ router.get('/:id/download', async (req, res) => {
         res.redirect(signedUrl);
 
     } catch (error) {
-        console.error('Download Error:', error);
+        console.error('[DATABASE_ERROR] Project Download failed:', error);
         res.status(500).json({ error: 'Failed' });
     }
 });
@@ -192,6 +192,7 @@ router.get('/:id/files', async (req, res) => {
         const project = doc.data();
         res.json(project.files || []);
     } catch (error) {
+        console.error('[DATABASE_ERROR] Fetch Files failed:', error);
         res.status(500).json({ error: 'Failed' });
     }
 });
@@ -310,6 +311,7 @@ router.post('/:id/view', async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
+        console.error('[DATABASE_ERROR] Fetch Files failed:', error);
         res.status(500).json({ error: 'Failed' });
     }
 });
@@ -355,6 +357,7 @@ router.get('/', async (req, res) => {
 
         res.json(projects);
     } catch (error) {
+        console.error('[DATABASE_ERROR] Fetch Files failed:', error);
         res.status(500).json({ error: 'Failed' });
     }
 });
@@ -382,6 +385,7 @@ router.get('/:id', async (req, res) => {
 
         res.json({ id: doc.id, ...data });
     } catch (error) {
+        console.error('[DATABASE_ERROR] Fetch Files failed:', error);
         res.status(500).json({ error: 'Failed' });
     }
 });
@@ -408,6 +412,7 @@ router.delete('/:id', async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
+        console.error('[DATABASE_ERROR] Fetch Files failed:', error);
         res.status(500).json({ error: 'Failed' });
     }
 });
@@ -439,6 +444,7 @@ router.put('/:id', async (req, res) => {
         await docRef.update(updates);
         res.json({ success: true });
     } catch (error) {
+        console.error('[DATABASE_ERROR] Fetch Files failed:', error);
         res.status(500).json({ error: 'Failed' });
     }
 });
@@ -457,6 +463,7 @@ router.get('/:id/updates', async (req, res) => {
 
         res.json(updates);
     } catch (error) {
+        console.error('[DATABASE_ERROR] Fetch Files failed:', error);
         res.status(500).json({ error: 'Failed' });
     }
 });
@@ -487,6 +494,7 @@ router.post('/:id/updates', async (req, res) => {
 
         res.json(updates);
     } catch (error) {
+        console.error('[DATABASE_ERROR] Fetch Files failed:', error);
         res.status(500).json({ error: 'Failed' });
     }
 });

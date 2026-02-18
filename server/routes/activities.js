@@ -19,6 +19,7 @@ router.get('/', async (req, res) => {
 
         res.json(activities);
     } catch (err) {
+        console.error('[DATABASE_ERROR] Fetch Activity failed:', err);
         res.status(500).json({ error: 'Failed to fetch activity' });
     }
 });
