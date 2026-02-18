@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { Send, Plus, Trash2, Edit3, MoreVertical, Calendar } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE } from '../api';
 import { toast } from 'react-hot-toast';
 
 const Devlog = ({ projectId, updates, isAuthor, onUpdate }) => {
@@ -15,7 +16,7 @@ const Devlog = ({ projectId, updates, isAuthor, onUpdate }) => {
 
         setLoading(true);
         try {
-            const res = await axios.post(`http://localhost:5000/api/projects/${projectId}/updates`, newUpdate);
+            const res = await axios.post(`${API_BASE}/api/projects/${projectId}/updates`, newUpdate);
             onUpdate(res.data); // Parent should update state
             setNewUpdate({ title: '', content: '' });
             setIsPosting(false);

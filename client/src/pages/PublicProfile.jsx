@@ -21,10 +21,11 @@ const PublicProfile = () => {
         const fetchProfile = async () => {
             setLoading(true);
             try {
-                const res = await axios.get(`http://localhost:5000/api/users/profile/${username}?viewerId=${currentUser?.uid || ''}`);
+                const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+                const res = await axios.get(`${API_BASE}/api/users/profile/${username}?viewerId=${currentUser?.uid || ''}`);
                 setProfile(res.data);
                 // Fetch badge definitions
-                const badgesRes = await axios.get('http://localhost:5000/api/users/badges/definitions');
+                const badgesRes = await axios.get(`${API_BASE}/api/users/badges/definitions`);
                 setBadgeDefs(badgesRes.data);
 
                 // Check if following

@@ -27,6 +27,7 @@ import Layout from './components/Layout'; // Import Layout
 import { LogOut, Upload as UploadIcon, Trophy, User, Code, Terminal, Bell, BellDot, LayoutDashboard, ChevronDown, HelpCircle, Menu, X, Globe, Target } from 'lucide-react';
 import { getReputationTitle } from './utils/reputation';
 import axios from 'axios';
+import { API_BASE } from './api';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const App = () => {
@@ -75,7 +76,7 @@ const Home = () => {
     const fetchProjects = async () => {
       setLoading(true);
       try {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/projects`, {
+        const res = await axios.get(`${API_BASE}/api/projects`, {
           params: { search, category, sort: sortBy }
         });
         setProjects(res.data);

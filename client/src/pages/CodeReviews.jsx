@@ -20,7 +20,8 @@ const CodeReviews = () => {
 
     const fetchReviews = async () => {
         try {
-            const res = await axios.get('http://localhost:5000/api/reviews');
+            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+            const res = await axios.get(`${API_BASE}/api/reviews`);
             setReviews(res.data);
         } catch (err) {
             console.error("Fetch reviews error", err);
@@ -36,7 +37,8 @@ const CodeReviews = () => {
 
         setIsSubmitting(true);
         try {
-            await axios.post(`http://localhost:5000/api/reviews/${selectedReview.id}/comment`, {
+            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+            await axios.post(`${API_BASE}/api/reviews/${selectedReview.id}/comment`, {
                 userId: currentUser.uid,
                 userName: currentUser.displayName,
                 userAvatar: currentUser.photoURL,
@@ -59,7 +61,8 @@ const CodeReviews = () => {
         if (!window.confirm("Close this review request?")) return;
 
         try {
-            await axios.post(`http://localhost:5000/api/reviews/${reviewId}/close`, {
+            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+            await axios.post(`${API_BASE}/api/reviews/${reviewId}/close`, {
                 userId: currentUser.uid
             });
             toast.success("AUDIT_CLOSED: Request archived.");

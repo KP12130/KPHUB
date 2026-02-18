@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider, githubProvider } from "../firebase";
 import axios from 'axios';
+import { API_BASE } from '../api';
 
 const AuthContext = createContext();
 
@@ -25,7 +26,7 @@ export const AuthProvider = ({ children }) => {
             if (user) {
                 // Fetch latest data from Firestore to get custom photoURL
                 try {
-                    const res = await axios.get(`http://localhost:5000/api/users/${user.uid}`);
+                    const res = await axios.get(`${API_BASE}/api/users/${user.uid}`);
                     const firestoreData = res.data;
                     // Merge Firebase Auth user with Firestore data
                     setCurrentUser({ ...user, ...firestoreData });

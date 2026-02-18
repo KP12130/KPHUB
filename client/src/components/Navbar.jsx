@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import { API_BASE } from '../api';
 import {
     LayoutDashboard, Trophy, Code, Upload as UploadIcon, HelpCircle,
     Bell, BellDot, User, LogOut, Menu, X, Target, Terminal
@@ -22,7 +23,7 @@ const Navbar = ({ onOpenCommandPalette }) => {
         if (!currentUser) return;
         const fetchNotifications = async () => {
             try {
-                const res = await axios.get(`http://localhost:5000/api/notifications/${currentUser.uid}`);
+                const res = await axios.get(`${API_BASE}/api/notifications/${currentUser.uid}`);
                 setNotifications(res.data);
             } catch (err) {
                 console.error("Notifications fetch failed", err);
@@ -42,7 +43,7 @@ const Navbar = ({ onOpenCommandPalette }) => {
 
     const markAsRead = async (id) => {
         try {
-            await axios.put(`http://localhost:5000/api/notifications/${id}/read`);
+            await axios.put(`${API_BASE}/api/notifications/${id}/read`);
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
         } catch (err) {
             console.error(err);

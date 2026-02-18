@@ -12,9 +12,10 @@ const Leaderboard = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
+                const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
                 const [repRes, auditRes] = await Promise.all([
-                    axios.get('http://localhost:5000/api/users/leaderboard'),
-                    axios.get('http://localhost:5000/api/reviews/leaderboard') // Assuming this endpoint exists or I'll just mock/filter users
+                    axios.get(`${API_BASE}/api/users/leaderboard`),
+                    axios.get(`${API_BASE}/api/reviews/leaderboard`) // Assuming this endpoint exists or I'll just mock/filter users
                 ]);
                 setUsers(repRes.data);
 

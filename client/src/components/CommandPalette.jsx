@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE } from '../api';
 import useSound from '../hooks/useSound';
 
 const CommandPalette = ({ isOpen, onClose }) => {
@@ -42,7 +43,7 @@ const CommandPalette = ({ isOpen, onClose }) => {
             }
             setIsLoading(true);
             try {
-                const res = await axios.get(`http://localhost:5000/api/projects?search=${query}&limit=5`);
+                const res = await axios.get(`${API_BASE}/api/projects?search=${query}&limit=5`);
                 const projectResults = res.data.map(p => ({
                     id: p.id,
                     title: `Project: ${p.title}`,
@@ -142,8 +143,8 @@ const CommandPalette = ({ isOpen, onClose }) => {
                                             onClick={() => { playSound('success'); res.action(); onClose(); }}
                                             onMouseEnter={() => setSelectedIndex(i)}
                                             className={`p-4 rounded-2xl flex items-center gap-4 cursor-pointer transition-all ${i === selectedIndex
-                                                    ? 'bg-neon-green/10 border border-neon-green/30 shadow-[0_0_15px_rgba(57,255,20,0.1)]'
-                                                    : 'border border-transparent hover:bg-white/5'
+                                                ? 'bg-neon-green/10 border border-neon-green/30 shadow-[0_0_15px_rgba(57,255,20,0.1)]'
+                                                : 'border border-transparent hover:bg-white/5'
                                                 }`}
                                         >
                                             <div className={`p-2 rounded-xl ${i === selectedIndex ? 'bg-neon-green text-black' : 'bg-white/5 text-gray-400'}`}>

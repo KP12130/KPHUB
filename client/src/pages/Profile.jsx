@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE } from '../api';
 import { motion } from 'framer-motion';
 import { User, Calendar, Save, ArrowLeft, AtSign, FileText, Github, Twitter, Globe } from 'lucide-react';
 
@@ -40,7 +41,7 @@ const Profile = () => {
 
         const fetchProfile = async () => {
             try {
-                const res = await axios.get(`http://localhost:5000/api/users/${currentUser.uid}`);
+                const res = await axios.get(`${API_BASE}/api/users/${currentUser.uid}`);
                 const user = res.data;
                 setFormData({
                     username: user.username || '',
@@ -52,7 +53,7 @@ const Profile = () => {
                     badges: user.badges || []
                 });
                 // Fetch badge definitions
-                const badgesRes = await axios.get('http://localhost:5000/api/users/badges/definitions');
+                const badgesRes = await axios.get(`${API_BASE}/api/users/badges/definitions`);
                 setBadgeDefs(badgesRes.data);
             } catch (err) {
                 console.error(err);
@@ -87,13 +88,13 @@ const Profile = () => {
             if (avatarFile) {
                 const formData = new FormData();
                 formData.append('avatar', avatarFile);
-                await axios.post(`http://localhost:5000/api/users/${currentUser.uid}/avatar`, formData, {
+                await axios.post(`${API_BASE}/api/users/${currentUser.uid}/avatar`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
             }
 
             // 2. Update Profile Data
-            await axios.put(`http://localhost:5000/api/users/${currentUser.uid}`, {
+            await axios.put(`${API_BASE}/api/users/${currentUser.uid}`, {
                 uid: currentUser.uid,
                 ...formData
             });

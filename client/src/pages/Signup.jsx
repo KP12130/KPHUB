@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE } from '../api';
 import { motion } from 'framer-motion';
 import { User, Calendar, AtSign, Save } from 'lucide-react';
 
@@ -34,7 +35,7 @@ const Signup = () => {
                 return;
             }
             try {
-                const res = await axios.get(`http://localhost:5000/api/users/check-username?username=${formData.username}`);
+                const res = await axios.get(`${API_BASE}/api/users/check-username?username=${formData.username}`);
                 setUsernameAvailable(res.data.available);
             } catch (err) {
                 console.error(err);
@@ -54,7 +55,7 @@ const Signup = () => {
         setError('');
 
         try {
-            await axios.post('http://localhost:5000/api/users', {
+            await axios.post(`${API_BASE}/api/users`, {
                 uid: currentUser.uid,
                 email: currentUser.email,
                 photoURL: currentUser.photoURL,

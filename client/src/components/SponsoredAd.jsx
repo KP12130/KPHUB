@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ExternalLink, Zap } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE } from '../api';
 
 const ADS = [
     {
@@ -49,7 +50,7 @@ const SponsoredAd = ({ projectId, currentUser }) => {
             // Track View
             const trackView = async () => {
                 try {
-                    await axios.post('http://localhost:5000/api/ads/view', {
+                    await axios.post(`${API_BASE}/api/ads/view`, {
                         projectId,
                         viewerId: currentUser.uid
                     });
@@ -67,7 +68,7 @@ const SponsoredAd = ({ projectId, currentUser }) => {
     const handleClick = async () => {
         if (!projectId || !currentUser) return;
         try {
-            await axios.post('http://localhost:5000/api/ads/click', {
+            await axios.post(`${API_BASE}/api/ads/click`, {
                 projectId,
                 viewerId: currentUser.uid
             });

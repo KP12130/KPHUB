@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { Save, ChevronLeft, AlertCircle, Loader, Shield, File, ImageIcon, Folder } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE } from '../api';
 import { toast } from 'react-hot-toast';
 
 const EditProject = () => {
@@ -27,7 +28,7 @@ const EditProject = () => {
     useEffect(() => {
         const fetchProject = async () => {
             try {
-                const res = await axios.get(`http://localhost:5000/api/projects/${id}?userId=${currentUser?.uid}`);
+                const res = await axios.get(`${API_BASE}/api/projects/${id}?userId=${currentUser?.uid}`);
                 const project = res.data;
 
                 if (project.author.uid !== currentUser?.uid) {
@@ -59,7 +60,7 @@ const EditProject = () => {
         e.preventDefault();
         setSaving(true);
         try {
-            await axios.put(`http://localhost:5000/api/projects/${id}`, {
+            await axios.put(`${API_BASE}/api/projects/${id}`, {
                 ...formData,
                 userId: currentUser.uid
             });

@@ -23,9 +23,10 @@ const Missions = () => {
         fetchBounties();
     }, []);
 
+    const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
     const fetchBounties = async () => {
         try {
-            const res = await axios.get('http://localhost:5000/api/bounties');
+            const res = await axios.get(`${API_BASE}/api/bounties`);
             setBounties(res.data);
         } catch (err) {
             console.error("Failed to fetch bounties", err);
@@ -46,7 +47,8 @@ const Missions = () => {
         }
 
         try {
-            await axios.post('http://localhost:5000/api/bounties', {
+            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+            await axios.post(`${API_BASE}/api/bounties`, {
                 authorId: currentUser.uid,
                 ...newBounty,
                 reward: rewardAmount
@@ -65,7 +67,8 @@ const Missions = () => {
         if (!currentUser) return toast.error("Authentication Required.");
 
         try {
-            await axios.post(`http://localhost:5000/api/bounties/${bountyId}/claim`, {
+            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+            await axios.post(`${API_BASE}/api/bounties/${bountyId}/claim`, {
                 userId: currentUser.uid
             });
             toast.success("MISSION_ACCEPTED: Good hunting, Spartan.", { icon: '⚔️' });
@@ -111,8 +114,8 @@ const Missions = () => {
 
                         <div className="flex justify-between items-start mb-4 relative z-10">
                             <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest border ${bounty.difficulty === 'Easy' ? 'border-neon-blue text-neon-blue bg-neon-blue/10' :
-                                    bounty.difficulty === 'Medium' ? 'border-yellow-500 text-yellow-500 bg-yellow-500/10' :
-                                        'border-red-500 text-red-500 bg-red-500/10'
+                                bounty.difficulty === 'Medium' ? 'border-yellow-500 text-yellow-500 bg-yellow-500/10' :
+                                    'border-red-500 text-red-500 bg-red-500/10'
                                 }`}>
                                 {bounty.difficulty}
                             </span>

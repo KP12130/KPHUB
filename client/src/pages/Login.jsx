@@ -13,7 +13,8 @@ const Login = () => {
         if (!user) return;
         try {
             // Check if user profile exists in our DB
-            await axios.get(`http://localhost:5000/api/users/${user.uid}`);
+            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+            await axios.get(`${API_BASE}/api/users/${user.uid}`);
             // If successful (200), user exists -> Go to Dashboard
             navigate('/');
         } catch (error) {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE } from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Filter, Terminal, Code, Cpu, Globe, Gamepad2, Layers } from 'lucide-react';
 import ProjectCard from '../components/ProjectCard'; // Assuming this exists or I'll use the one from Home
@@ -30,7 +31,7 @@ const Explore = () => {
 
     const fetchProjects = async () => {
         try {
-            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/projects`);
+            const res = await axios.get(`${API_BASE}/api/projects`);
             setProjects(res.data);
         } catch (err) {
             console.error("Explore fetch error:", err);

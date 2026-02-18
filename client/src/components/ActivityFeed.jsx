@@ -12,7 +12,8 @@ const ActivityFeed = () => {
 
     const fetchActivity = async () => {
         try {
-            const res = await axios.get('http://localhost:5000/api/activity');
+            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+            const res = await axios.get(`${API_BASE}/api/activity`);
             setActivities(res.data);
         } catch (err) {
             console.error("Activity fetch failed", err);

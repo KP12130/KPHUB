@@ -12,7 +12,16 @@ const { securityMiddleware, sanitizeInput } = require('./middleware/security');
 const app = express();
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+            "connect-src": ["'self'", "https://api.dicebear.com", "http://localhost:5000"],
+            "img-src": ["'self'", "data:", "https://api.dicebear.com"],
+            "cross-origin-resource-policy": { policy: "cross-origin" }
+        },
+    },
+}));
 app.use(cors({
     origin: [
         'http://localhost:5173',

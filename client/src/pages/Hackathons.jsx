@@ -22,7 +22,8 @@ const Hackathons = () => {
 
     const fetchHackathons = async () => {
         try {
-            const res = await axios.get('http://localhost:5000/api/hackathons');
+            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+            const res = await axios.get(`${API_BASE}/api/hackathons`);
             setHackathons(res.data);
         } catch (err) {
             console.error("Hackathon fetch error:", err);
@@ -34,7 +35,8 @@ const Hackathons = () => {
 
     const fetchUserProjects = async () => {
         try {
-            const res = await axios.get(`http://localhost:5000/api/projects/user/${currentUser.uid}`);
+            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+            const res = await axios.get(`${API_BASE}/api/projects/user/${currentUser.uid}`);
             setUserProjects(res.data);
         } catch (err) {
             console.error("Project fetch error:", err);
@@ -45,7 +47,8 @@ const Hackathons = () => {
         if (!currentUser) return toast.error("ACCESS_DENIED: Login required.");
 
         try {
-            await axios.post(`http://localhost:5000/api/hackathons/${id}/join`, {
+            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+            await axios.post(`${API_BASE}/api/hackathons/${id}/join`, {
                 userId: currentUser.uid
             });
             toast.success("EVENT_REGISTRATION_CONFIRMED", { icon: '🎫' });
@@ -62,7 +65,8 @@ const Hackathons = () => {
         const project = userProjects.find(p => p.id === selectedProject);
 
         try {
-            await axios.post(`http://localhost:5000/api/hackathons/${selectedHackathon.id}/submit`, {
+            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+            await axios.post(`${API_BASE}/api/hackathons/${selectedHackathon.id}/submit`, {
                 userId: currentUser.uid,
                 projectId: selectedProject,
                 projectTitle: project.title
@@ -224,8 +228,8 @@ const Hackathons = () => {
                                                 key={p.id}
                                                 onClick={() => setSelectedProject(p.id)}
                                                 className={`p-3 rounded-lg border cursor-pointer flex items-center justify-between transition-all ${selectedProject === p.id
-                                                        ? 'bg-purple-500/20 border-purple-500 text-white'
-                                                        : 'bg-void border-gray-800 text-gray-400 hover:border-gray-600'
+                                                    ? 'bg-purple-500/20 border-purple-500 text-white'
+                                                    : 'bg-void border-gray-800 text-gray-400 hover:border-gray-600'
                                                     }`}
                                             >
                                                 <span className="font-bold text-sm">{p.title}</span>

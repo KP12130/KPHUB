@@ -7,6 +7,7 @@ import {
     CreditCard, Edit3, Code, Database, FileCode, Terminal, Zap, Eye
 } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE } from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
@@ -138,7 +139,7 @@ const ProjectDetails = () => {
         const fetchProject = async () => {
             setLoading(true);
             try {
-                const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/projects/${id}${currentUser ? `?userId=${currentUser.uid}` : ''}`);
+                const res = await axios.get(`${API_BASE}/api/projects/${id}${currentUser ? `?userId=${currentUser.uid}` : ''}`);
 
                 // Legacy support
                 if ((!res.data.files || res.data.files.length === 0) && res.data.fileKey) {
@@ -151,11 +152,11 @@ const ProjectDetails = () => {
                 if (currentUser && res.data.likes?.includes(currentUser.uid)) setLiked(true);
 
                 // Fetch Related
-                const relatedRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/projects?category=${res.data.category}&limit=3`);
+                const relatedRes = await axios.get(`${API_BASE}/api/projects?category=${res.data.category}&limit=3`);
                 setRelatedProjects(relatedRes.data.filter(p => p.id !== id));
 
                 // Fetch Comments - Calibration to /api/comments route
-                const commentsRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/comments/${id}`);
+                const commentsRes = await axios.get(`${API_BASE}/api/comments/${id}`);
                 setComments(commentsRes.data);
 
             } catch (err) {
@@ -174,7 +175,7 @@ const ProjectDetails = () => {
         setLiked(!liked);
         setLikeCount(prev => liked ? prev - 1 : prev + 1);
         try {
-            await axios.post(`http://localhost:5000/api/projects/${id}/like`, { userId: currentUser.uid });
+            await axios.post(`${API_BASE}/api/projects/${id}/like`, { userId: currentUser.uid });
         } catch (err) {
             setLiked(!liked); // Revert
             setLikeCount(prev => liked ? prev + 1 : prev - 1);
@@ -184,7 +185,7 @@ const ProjectDetails = () => {
     const handleDownload = async () => {
         setIsDownloading(true);
         try {
-            const url = `http://localhost:5000/api/projects/${id}/download${currentUser ? `?userId=${currentUser.uid}` : ''}`;
+            const url = `${API_BASE}/api/projects/${id}/download${currentUser ? `?userId=${currentUser.uid}` : ''}`;
 
             // For ZIP downloads (Ad-Zip buffer), we use a hidden link trick
             const response = await axios({
@@ -222,7 +223,7 @@ const ProjectDetails = () => {
         setSelectedFile(file);
         setIsFileLoading(true);
         try {
-            const res = await axios.get(`http://localhost:5000/api/projects/raw?key=${encodeURIComponent(file.key)}`);
+            const res = await axios.get(`${API_BASE}/api/projects/raw?key=${encodeURIComponent(file.key)}`);
             setFileContent(res.data);
         } catch (err) {
             console.error(err);
@@ -235,7 +236,7 @@ const ProjectDetails = () => {
     const handlePostComment = async () => {
         if (!commentInput.trim()) return;
         try {
-            const res = await axios.post(`http://localhost:5000/api/comments/${id}`, {
+            const res = await axios.post(`${API_BASE}/api/comments/${id}`, {
                 userId: currentUser.uid,
                 userName: currentUser.displayName || currentUser.username,
                 userAvatar: currentUser.photoURL,
