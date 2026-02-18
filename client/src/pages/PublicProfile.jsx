@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { User, Calendar, Award, Code, Trophy, ArrowLeft, Github, Twitter, Globe, ExternalLink } from 'lucide-react';
 import ProjectCard from '../components/ProjectCard';
 import { getReputationTitle } from '../utils/reputation';
-import GitHubCalendar from 'react-activity-calendar';
+import { ActivityCalendar as GitHubCalendar } from 'react-activity-calendar';
 
 const PublicProfile = () => {
     const { username } = useParams();

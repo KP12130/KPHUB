@@ -14,7 +14,7 @@ import { toast } from 'react-hot-toast';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import AIAssistant from '../components/AIAssistant';
-import AIAssistant from '../components/AIAssistant';
+
 import Devlog from '../components/Devlog';
 import ShowcaseEmbed from '../components/ShowcaseEmbed';
 import SponsoredAd from '../components/SponsoredAd';
@@ -663,8 +663,8 @@ const ProjectDetails = () => {
                                             key={type}
                                             onClick={() => setReviewRequest({ ...reviewRequest, type })}
                                             className={`px-3 py-1 rounded text-[10px] font-bold uppercase tracking-widest border transition-all ${reviewRequest.type === type
-                                                    ? 'bg-neon-blue text-black border-neon-blue'
-                                                    : 'bg-white/5 text-gray-400 border-white/10 hover:border-white/30'
+                                                ? 'bg-neon-blue text-black border-neon-blue'
+                                                : 'bg-white/5 text-gray-400 border-white/10 hover:border-white/30'
                                                 }`}
                                         >
                                             {type}

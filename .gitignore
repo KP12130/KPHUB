@@ -1,0 +1,19 @@
+# Node modules
+server/node_modules/
+client/node_modules/
+
+# Build / dist
+server/dist/
+client/build/
+
+# Környezeti változók
+server/.env
+client/.env
+
+# OS fájlok
+.DS_Store
+Thumbs.db
+
+# IDE / editor
+.vscode/
+.idea/
