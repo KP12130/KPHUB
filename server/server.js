@@ -17,8 +17,10 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-            "connect-src": ["'self'", "https://api.dicebear.com", "http://localhost:5000", "*.render.com"],
-            "img-src": ["'self'", "data:", "https://api.dicebear.com"],
+            "connect-src": ["'self'", "https://api.dicebear.com", "http://localhost:5000", "*.render.com", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com"],
+            "img-src": ["'self'", "data:", "https://api.dicebear.com", "https://*.googleusercontent.com"],
+            "script-src": ["'self'", "'unsafe-inline'", "https://apis.google.com", "https://accounts.google.com", "https://www.gstatic.com"],
+            "frame-src": ["'self'", "https://accounts.google.com", "https://kphub-12130.firebaseapp.com"],
         },
     },
     crossOriginResourcePolicy: { policy: "cross-origin" }

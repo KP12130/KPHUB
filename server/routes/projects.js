@@ -357,7 +357,7 @@ router.get('/', async (req, res) => {
 
         res.json(projects);
     } catch (error) {
-        console.error('[DATABASE_ERROR] Fetch Files failed:', error);
+        console.error('[DATABASE_ERROR] Project List Fetch failed:', error);
         res.status(500).json({ error: 'Failed' });
     }
 });
@@ -385,7 +385,7 @@ router.get('/:id', async (req, res) => {
 
         res.json({ id: doc.id, ...data });
     } catch (error) {
-        console.error('[DATABASE_ERROR] Fetch Files failed:', error);
+        console.error('[DATABASE_ERROR] Project Detail Fetch failed:', error);
         res.status(500).json({ error: 'Failed' });
     }
 });
@@ -412,7 +412,7 @@ router.delete('/:id', async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        console.error('[DATABASE_ERROR] Fetch Files failed:', error);
+        console.error('[DATABASE_ERROR] Project Delete failed:', error);
         res.status(500).json({ error: 'Failed' });
     }
 });
@@ -444,7 +444,7 @@ router.put('/:id', async (req, res) => {
         await docRef.update(updates);
         res.json({ success: true });
     } catch (error) {
-        console.error('[DATABASE_ERROR] Fetch Files failed:', error);
+        console.error('[DATABASE_ERROR] Project Meta Update failed:', error);
         res.status(500).json({ error: 'Failed' });
     }
 });
