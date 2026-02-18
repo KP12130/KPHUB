@@ -19,7 +19,7 @@ router.post('/', upload.fields([
     { name: 'screenshots', maxCount: 10 }
 ]), async (req, res) => {
     try {
-        const { title, description, category, authorId, authorName, authorAvatar } = req.body;
+        const { title, description, category, authorId, authorName, authorAvatar, demoUrl, repoUrl } = req.body;
         const projectFiles = req.files['projectFiles'] || [];
         const screenshots = req.files['screenshots'] || [];
 
@@ -76,7 +76,11 @@ router.post('/', upload.fields([
             tags: tagsArray,
             files: uploadedFiles,
             screenshots: uploadedScreenshots,
+            screenshots: uploadedScreenshots,
             thumbnail: uploadedScreenshots[0] ? await getFileUrl(uploadedScreenshots[0]) : '',
+            demoUrl: demoUrl || '',
+            repoUrl: repoUrl || '',
+            devlogs: [],
             author: {
                 uid: authorId,
                 name: authorName,
@@ -431,12 +435,16 @@ router.put('/:id', async (req, res) => {
             return res.status(403).json({ error: 'Unauthorized' });
         }
 
+        const { demoUrl, repoUrl } = req.body;
+
         const tagsArray = Array.isArray(tags) ? tags : (tags ? tags.split(',').map(tag => tag.trim().toLowerCase()) : []);
 
         const updates = {
             title: title || project.title,
             description: description || project.description,
             category: category || project.category,
+            demoUrl: demoUrl !== undefined ? demoUrl : project.demoUrl,
+            repoUrl: repoUrl !== undefined ? repoUrl : project.repoUrl,
             tags: tagsArray,
             updatedAt: new Date().toISOString()
         };
@@ -520,7 +528,7 @@ router.get('/raw', async (req, res) => {
         res.send(buffer);
     } catch (error) {
         console.error('Raw File Fetch Error:', error);
-        res.status(500).json({ error: 'Failed to access grid source.' });
+        res.status(500).json({ error: 'Failed' });
     }
 });
 

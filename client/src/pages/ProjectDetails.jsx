@@ -14,7 +14,9 @@ import { toast } from 'react-hot-toast';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import AIAssistant from '../components/AIAssistant';
+import AIAssistant from '../components/AIAssistant';
 import Devlog from '../components/Devlog';
+import ShowcaseEmbed from '../components/ShowcaseEmbed';
 import SponsoredAd from '../components/SponsoredAd';
 import { getReputationTitle } from '../utils/reputation';
 
@@ -130,6 +132,7 @@ const ProjectDetails = () => {
     const [fileContent, setFileContent] = useState('');
     const [relatedProjects, setRelatedProjects] = useState([]);
     const [comments, setComments] = useState([]);
+    const [updates, setUpdates] = useState([]);
     const [commentInput, setCommentInput] = useState('');
     const [isDownloading, setIsDownloading] = useState(false);
     const [isFileLoading, setIsFileLoading] = useState(false);
@@ -155,9 +158,15 @@ const ProjectDetails = () => {
                 const relatedRes = await axios.get(`${API_BASE}/api/projects?category=${res.data.category}&limit=3`);
                 setRelatedProjects(relatedRes.data.filter(p => p.id !== id));
 
-                // Fetch Comments - Calibration to /api/comments route
+                // Fetch Comments
                 const commentsRes = await axios.get(`${API_BASE}/api/comments/${id}`);
                 setComments(commentsRes.data);
+
+                // Fetch Devlogs
+                try {
+                    const updatesRes = await axios.get(`${API_BASE}/api/projects/${id}/updates`);
+                    setUpdates(updatesRes.data);
+                } catch (e) { console.warn("Devlog fetch failed", e); }
 
             } catch (err) {
                 console.error(err);
@@ -365,7 +374,7 @@ const ProjectDetails = () => {
                     <div className="lg:col-span-2 space-y-8">
                         {/* Tab Navigation */}
                         <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                            {['README', 'CODE', 'DISCUSS', 'AI_ASSIST'].map((tab) => (
+                            {['README', 'CODE', ...(project.demoUrl ? ['SHOWCASE'] : []), 'DISCUSS', 'AI_ASSIST'].map((tab) => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
@@ -396,6 +405,12 @@ const ProjectDetails = () => {
                                             </ReactMarkdown>
                                         </div>
                                     </GlassCard>
+                                )}
+
+                                {activeTab === 'SHOWCASE' && (
+                                    <div className="h-[600px]">
+                                        <ShowcaseEmbed demoUrl={project.demoUrl} title={project.title} />
+                                    </div>
                                 )}
 
                                 {activeTab === 'CODE' && (
@@ -547,15 +562,13 @@ const ProjectDetails = () => {
                                 </h4>
                             </div>
                             <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
-                                {/* Mock Logs */}
-                                <div className="p-4 space-y-4">
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-2 h-2 rounded-full bg-neon-green mt-1.5 shadow-[0_0_5px_#0f0]" />
-                                        <div>
-                                            <p className="text-xs text-gray-300 font-mono">System initialized v1.0.0</p>
-                                            <p className="text-[10px] text-gray-600">{new Date(project.createdAt).toLocaleDateString()}</p>
-                                        </div>
-                                    </div>
+                                <div className="p-4">
+                                    <Devlog
+                                        projectId={id}
+                                        updates={updates}
+                                        isAuthor={currentUser?.uid === project.author?.uid}
+                                        onUpdate={(newLog) => setUpdates([newLog, ...updates])}
+                                    />
                                 </div>
                             </div>
                         </div>

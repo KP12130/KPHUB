@@ -21,6 +21,7 @@ const EditProject = () => {
         category: 'Web',
         tags: '',
         demoUrl: '',
+        repoUrl: '',
         isPrivate: false,
         memberOnly: false
     });
@@ -43,6 +44,7 @@ const EditProject = () => {
                     category: project.category,
                     tags: project.tags?.join(', ') || '',
                     demoUrl: project.demoUrl || '',
+                    repoUrl: project.repoUrl || '',
                     isPrivate: project.isPrivate || false,
                     memberOnly: project.memberOnly || false
                 });
@@ -120,6 +122,30 @@ const EditProject = () => {
                                 >
                                     {['Web', 'Game', 'Tool', 'AI', 'Script', 'Mobile'].map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
+                            </div>
+                        </div>
+
+                        {/* URLs */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Live_Demo_URL</label>
+                                <input
+                                    type="url"
+                                    placeholder="https://"
+                                    value={formData.demoUrl}
+                                    onChange={(e) => setFormData({ ...formData, demoUrl: e.target.value })}
+                                    className="w-full bg-void border border-gray-800 rounded-2xl px-6 py-4 text-white focus:border-neon-blue outline-none transition-all placeholder:text-gray-800 font-mono text-sm"
+                                />
+                            </div>
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Source_Repo_URL</label>
+                                <input
+                                    type="url"
+                                    placeholder="https://github.com/..."
+                                    value={formData.repoUrl}
+                                    onChange={(e) => setFormData({ ...formData, repoUrl: e.target.value })}
+                                    className="w-full bg-void border border-gray-800 rounded-2xl px-6 py-4 text-white focus:border-neon-blue outline-none transition-all placeholder:text-gray-800 font-mono text-sm"
+                                />
                             </div>
                         </div>
 

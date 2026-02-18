@@ -19,6 +19,8 @@ const Upload = () => {
         description: '',
         category: 'Web',
         tags: '',
+        demoUrl: '',
+        repoUrl: '',
         memberOnly: false,
         isPrivate: false,
     });
@@ -61,6 +63,8 @@ const Upload = () => {
         data.append('description', formData.description);
         data.append('category', formData.category);
         data.append('tags', formData.tags);
+        data.append('demoUrl', formData.demoUrl);
+        data.append('repoUrl', formData.repoUrl);
         data.append('authorId', currentUser.uid);
         data.append('authorName', currentUser.displayName || 'Anonymous');
         data.append('authorAvatar', currentUser.photoURL || '');
@@ -131,6 +135,30 @@ const Upload = () => {
                                     <option value="AI">Synthetic_IA</option>
                                     <option value="Script">Source_Script</option>
                                 </select>
+                            </div>
+                        </div>
+
+                        {/* URLs */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-4">
+                                <label className="block text-gray-500 text-[10px] font-black tracking-widest uppercase mb-2">Live_Demo_URL</label>
+                                <input
+                                    type="url"
+                                    className="w-full bg-void border border-gray-800 rounded-xl p-4 text-white focus:border-neon-green outline-none transition-all placeholder:text-gray-700 font-mono text-sm"
+                                    placeholder="https://"
+                                    value={formData.demoUrl}
+                                    onChange={(e) => setFormData({ ...formData, demoUrl: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-4">
+                                <label className="block text-gray-500 text-[10px] font-black tracking-widest uppercase mb-2">Source_Repo_URL</label>
+                                <input
+                                    type="url"
+                                    className="w-full bg-void border border-gray-800 rounded-xl p-4 text-white focus:border-neon-green outline-none transition-all placeholder:text-gray-700 font-mono text-sm"
+                                    placeholder="https://github.com/..."
+                                    value={formData.repoUrl}
+                                    onChange={(e) => setFormData({ ...formData, repoUrl: e.target.value })}
+                                />
                             </div>
                         </div>
 
