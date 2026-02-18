@@ -22,15 +22,16 @@ try {
     }
     // 3. Try local file (easier for local dev)
     else {
-        console.log("Firebase: No env vars found. Checking for local serviceAccountKey.json...");
-        console.log("DEBUG - PID:", process.env.FIREBASE_PROJECT_ID ? 'SET' : 'MISSING');
-        console.log("DEBUG - PK:", process.env.FIREBASE_PRIVATE_KEY ? 'SET' : 'MISSING');
-        console.log("DEBUG - CE:", process.env.FIREBASE_CLIENT_EMAIL ? 'SET' : 'MISSING');
+        console.log("Firebase: Awaiting full credentials. Current status:");
+        console.log(`- FIREBASE_PROJECT_ID: ${process.env.FIREBASE_PROJECT_ID ? '✅ SET' : '❌ MISSING'}`);
+        console.log(`- FIREBASE_PRIVATE_KEY: ${process.env.FIREBASE_PRIVATE_KEY ? '✅ SET' : '❌ MISSING'}`);
+        console.log(`- FIREBASE_CLIENT_EMAIL: ${process.env.FIREBASE_CLIENT_EMAIL ? '✅ SET' : '❌ MISSING'}`);
+
         try {
             serviceAccount = require('../serviceAccountKey.json');
             console.log("Firebase: Found local serviceAccountKey.json file.");
         } catch (e) {
-            // File not found, ignore
+            // File not found
         }
     }
 } catch (error) {

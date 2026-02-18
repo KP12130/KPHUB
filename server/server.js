@@ -10,6 +10,7 @@ const { db } = require('./config/firebase');
 const { securityMiddleware, sanitizeInput } = require('./middleware/security');
 
 const app = express();
+app.set('trust proxy', 1); // Required for express-rate-limit on Render
 
 // Middleware
 app.use(helmet({
