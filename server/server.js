@@ -19,7 +19,7 @@ app.use(helmet({
         directives: {
             "default-src": ["'self'"],
             "connect-src": ["'self'", "https://api.dicebear.com", "http://localhost:5000", "*.render.com", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com"],
-            "img-src": ["'self'", "data:", "https://api.dicebear.com", "https://*.googleusercontent.com"],
+            "img-src": ["'self'", "data:", "https://api.dicebear.com", "https://*.googleusercontent.com", "https://www.svgrepo.com", "https://www.transparenttextures.com"],
             "script-src": ["'self'", "'unsafe-inline'", "https://apis.google.com", "https://accounts.google.com", "https://www.gstatic.com"],
             "script-src-elem": ["'self'", "'unsafe-inline'", "https://apis.google.com", "https://accounts.google.com", "https://www.gstatic.com"],
             "frame-src": ["'self'", "https://accounts.google.com", "https://kphub-12130.firebaseapp.com", "https://*.firebaseapp.com"],
@@ -28,7 +28,9 @@ app.use(helmet({
             "object-src": ["'none'"],
         },
     },
-    crossOriginResourcePolicy: { policy: "cross-origin" }
+},
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
 }));
 app.use(cors({
     origin: [
