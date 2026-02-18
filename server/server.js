@@ -15,6 +15,7 @@ app.set('trust proxy', 1); // Required for express-rate-limit on Render
 // Middleware
 app.use(helmet({
     contentSecurityPolicy: {
+        useDefaults: false,
         directives: {
             "default-src": ["'self'"],
             "connect-src": ["'self'", "https://api.dicebear.com", "http://localhost:5000", "*.render.com", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com"],
@@ -157,7 +158,21 @@ app.get('/api/test-db', async (req, res) => {
 // Grid Health Heartbeat
 app.get('/api/health', (req, res) => {
     const { db } = require('./config/firebase');
-    const isMock = db.toString().includes('Firebase not initialized') || (db.collection && db.collection().get.toString().includes('throw'));
+    const { db } = require('./config/firebase');
+    // Check if db is a mock (has no _settings or internal props usually found in Firestore)
+    // Or just check if it's the specific mock object we created
+    let isMock = false;
+    try {
+        // Our mock db explicitly throws on get()
+        if (db.collection && db.collection('test').get.toString().includes('Firebase not initialized')) {
+            isMock = true;
+        }
+    } catch (e) {
+        // If real firestore, this might fail on connection, but not logic
+    }
+
+    // Fallback: Check if the "db" object is just our simple mock object from firebase.js
+    if (db.collection.toString().includes('throw new Error')) isMock = true;
 
     res.json({
         status: 'ONLINE',
