@@ -16,11 +16,15 @@ app.set('trust proxy', 1); // Required for express-rate-limit on Render
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
-            ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+            "default-src": ["'self'"],
             "connect-src": ["'self'", "https://api.dicebear.com", "http://localhost:5000", "*.render.com", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com"],
             "img-src": ["'self'", "data:", "https://api.dicebear.com", "https://*.googleusercontent.com"],
             "script-src": ["'self'", "'unsafe-inline'", "https://apis.google.com", "https://accounts.google.com", "https://www.gstatic.com"],
-            "frame-src": ["'self'", "https://accounts.google.com", "https://kphub-12130.firebaseapp.com"],
+            "script-src-elem": ["'self'", "'unsafe-inline'", "https://apis.google.com", "https://accounts.google.com", "https://www.gstatic.com"],
+            "frame-src": ["'self'", "https://accounts.google.com", "https://kphub-12130.firebaseapp.com", "https://*.firebaseapp.com"],
+            "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            "font-src": ["'self'", "https://fonts.gstatic.com"],
+            "object-src": ["'none'"],
         },
     },
     crossOriginResourcePolicy: { policy: "cross-origin" }
