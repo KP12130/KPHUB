@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Github, Mail } from 'lucide-react';
-import axios from 'axios';
+import { API_BASE } from '../api';
 
 const Login = () => {
     const { loginWithGoogle, loginWithGithub, currentUser } = useAuth();
@@ -13,7 +13,7 @@ const Login = () => {
         if (!user) return;
         try {
             // Check if user profile exists in our DB
-            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
             await axios.get(`${API_BASE}/api/users/${user.uid}`);
             // If successful (200), user exists -> Go to Dashboard
             navigate('/');

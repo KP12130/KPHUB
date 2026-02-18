@@ -6,8 +6,8 @@ import {
     File, Folder, ChevronRight, ChevronDown, Image, CheckCircle2, AlertCircle, Plus,
     CreditCard, Edit3, Code, Database, FileCode, Terminal, Zap, Eye
 } from 'lucide-react';
-import axios from 'axios';
 import { API_BASE } from '../api';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
@@ -270,7 +270,7 @@ const ProjectDetails = () => {
 
     const handleRequestReview = async () => {
         try {
-            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
             await axios.post(`${API_BASE}/api/reviews/request`, {
                 userId: currentUser.uid,
                 projectId: id,

@@ -49,7 +49,7 @@ const Studio = () => {
             if (!currentUser || !currentUser.username) return;
 
             try {
-                const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/users/profile/${currentUser.username}?viewerId=${currentUser.uid}`);
+                const res = await axios.get(`${API_BASE}/api/users/profile/${currentUser.username}?viewerId=${currentUser.uid}`);
                 const { user, projects } = res.data;
                 setProjects(projects);
                 setStats({
@@ -105,7 +105,7 @@ const Studio = () => {
     const handleClaimQuest = async (quest) => {
         if (quest.completed) return;
         try {
-            const res = await axios.post('http://localhost:5000/api/users/quests/complete', {
+            const res = await axios.post(`${API_BASE}/api/users/quests/complete`, {
                 uid: currentUser.uid, questId: quest.id
             });
             if (res.data.success) {
@@ -121,7 +121,7 @@ const Studio = () => {
 
     const handleSaveProfile = async () => {
         try {
-            await axios.put(`http://localhost:5000/api/users/${currentUser.uid}`, profileData);
+            await axios.put(`${API_BASE}/api/users/${currentUser.uid}`, profileData);
             toast.success("Profile Matrix Updated.");
         } catch (err) {
             toast.error("Update Failed.");
@@ -131,7 +131,7 @@ const Studio = () => {
     const handleDeleteProject = async (projectId) => {
         if (!window.confirm("CONFIRM DELETION: This action is irreversible.")) return;
         try {
-            await axios.delete(`http://localhost:5000/api/projects/${projectId}?userId=${currentUser.uid}`);
+            await axios.delete(`${API_BASE}/api/projects/${projectId}?userId=${currentUser.uid}`);
             setProjects(prev => prev.filter(p => p.id !== projectId));
             toast.success("Project Eradicated.");
         } catch (err) {

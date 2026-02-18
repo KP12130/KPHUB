@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { Upload as UploadIcon, Check, AlertCircle, Loader, Shield, X, File, Image as ImageIcon, Folder } from 'lucide-react';
-import axios from 'axios';
+import { API_BASE } from '../api';
 
 const Upload = () => {
     const { currentUser } = useAuth();
@@ -72,7 +72,7 @@ const Upload = () => {
         data.append('isPrivate', formData.isPrivate);
 
         try {
-            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/projects`, data, {
+            await axios.post(`${API_BASE}/api/projects`, data, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
             navigate('/studio');

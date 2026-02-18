@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Radio, Zap, Activity, Users, Star } from 'lucide-react';
-import axios from 'axios';
+import { API_BASE } from '../api';
 
 const Ticker = () => {
     const [activities, setActivities] = useState([
@@ -14,7 +14,7 @@ const Ticker = () => {
         const fetchGlobalActivity = async () => {
             try {
                 // Fetch recent projects and use them as activity
-                const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
                 const res = await axios.get(`${API_BASE}/api/projects?limit=5`);
                 const recent = res.data.map(p => `NEW_TRANSMISSION: ${p.author.username} deployed "${p.title}"`);
 

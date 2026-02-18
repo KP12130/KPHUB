@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import { API_BASE } from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Target, Plus, AlertCircle, Shield, CheckCircle2, DollarSign, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -23,7 +23,7 @@ const Missions = () => {
         fetchBounties();
     }, []);
 
-    const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
     const fetchBounties = async () => {
         try {
             const res = await axios.get(`${API_BASE}/api/bounties`);
@@ -47,7 +47,7 @@ const Missions = () => {
         }
 
         try {
-            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
             await axios.post(`${API_BASE}/api/bounties`, {
                 authorId: currentUser.uid,
                 ...newBounty,
@@ -67,7 +67,7 @@ const Missions = () => {
         if (!currentUser) return toast.error("Authentication Required.");
 
         try {
-            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
             await axios.post(`${API_BASE}/api/bounties/${bountyId}/claim`, {
                 userId: currentUser.uid
             });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import { API_BASE } from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Terminal, Calendar, Clock, Trophy, Upload as UploadIcon, X, CheckCircle2, AlertTriangle, Code } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -22,7 +22,7 @@ const Hackathons = () => {
 
     const fetchHackathons = async () => {
         try {
-            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
             const res = await axios.get(`${API_BASE}/api/hackathons`);
             setHackathons(res.data);
         } catch (err) {
@@ -35,7 +35,7 @@ const Hackathons = () => {
 
     const fetchUserProjects = async () => {
         try {
-            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
             const res = await axios.get(`${API_BASE}/api/projects/user/${currentUser.uid}`);
             setUserProjects(res.data);
         } catch (err) {
@@ -47,7 +47,7 @@ const Hackathons = () => {
         if (!currentUser) return toast.error("ACCESS_DENIED: Login required.");
 
         try {
-            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
             await axios.post(`${API_BASE}/api/hackathons/${id}/join`, {
                 userId: currentUser.uid
             });
@@ -65,7 +65,7 @@ const Hackathons = () => {
         const project = userProjects.find(p => p.id === selectedProject);
 
         try {
-            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
             await axios.post(`${API_BASE}/api/hackathons/${selectedHackathon.id}/submit`, {
                 userId: currentUser.uid,
                 projectId: selectedProject,

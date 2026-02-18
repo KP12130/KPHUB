@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { API_BASE } from '../api';
 import { Trophy, Medal, Star, Shield, Code, User, Crown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getReputationTitle } from '../utils/reputation';
@@ -19,7 +19,7 @@ const Leaderboard = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
                 const [repRes, auditRes, voteRes] = await Promise.all([
                     axios.get(`${API_BASE}/api/users/leaderboard`),
                     axios.get(`${API_BASE}/api/reviews/leaderboard`),
@@ -53,7 +53,7 @@ const Leaderboard = () => {
         if (hasVoted) return toast.error("You have already voted this month.");
 
         try {
-            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
             await axios.post(`${API_BASE}/api/voting/vote`, {
                 userId: currentUser.uid,
                 projectId

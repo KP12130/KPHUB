@@ -6,33 +6,39 @@ const useSound = () => {
 
     // Initialize only on first user interaction
     const initAudio = useCallback(() => {
-        if (!audioCtxRef.current) {
+        if (audioCtxRef.current) {
+            if (audioCtxRef.current.state === 'suspended') {
+                audioCtxRef.current.resume().catch(e => console.warn(e));
+            }
+            return;
+        }
+
+        try {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             if (AudioContext) {
                 audioCtxRef.current = new AudioContext();
             }
-        }
-        // Resume if suspended (browser autoplay policy)
-        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-            audioCtxRef.current.resume().catch(err => console.warn('Audio resume failed:', err));
+        } catch (e) {
+            console.warn('AudioContext not supported or blocked:', e);
         }
     }, []);
 
-    // Attach global listener to wake up audio engine once
     useEffect(() => {
         const handleInteraction = () => {
             initAudio();
-            // Remove listeners after first successful wake-up attempt
-            window.removeEventListener('click', handleInteraction);
-            window.removeEventListener('keydown', handleInteraction);
+            ['click', 'keydown', 'touchstart'].forEach(event =>
+                window.removeEventListener(event, handleInteraction)
+            );
         };
 
-        window.addEventListener('click', handleInteraction);
-        window.addEventListener('keydown', handleInteraction);
+        ['click', 'keydown', 'touchstart'].forEach(event =>
+            window.addEventListener(event, handleInteraction)
+        );
 
         return () => {
-            window.removeEventListener('click', handleInteraction);
-            window.removeEventListener('keydown', handleInteraction);
+            ['click', 'keydown', 'touchstart'].forEach(event =>
+                window.removeEventListener(event, handleInteraction)
+            );
         };
     }, [initAudio]);
 

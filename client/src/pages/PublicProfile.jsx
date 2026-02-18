@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import { API_BASE } from '../api';
 import { motion } from 'framer-motion';
 import { User, Calendar, Award, Code, Trophy, ArrowLeft, Github, Twitter, Globe, ExternalLink } from 'lucide-react';
 import ProjectCard from '../components/ProjectCard';
@@ -22,7 +22,7 @@ const PublicProfile = () => {
         const fetchProfile = async () => {
             setLoading(true);
             try {
-                const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
                 const res = await axios.get(`${API_BASE}/api/users/profile/${username}?viewerId=${currentUser?.uid || ''}`);
                 setProfile(res.data);
                 // Fetch badge definitions
@@ -47,10 +47,10 @@ const PublicProfile = () => {
         if (!currentUser) return alert("Please login to follow creators!");
         try {
             if (isFollowing) {
-                await axios.post(`http://localhost:5000/api/users/unfollow/${profile.user.uid}`, { followerId: currentUser.uid });
+                await axios.post(`${API_BASE}/api/users/unfollow/${profile.user.uid}`, { followerId: currentUser.uid });
                 setIsFollowing(false);
             } else {
-                await axios.post(`http://localhost:5000/api/users/follow/${profile.user.uid}`, { followerId: currentUser.uid });
+                await axios.post(`${API_BASE}/api/users/follow/${profile.user.uid}`, { followerId: currentUser.uid });
                 setIsFollowing(true);
             }
         } catch (err) {

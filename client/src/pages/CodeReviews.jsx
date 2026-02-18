@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import { API_BASE } from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Code, CheckCircle, MessageSquare, Clock, X, Shield, Eye, ThumbsUp, AlertTriangle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -30,7 +30,7 @@ const CodeReviews = () => {
     const fetchReviews = async () => {
         try {
             setLoading(true);
-            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
             const res = await axios.get(`${API_BASE}/api/reviews${filter !== 'ALL' ? `?type=${filter}` : ''}`);
             setReviews(res.data);
         } catch (err) {
@@ -47,7 +47,7 @@ const CodeReviews = () => {
 
         setIsSubmitting(true);
         try {
-            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
             await axios.post(`${API_BASE}/api/reviews/${selectedReview.id}/comment`, {
                 userId: currentUser.uid,
                 userName: currentUser.displayName,
@@ -71,7 +71,7 @@ const CodeReviews = () => {
         if (!window.confirm("Close this review request?")) return;
 
         try {
-            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
             await axios.post(`${API_BASE}/api/reviews/${reviewId}/close`, {
                 userId: currentUser.uid
             });
@@ -108,8 +108,8 @@ const CodeReviews = () => {
                         key={type.id}
                         onClick={() => setFilter(type.id)}
                         className={`px-4 py-2 rounded-lg font-bold uppercase text-[10px] tracking-widest transition-all ${filter === type.id
-                                ? 'bg-neon-blue text-black shadow-[0_0_15px_rgba(59,130,246,0.5)]'
-                                : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                            ? 'bg-neon-blue text-black shadow-[0_0_15px_rgba(59,130,246,0.5)]'
+                            : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
                             }`}
                     >
                         {type.label}

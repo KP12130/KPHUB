@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
 import { API_BASE } from '../api';
+
 import { motion } from 'framer-motion';
 import { User, Calendar, Save, ArrowLeft, AtSign, FileText, Github, Twitter, Globe } from 'lucide-react';
 
@@ -101,7 +101,7 @@ const Profile = () => {
             setSuccess('Profile updated successfully!');
 
             // Refetch simple data to get potentially updated fields
-            const res = await axios.get(`http://localhost:5000/api/users/${currentUser.uid}`);
+            const res = await axios.get(`${API_BASE}/api/users/${currentUser.uid}`);
 
             // Update local form state
             setFormData(prev => ({ ...prev, ...res.data }));

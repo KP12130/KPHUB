@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { API_BASE } from '../api';
 import { Activity, Clock, Zap, MessageCircle, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -12,7 +12,7 @@ const ActivityFeed = () => {
 
     const fetchActivity = async () => {
         try {
-            const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
             const res = await axios.get(`${API_BASE}/api/activity`);
             setActivities(res.data);
         } catch (err) {
