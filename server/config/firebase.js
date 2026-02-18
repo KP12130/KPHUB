@@ -17,13 +17,38 @@ try {
 
         const cleanKey = (key) => {
             if (!key) return key;
-            // Simple quote removal and newline replacement
-            // This is safer than rebuilding the PEM from scratch which might corrupt specific key types
-            return key.trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
+            // 1. Initial cleanup: trimming and basic newline replacement
+            // Use regex to locate the header and footer, allowing for variations (e.g. RSA PRIVATE KEY)
+            const k = key.trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
+
+            const headerMatch = k.match(/^(-+BEGIN[^-]+-+)/);
+            const footerMatch = k.match(/(-+END[^-]+-+)$/);
+
+            if (!headerMatch || !footerMatch) {
+                // Determine type based on content or default to standard Private Key if completely stripped
+                console.warn("Firebase: Key Clean Utility - Could not find clear PEM headers. Attempting default wrap.");
+                return k;
+            }
+
+            const header = headerMatch[1];
+            const footer = footerMatch[1];
+
+            // 2. Extract Body: Remove header, footer, and ALL whitespace from what remains
+            const body = k.replace(header, '').replace(footer, '').replace(/\s+/g, '');
+
+            // 3. Rebuild with strict 64-char lines
+            const lineLength = 64;
+            let formatted = `${header}\n`;
+            for (let i = 0; i < body.length; i += lineLength) {
+                formatted += body.substring(i, i + lineLength) + '\n';
+            }
+            formatted += `${footer}\n`;
+
+            return formatted;
         };
 
         const pk = cleanKey(process.env.FIREBASE_PRIVATE_KEY);
-        console.log(`Firebase: Private Key scrubbed. Header: ${pk.substring(0, 27)}...`);
+        console.log(`Firebase: Private Key rebuilt. Headers detected: ${pk.split('\n')[0]}`);
         console.log(`Firebase: Identity Check - Project: ${process.env.FIREBASE_PROJECT_ID} | Email: ${process.env.FIREBASE_CLIENT_EMAIL}`);
 
         serviceAccount = {
