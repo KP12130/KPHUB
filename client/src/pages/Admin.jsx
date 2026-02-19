@@ -221,12 +221,25 @@ const Admin = () => {
 
                                         <div className="shrink-0 flex flex-col gap-2">
                                             {/* Mailto Opener (Always available as fallback) */}
-                                            <a
-                                                href={`mailto:${ticket.userEmail}?subject=${encodeURIComponent(`Re: [SYSTEM_SYNC] Data Received: ${ticket.subject}`)}&body=${encodeURIComponent(`Architect,\n\n regarding your transmission "${ticket.subject}":\n\n--- [ADMIN_RESPONSE] ---\n\n`)}`}
-                                                className="px-6 py-2 bg-white/5 border border-white/10 text-white text-[9px] font-black uppercase tracking-widest rounded-lg transition-all hover:bg-white hover:text-black flex items-center justify-center gap-2"
-                                            >
-                                                <ExternalLink className="w-3 h-3" /> Direct_Email_Relay
-                                            </a>
+                                            <div className="flex flex-col gap-2">
+                                                <a
+                                                    href={`mailto:${ticket.userEmail}?subject=${encodeURIComponent(`Re: [SYSTEM_SYNC] Data Received: ${ticket.subject}`)}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="px-6 py-2 bg-white/5 border border-white/10 text-white text-[9px] font-black uppercase tracking-widest rounded-lg transition-all hover:bg-white hover:text-black flex items-center justify-center gap-2"
+                                                >
+                                                    <ExternalLink className="w-3 h-3" /> Direct_Email_Relay
+                                                </a>
+                                                <button
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(ticket.userEmail);
+                                                        toast.success("EMAIL_COPIED: Ready for manual relay.");
+                                                    }}
+                                                    className="px-6 py-2 border border-white/5 text-gray-500 text-[8px] font-black uppercase tracking-widest rounded-lg hover:text-white hover:border-white/20 transition-all flex items-center justify-center gap-2"
+                                                >
+                                                    <Mail className="w-3 h-3" /> Copy_Email_Only
+                                                </button>
+                                            </div>
 
                                             {ticket.isVerified ? (
                                                 !ticket.responded && respondingTo !== ticket.id && (
