@@ -18,21 +18,28 @@ app.use(helmet({
         useDefaults: false,
         directives: {
             "default-src": ["'self'"],
-            "connect-src": ["'self'", "https://api.dicebear.com", "http://localhost:5000", "*.render.com", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com"],
-            "img-src": ["'self'", "data:", "https://api.dicebear.com", "https://*.googleusercontent.com", "https://www.svgrepo.com", "https://www.transparenttextures.com", "https://images.unsplash.com", "https://*.r2.cloudflarestorage.com", "https://media.giphy.com"],
-            "script-src": ["'self'", "'unsafe-inline'", "blob:", "https://apis.google.com", "https://accounts.google.com", "https://www.gstatic.com"],
+            "connect-src": ["'self'", "https://api.dicebear.com", "http://localhost:5000", "*.render.com", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com", "https://*.firebaseio.com", "wss://*.firebaseio.com"],
+            "img-src": ["'self'", "data:", "blob:", "https://api.dicebear.com", "https://*.googleusercontent.com", "https://www.svgrepo.com", "https://www.transparenttextures.com", "https://images.unsplash.com", "https://*.r2.cloudflarestorage.com", "https://media.giphy.com"],
+            "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "blob:", "https://apis.google.com", "https://accounts.google.com", "https://www.gstatic.com"],
             "script-src-elem": ["'self'", "'unsafe-inline'", "blob:", "https://apis.google.com", "https://accounts.google.com", "https://www.gstatic.com"],
             "worker-src": ["'self'", "blob:"],
+            "child-src": ["'self'", "blob:", "https://*.firebaseapp.com"],
             "frame-src": ["'self'", "https://accounts.google.com", "https://kphub-12130.firebaseapp.com", "https://*.firebaseapp.com"],
             "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             "font-src": ["'self'", "https://fonts.gstatic.com"],
             "object-src": ["'none'"],
         },
     },
-
     crossOriginResourcePolicy: { policy: "cross-origin" },
-    // crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" } // Temporarily disabled to fix MessagePort error
+    crossOriginOpenerPolicy: { policy: "unsafe-none" },
+    crossOriginEmbedderPolicy: false
 }));
+
+// Debug header to verify deployment
+app.use((req, res, next) => {
+    res.setHeader('X-KPHUB-Debug', 'csp-v3-permissive');
+    next();
+});
 app.use(cors({
     origin: [
         'http://localhost:5173',
