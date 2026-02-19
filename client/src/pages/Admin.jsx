@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'react-router-dom';
 import {
     Shield, Lock, Terminal, Activity, LifeBuoy, Mail,
-    Clock, CheckCircle2, Send, ArrowLeft, LogOut, Loader2
+    Clock, CheckCircle2, Send, ArrowLeft, LogOut, Loader2,
+    AlertCircle, Check, ExternalLink
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE } from '../api';
 import { toast } from 'react-hot-toast';
 
-// CREDENTIALS (Requested by user)
-const ADMIN_USER = "grid_admin"; // 10 chars
-const ADMIN_PASS = "kL9#mP2$vR5!xT8*zQ1^"; // 20 chars
+// CREDENTIALS
+const ADMIN_USER = "grid_admin";
+const ADMIN_PASS = "kL9#mP2$vR5!xT8*zQ1^";
 
 const GlassCard = ({ children, className = "" }) => (
     <div className={`glass-panel rounded-2xl p-6 ${className}`}>
@@ -27,7 +27,6 @@ const Admin = () => {
     const [responseText, setResponseText] = useState('');
     const [isSending, setIsSending] = useState(false);
 
-    // Initial check for session (local storage for ease of use)
     useEffect(() => {
         const session = localStorage.getItem('admin_session');
         if (session === 'ACTIVE') setIsAuthenticated(true);
@@ -83,10 +82,26 @@ const Admin = () => {
             setResponseText('');
             fetchTickets();
         } catch (err) {
-            toast.error("Transmission failed.");
+            toast.error("Transmission failed. Use Direct_Email_Relay instead.");
         } finally {
             setIsSending(false);
         }
+    };
+
+    const handleManualVerify = async (ticketId) => {
+        try {
+            await axios.post(`${API_BASE}/api/support/manual-verify`, { ticketId });
+            toast.success("TICKET_VERIFIED: Identity protocol bypassed.");
+            fetchTickets();
+        } catch (err) {
+            toast.error("Manual sync failed.");
+        }
+    };
+
+    const openDirectMail = (ticket) => {
+        const subject = encodeURIComponent(`Re: [SYSTEM_SYNC] Data Received: ${ticket.subject}`);
+        const body = encodeURIComponent(`Architect,\n\n regarding your transmission "${ticket.subject}":\n\n--- [ADMIN_RESPONSE] ---\n\n`);
+        window.location.href = `mailto:${ticket.userEmail}?subject=${subject}&body=${body}`;
     };
 
     if (!isAuthenticated) {
@@ -141,19 +156,21 @@ const Admin = () => {
                     </h1>
                     <p className="text-gray-500 font-mono text-xs tracking-[0.3em] uppercase mt-2">System command & support orchestration.</p>
                 </div>
-                <button onClick={handleLogout} className="px-6 py-3 border border-red-500/30 text-red-500 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center gap-2">
-                    <LogOut className="w-3 h-3" /> Terminate_Session
-                </button>
+                <div className="flex gap-4">
+                    <button onClick={fetchTickets} className="px-4 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-white/10 transition-all flex items-center gap-2">
+                        <Loader2 className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} /> Sync_Data
+                    </button>
+                    <button onClick={handleLogout} className="px-6 py-3 border border-red-500/30 text-red-500 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center gap-2">
+                        <LogOut className="w-3 h-3" /> Terminate_Session
+                    </button>
+                </div>
             </header>
 
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <h3 className="text-[10px] font-black text-neon-blue uppercase tracking-[0.3em] flex items-center gap-2">
-                        <LifeBuoy className="w-4 h-4" /> Verified_Transmissions
+                        <LifeBuoy className="w-4 h-4" /> Global_Transmissions_log
                     </h3>
-                    <button onClick={fetchTickets} className="p-2 hover:bg-white/5 rounded-lg transition-colors text-gray-500 hover:text-white">
-                        <Loader2 className={`w-4 h-4 ${isLoading ? 'animate-spin text-neon-blue' : ''}`} />
-                    </button>
                 </div>
 
                 {isLoading && tickets.length === 0 ? (
@@ -161,38 +178,69 @@ const Admin = () => {
                 ) : tickets.length > 0 ? (
                     <div className="grid grid-cols-1 gap-6">
                         {tickets.map((ticket, i) => (
-                            <GlassCard key={i} className={`group relative overflow-hidden border-white/5 hover:border-neon-blue/30 transition-all ${ticket.responded ? 'opacity-60' : ''}`}>
+                            <GlassCard key={i} className={`group relative overflow-hidden border-white/5 hover:border-neon-blue/30 transition-all ${ticket.responded ? 'opacity-40' : !ticket.isVerified ? 'border-yellow-500/20' : ''}`}>
                                 <div className="flex flex-col gap-6">
                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                        <div className="space-y-2 flex-grow">
-                                            <div className="flex items-center gap-3">
+                                        <div className="space-y-4 flex-grow">
+                                            <div className="flex flex-wrap items-center gap-3">
                                                 <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${ticket.type === 'BUG' ? 'bg-red-500/20 text-red-500' :
                                                         ticket.type === 'REQUEST' ? 'bg-neon-blue/20 text-neon-blue' : 'bg-purple-500/20 text-purple-500'
                                                     }`}>
                                                     {ticket.type}
                                                 </span>
                                                 <h4 className="font-bold text-white text-sm uppercase tracking-tight">{ticket.subject}</h4>
-                                                {ticket.responded && (
+
+                                                {ticket.isVerified ? (
                                                     <span className="flex items-center gap-1 text-[8px] font-black text-neon-green uppercase tracking-widest bg-neon-green/10 px-2 py-0.5 rounded">
-                                                        <CheckCircle2 className="w-2 h-2" /> Synced
+                                                        <CheckCircle2 className="w-2 h-2" /> Verified
+                                                    </span>
+                                                ) : (
+                                                    <span className="flex items-center gap-1 text-[8px] font-black text-yellow-500 uppercase tracking-widest bg-yellow-500/10 px-2 py-0.5 rounded animate-pulse">
+                                                        <AlertCircle className="w-2 h-2" /> Unverified_Wait
+                                                    </span>
+                                                )}
+
+                                                {ticket.responded && (
+                                                    <span className="flex items-center gap-1 text-[8px] font-black text-neon-blue uppercase tracking-widest bg-neon-blue/10 px-2 py-0.5 rounded">
+                                                        <Send className="w-2 h-2" /> Responded
                                                     </span>
                                                 )}
                                             </div>
+
                                             <p className="text-[10px] text-gray-400 font-mono leading-relaxed bg-black/20 p-4 rounded-xl border border-white/5">
                                                 {ticket.description}
                                             </p>
+
                                             <div className="flex items-center gap-4 text-[9px] text-gray-500 font-mono uppercase">
                                                 <span className="flex items-center gap-1.5"><Mail className="w-3 h-3 text-neon-green" /> {ticket.userEmail}</span>
                                                 <span className="flex items-center gap-1.5"><Clock className="w-3 h-3" /> {new Date(ticket.createdAt).toLocaleString()}</span>
                                             </div>
                                         </div>
-                                        <div className="shrink-0 flex md:flex-col gap-2">
-                                            {!ticket.responded && respondingTo !== ticket.id && (
+
+                                        <div className="shrink-0 flex flex-col gap-2">
+                                            {/* Mailto Opener (Always available as fallback) */}
+                                            <button
+                                                onClick={() => openDirectMail(ticket)}
+                                                className="px-6 py-2 bg-white/5 border border-white/10 text-white text-[9px] font-black uppercase tracking-widest rounded-lg transition-all hover:bg-white hover:text-black flex items-center justify-center gap-2"
+                                            >
+                                                <ExternalLink className="w-3 h-3" /> Direct_Email_Relay
+                                            </button>
+
+                                            {ticket.isVerified ? (
+                                                !ticket.responded && respondingTo !== ticket.id && (
+                                                    <button
+                                                        onClick={() => setRespondingTo(ticket.id)}
+                                                        className="px-6 py-2 bg-neon-blue text-black text-[9px] font-black uppercase tracking-widest rounded-lg transition-all hover:scale-105"
+                                                    >
+                                                        Process_Server_Reply
+                                                    </button>
+                                                )
+                                            ) : (
                                                 <button
-                                                    onClick={() => setRespondingTo(ticket.id)}
-                                                    className="px-6 py-2 bg-neon-blue text-black text-[9px] font-black uppercase tracking-widest rounded-lg transition-all hover:bg-white"
+                                                    onClick={() => handleManualVerify(ticket.id)}
+                                                    className="px-6 py-2 bg-yellow-500 text-black text-[9px] font-black uppercase tracking-widest rounded-lg transition-all hover:bg-white"
                                                 >
-                                                    Process_Response
+                                                    <Check className="w-3 h-3" /> Manual_Verify
                                                 </button>
                                             )}
                                         </div>
@@ -219,7 +267,7 @@ const Admin = () => {
                                                     onClick={() => handleSendResponse(ticket.id)}
                                                     className="px-8 py-2 bg-white text-black font-black uppercase tracking-widest text-[9px] rounded-lg transition-all hover:bg-neon-blue flex items-center gap-2"
                                                 >
-                                                    {isSending ? 'DISPATCHING...' : <><Send className="w-3 h-3" /> Transmit_Response</>}
+                                                    {isSending ? 'DISPATCHING...' : <><Send className="w-3 h-3" /> Sync_Reply_Email</>}
                                                 </button>
                                             </div>
                                         </div>
@@ -241,7 +289,7 @@ const Admin = () => {
                     <div className="glass-panel p-20 rounded-[2.5rem] text-center border border-gray-900 bg-terminal/30">
                         <Shield className="w-12 h-12 text-gray-800 mx-auto mb-4" />
                         <p className="text-gray-600 font-mono text-xs uppercase tracking-widest leading-relaxed">
-                            No verified transmissions detected in the security perimeter.
+                            No recent transmissions detected in the security perimeter.
                         </p>
                     </div>
                 )}

@@ -6,15 +6,23 @@ const nodemailer = require('nodemailer');
  */
 const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT) || 465,
-    secure: process.env.EMAIL_SECURE === 'true' || process.env.EMAIL_PORT == 465,
+    port: parseInt(process.env.EMAIL_PORT) || 587,
+    secure: process.env.EMAIL_SECURE === 'true', // False for 587 (STARTTLS), True for 465 (SSL)
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
     },
-    connectionTimeout: 10000, // 10 seconds
-    greetingTimeout: 10000,
-    socketTimeout: 10000
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 30000
+});
+
+// Diagnostic Log
+console.log('[EMAIL_INIT] Outbound node configured:', {
+    host: transporter.options.host,
+    port: transporter.options.port,
+    secure: transporter.options.secure,
+    user: process.env.EMAIL_USER ? `${process.env.EMAIL_USER.split('@')[0]}@***` : 'NOT_SET'
 });
 
 const DEFAULT_FROM = '"KPHUB Support" <support@kphub.dev>';

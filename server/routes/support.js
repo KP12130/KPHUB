@@ -143,26 +143,44 @@ router.post('/respond', async (req, res) => {
     }
 });
 
-// GET /api/support/tickets - Admin List (For Studio)
+// GET /api/support/tickets - Admin List (For Studio/Admin)
 router.get('/tickets', async (req, res) => {
     try {
-        // Simple 12h filter + only verified
-        const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+        // Return all tickets from last 24h to allow troubleshooting unverified ones
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
         const snapshot = await db.collection('support_tickets')
-            .where('isVerified', '==', true)
-            .where('createdAt', '>=', twelveHoursAgo)
+            .where('createdAt', '>=', twentyFourHoursAgo)
             .orderBy('createdAt', 'desc')
-            .limit(50)
+            .limit(100)
             .get();
 
         const tickets = snapshot.docs.map(doc => doc.data());
-
         res.json(tickets);
     } catch (error) {
         console.error('[SUPPORT_LOGIC] Fetch Error:', error);
         res.status(500).json({ error: 'Failed to retrieve documentation.' });
     }
 });
+
+// POST /api/support/manual-verify - Admin Manual Action
+router.post('/manual-verify', async (req, res) => {
+    try {
+        const { ticketId } = req.body;
+        if (!ticketId) return res.status(400).json({ error: 'Ticket ID required.' });
+
+        const ticketRef = db.collection('support_tickets').doc(ticketId);
+        await ticketRef.update({
+            isVerified: true,
+            manuallyVerified: true,
+            verifiedAt: new Date().toISOString()
+        });
+
+        res.json({ success: true, message: 'MANUAL_VERIFICATION_COMPLETE' });
+    } catch (error) {
+        res.status(500).json({ error: 'System error during manual synchronization.' });
+    }
+});
+
 
 module.exports = router;
