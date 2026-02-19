@@ -22,7 +22,15 @@ const ShowcaseEmbed = ({ demoUrl, title }) => {
                     <p className="text-gray-400 font-mono text-sm max-w-md mb-6">
                         Click to load the external interactive module.
                         <br />
-                        <span className="text-xs text-gray-500">Source: {new URL(demoUrl).hostname}</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500">Source: {(() => {
+                                try {
+                                    return new URL(demoUrl).hostname;
+                                } catch (e) {
+                                    return 'External';
+                                }
+                            })()}</span>
+                        </div>
                     </p>
 
                     {!isSecure && (
