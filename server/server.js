@@ -87,9 +87,11 @@ const adRoutes = require('./routes/ads');
 const bountyRoutes = require('./routes/bounties');
 const hackathonRoutes = require('./routes/hackathons');
 const reviewRoutes = require('./routes/reviews');
+const supportRoutes = require('./routes/support');
 
 app.use('/api/projects', projectRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/support', supportRoutes);
 app.use('/api/redeem', redeemRoutes);
 app.use('/api/ads', adRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);

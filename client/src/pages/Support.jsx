@@ -6,6 +6,10 @@ import {
     Activity, Globe, Cpu, CheckCircle2
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import axios from 'axios';
+import { API_BASE } from '../api';
+import { useAuth } from '../context/AuthContext';
+
 
 const FAQItem = ({ question, answer }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -47,14 +51,26 @@ const Support = () => {
         { q: "WITHDRAWAL_PROTOCOL?", a: "Creators can withdraw credits once their balance exceeds 10.00 CODE_CREDITS. Processing takes approximately 24-48 grid cycles." }
     ];
 
-    const handleSubmit = (e) => {
+    const { currentUser } = useAuth();
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-        setTimeout(() => {
+        try {
+            await axios.post(`${API_BASE}/api/support`, {
+                type: reportType,
+                subject: formData.subject,
+                description: formData.description,
+                userEmail: currentUser?.email
+            });
             toast.success("GLITCH_REPORT_INJECTED: System administrators notified.");
             setFormData({ subject: '', description: '' });
+        } catch (err) {
+            console.error('Support submission error:', err);
+            toast.error("SYNC_ERROR: Failed to transmit glitch report.");
+        } finally {
             setIsSubmitting(false);
-        }, 1500);
+        }
     };
 
     const statusModules = [
