@@ -58,7 +58,7 @@ const SupportGrid = () => {
                                 <div className="space-y-2 flex-grow">
                                     <div className="flex items-center gap-3">
                                         <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${ticket.type === 'BUG' ? 'bg-red-500/20 text-red-500' :
-                                                ticket.type === 'REQUEST' ? 'bg-neon-blue/20 text-neon-blue' : 'bg-purple-500/20 text-purple-500'
+                                            ticket.type === 'REQUEST' ? 'bg-neon-blue/20 text-neon-blue' : 'bg-purple-500/20 text-purple-500'
                                             }`}>
                                             {ticket.type}
                                         </span>
@@ -538,11 +538,6 @@ const Studio = () => {
     );
 };
 
-// SVG components to fix Activity icon if needed
-const Activity = (props) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-    </svg>
-);
 
 export default Studio;
+
