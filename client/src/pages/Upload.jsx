@@ -191,7 +191,7 @@ const Upload = () => {
                                     {files.map((file, i) => (
                                         <div key={i} className="flex items-center justify-between p-3 group hover:bg-white/5">
                                             <div className="flex items-center gap-3">
-                                                <File className="w-4 h-4 text-gray-600" />
+                                                <FileIcon className="w-4 h-4 text-gray-600" />
                                                 <span className="text-xs text-gray-300 font-mono">{file.name}</span>
                                                 <span className="text-[10px] text-gray-600 font-mono">{(file.size / 1024).toFixed(1)}KB</span>
                                             </div>

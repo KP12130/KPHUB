@@ -1,7 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const { sendUserConfirmation, sendVerificationCode, sendAdminResponse } = require('../utils/email');
-const { db } = require('../config/firebase');
+const { db, admin } = require('../config/firebase');
+const multer = require('multer');
+const { uploadFile, getFileUrl } = require('../utils/storage');
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
 
 // Utility to generate 6-digit code
 const generateCode = () => Math.floor(100000 + Math.random() * 900000).toString();
@@ -9,7 +16,7 @@ const generateCode = () => Math.floor(100000 + Math.random() * 900000).toString(
 // POST /api/support/submit - Initialize Chat
 router.post('/submit', async (req, res) => {
     try {
-        const { type, subject, userEmail, userId } = req.body;
+        const { subject, userEmail, userId, type, attachments = [] } = req.body;
 
         if (!subject || !userEmail || !userId) {
             return res.status(400).json({ error: 'Subject, Email and UID required.' });
@@ -37,7 +44,8 @@ router.post('/submit', async (req, res) => {
             isVerified: true,
             responded: false,
             createdAt: new Date().toISOString(),
-            lastActivity: new Date().toISOString()
+            lastActivity: new Date().toISOString(),
+            attachments // Support initial attachments
         });
 
         res.json({
@@ -91,8 +99,8 @@ router.get('/chat/:id/messages', async (req, res) => {
 // POST /api/support/chat/:id/message - Send Message
 router.post('/chat/:id/message', async (req, res) => {
     try {
-        const { text, sender } = req.body;
-        if (!text || !sender) return res.status(400).json({ error: 'Message payload required.' });
+        const { text, sender, attachments = [] } = req.body;
+        if (!text && attachments.length === 0) return res.status(400).json({ error: 'Message payload required.' });
 
         const ticketRef = db.collection('support_tickets').doc(req.params.id);
         const messageRef = ticketRef.collection('messages').doc();
@@ -101,6 +109,7 @@ router.post('/chat/:id/message', async (req, res) => {
             id: messageRef.id,
             text,
             sender, // 'user' or 'admin'
+            attachments, // Support image/file attachments
             timestamp: new Date().toISOString()
         };
 
@@ -163,6 +172,22 @@ router.post('/close', async (req, res) => {
         res.json({ success: true, message: 'PROTOCOL_TERMINATED' });
     } catch (error) {
         res.status(500).json({ error: 'System error during termination.' });
+    }
+});
+
+// POST /api/support/upload - Handle chat attachments
+router.post('/upload', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'No payload detected.' });
+
+        const fileName = `support/attachments/${Date.now()}_${req.file.originalname}`;
+        const fileKey = await uploadFile(req.file.buffer, fileName, req.file.mimetype);
+        const url = await getFileUrl(fileKey);
+
+        res.json({ url, key: fileKey });
+    } catch (error) {
+        console.error('[SUPPORT] Upload Error:', error);
+        res.status(500).json({ error: 'Upload failed.' });
     }
 });
 

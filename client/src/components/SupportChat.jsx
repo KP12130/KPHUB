@@ -2,11 +2,23 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     MessageSquare, Send, Clock, CheckCircle2,
-    AlertCircle, Plus, X, Loader2, LifeBuoy
+    AlertCircle, Plus, X, Loader2, LifeBuoy, Paperclip, Archive
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE } from '../api';
 import { toast } from 'react-hot-toast';
+import { db } from '../firebase';
+import {
+    collection,
+    query,
+    where,
+    orderBy,
+    onSnapshot,
+    addDoc,
+    serverTimestamp,
+    doc,
+    updateDoc
+} from 'firebase/firestore';
 
 const GlassCard = ({ children, className = "" }) => (
     <div className={`glass-panel rounded-2xl p-6 ${className}`}>
@@ -22,6 +34,10 @@ const SupportChat = ({ currentUser }) => {
     const [isMessageLoading, setIsMessageLoading] = useState(false);
     const [newMessage, setNewMessage] = useState('');
     const [isSending, setIsSending] = useState(false);
+    const [viewMode, setViewMode] = useState('ACTIVE'); // 'ACTIVE' or 'ARCHIVED'
+    const [uploading, setUploading] = useState(false);
+    const [pendingAttachments, setPendingAttachments] = useState([]);
+    const fileInputRef = useRef(null);
 
     // New Ticket Modal
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -31,15 +47,58 @@ const SupportChat = ({ currentUser }) => {
     const scrollRef = useRef(null);
 
     useEffect(() => {
-        fetchChats();
-    }, []);
+        if (!currentUser?.uid) return;
+
+        const q = query(
+            collection(db, 'support_tickets'),
+            where('userId', '==', currentUser.uid),
+            where('status', '==', viewMode === 'ACTIVE' ? 'OPEN' : 'CLOSED')
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const ticketList = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+            // Sort in memory by lastActivity
+            ticketList.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+
+            setChats(ticketList);
+            if (ticketList.length > 0 && !activeChat) {
+                setActiveChat(ticketList[0]);
+            }
+            setIsLoading(false);
+        }, (err) => {
+            console.error("Chats listener error:", err);
+            toast.error("Real-time sync failed.");
+            setIsLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [currentUser?.uid]);
 
     useEffect(() => {
-        if (activeChat) {
-            fetchMessages(activeChat.id);
-            const interval = setInterval(() => fetchMessages(activeChat.id, true), 5000);
-            return () => clearInterval(interval);
-        }
+        if (!activeChat?.id) return;
+
+        const msgQuery = query(
+            collection(db, 'support_tickets', activeChat.id, 'messages'),
+            orderBy('timestamp', 'asc')
+        );
+
+        const unsubscribe = onSnapshot(msgQuery, (snapshot) => {
+            const msgs = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            setMessages(msgs);
+            setIsMessageLoading(false);
+        }, (err) => {
+            console.error("Messages listener error:", err);
+            setIsMessageLoading(false);
+        });
+
+        return () => unsubscribe();
     }, [activeChat?.id]);
 
     useEffect(() => {
@@ -48,55 +107,48 @@ const SupportChat = ({ currentUser }) => {
         }
     }, [messages]);
 
-    const fetchChats = async () => {
-        try {
-            const res = await axios.get(`${API_BASE}/api/support/my-chats?userId=${currentUser.uid}`);
-            // Only show OPEN chats to the user as requested
-            const activeChats = res.data.filter(c => c.status === 'OPEN');
-            setChats(activeChats);
 
-            // If the active chat was closed, clear it
-            if (activeChat && !activeChats.find(c => c.id === activeChat.id)) {
-                setActiveChat(null);
-                setMessages([]);
-            } else if (activeChats.length > 0 && !activeChat) {
-                setActiveChat(activeChats[0]);
-            }
-        } catch (err) {
-            toast.error("Failed to sync chat threads.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const fetchMessages = async (chatId, isPolling = false) => {
-        if (!isPolling) setIsMessageLoading(true);
-        try {
-            const res = await axios.get(`${API_BASE}/api/support/chat/${chatId}/messages`);
-            setMessages(res.data);
-        } catch (err) {
-            console.error("Message sync error");
-        } finally {
-            if (!isPolling) setIsMessageLoading(false);
-        }
-    };
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
-        if (!newMessage.trim() || isSending) return;
+        if ((!newMessage.trim() && pendingAttachments.length === 0) || isSending) return;
 
         setIsSending(true);
         try {
-            const res = await axios.post(`${API_BASE}/api/support/chat/${activeChat.id}/message`, {
+            await axios.post(`${API_BASE}/api/support/chat/${activeChat.id}/message`, {
                 text: newMessage,
-                sender: 'user'
+                sender: 'user',
+                attachments: pendingAttachments
             });
-            setMessages([...messages, res.data.message]);
             setNewMessage('');
+            setPendingAttachments([]);
+            // No manual refresh needed, listener handles it🦾
         } catch (err) {
             toast.error("Message transmission failed.");
         } finally {
             setIsSending(false);
+        }
+    };
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await axios.post(`${API_BASE}/api/support/upload`, formData);
+            setPendingAttachments([...pendingAttachments, {
+                name: file.name,
+                url: res.data.url,
+                type: file.type.startsWith('image/') ? 'image' : 'file'
+            }]);
+        } catch (err) {
+            toast.error("File upload failed.");
+        } finally {
+            setUploading(false);
         }
     };
 
@@ -106,7 +158,7 @@ const SupportChat = ({ currentUser }) => {
             await axios.post(`${API_BASE}/api/support/close`, { ticketId: chatId });
             toast.success("TRANSMISSION_CLOSED");
             setActiveChat(null);
-            fetchChats();
+            // Listener handles cleanup🦾
         } catch (err) {
             toast.error("Failed to close transmission.");
         }
@@ -128,8 +180,7 @@ const SupportChat = ({ currentUser }) => {
             toast.success("TICKET_INITIALIZED: Thread created.");
             setIsModalOpen(false);
             setSubject('');
-            fetchChats();
-            // The new chat will be selected by fetchChats (if it's the latest)
+            // Listener handles selection🦾
         } catch (err) {
             toast.error(err.response?.data?.error || "Failed to initialize protocol.");
         } finally {
@@ -147,12 +198,21 @@ const SupportChat = ({ currentUser }) => {
                     <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
                         <MessageSquare className="w-4 h-4 text-neon-blue" /> My_Threads
                     </h3>
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="p-1.5 bg-neon-blue/10 border border-neon-blue/30 text-neon-blue rounded-lg hover:bg-neon-blue hover:text-black transition-all"
-                    >
-                        <Plus className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setViewMode(viewMode === 'ACTIVE' ? 'ARCHIVED' : 'ACTIVE')}
+                            className={`p-1.5 rounded-lg border transition-all ${viewMode === 'ARCHIVED' ? 'bg-white text-black border-white' : 'bg-white/5 border-white/10 text-gray-500 hover:text-white'}`}
+                            title={viewMode === 'ACTIVE' ? "View Archived" : "View Active"}
+                        >
+                            <Archive className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="p-1.5 bg-neon-blue/10 border border-neon-blue/30 text-neon-blue rounded-lg hover:bg-neon-blue hover:text-black transition-all"
+                        >
+                            <Plus className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex-grow overflow-y-auto space-y-3 pr-2 scrollbar-none">
@@ -242,6 +302,20 @@ const SupportChat = ({ currentUser }) => {
                                                 : 'bg-white/5 border border-white/10 text-white'
                                                 }`}>
                                                 {msg.text}
+                                                {msg.attachments && msg.attachments.length > 0 && (
+                                                    <div className="mt-3 space-y-2">
+                                                        {msg.attachments.map((at, i) => (
+                                                            at.type === 'image' ? (
+                                                                <img key={i} src={at.url} alt="attachment" className="max-w-full rounded-lg border border-white/10" />
+                                                            ) : (
+                                                                <a key={i} href={at.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 bg-black/20 rounded-lg hover:bg-black/40 transition-all text-[10px]">
+                                                                    <Paperclip className="w-3 h-3 text-neon-blue" />
+                                                                    <span className="truncate max-w-[150px]">{at.name}</span>
+                                                                </a>
+                                                            )
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                             <span className="text-[7px] text-gray-600 font-mono uppercase">
                                                 {msg.sender === 'admin' ? 'ARCHITECT' : 'CLIENT'} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -259,15 +333,49 @@ const SupportChat = ({ currentUser }) => {
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
                                     placeholder="Transmit data to support grid..."
-                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 pr-12 text-[11px] text-white font-mono placeholder:text-gray-700 outline-none focus:border-neon-blue transition-colors"
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 pr-24 text-[11px] text-white font-mono placeholder:text-gray-700 outline-none focus:border-neon-blue transition-colors"
                                 />
-                                <button
-                                    disabled={!newMessage.trim() || isSending}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-neon-blue hover:text-white transition-colors disabled:opacity-30"
-                                >
-                                    {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                </button>
+                                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleFileUpload}
+                                        className="hidden"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current.click()}
+                                        disabled={uploading}
+                                        className="p-2 text-gray-500 hover:text-white transition-colors disabled:opacity-30"
+                                    >
+                                        <Paperclip className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        disabled={(!newMessage.trim() && pendingAttachments.length === 0) || isSending}
+                                        className="p-2 text-neon-blue hover:text-white transition-colors disabled:opacity-30"
+                                    >
+                                        {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                    </button>
+                                </div>
                             </div>
+
+                            {/* Pending Attachments */}
+                            {pendingAttachments.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-3 px-2">
+                                    {pendingAttachments.map((at, i) => (
+                                        <div key={i} className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[9px] text-gray-400">
+                                            <Paperclip className="w-3 h-3" />
+                                            <span>{at.name}</span>
+                                            <button
+                                                onClick={() => setPendingAttachments(pendingAttachments.filter((_, idx) => idx !== i))}
+                                                className="text-gray-600 hover:text-red-500"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </form>
                     </div>
                 ) : (

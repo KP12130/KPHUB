@@ -40,6 +40,7 @@ const Footer = () => {
                             <li><Link to="/leaderboard" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Power_Ranking</Link></li>
                             <li><Link to="/" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Marketplace</Link></li>
                             <li><Link to="/studio" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Creator_Studio</Link></li>
+                            <li><Link to="/economy" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Financial_Monitor</Link></li>
                         </ul>
                     </div>
 
@@ -48,9 +49,10 @@ const Footer = () => {
                         <h4 className="text-[10px] font-black text-white uppercase tracking-[0.3em] mb-6">Assistance_Protocols</h4>
                         <ul className="space-y-4">
                             <li><Link to="/support" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Help_Center</Link></li>
+                            <li><Link to="/changelog" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">System_Changelog</Link></li>
                             <li><Link to="/support" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Status_Mainframe</Link></li>
                             <li><Link to="/support" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Glitch_Report</Link></li>
-                            <li><Link to="/legal" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Mission_Briefing</Link></li>
+                            <li><Link to="/about" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Mission_Briefing</Link></li>
 
                         </ul>
                     </div>

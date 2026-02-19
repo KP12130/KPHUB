@@ -139,7 +139,22 @@ const Profile = () => {
             >
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-neon-green to-emerald-500" />
 
-                <h2 className="text-3xl font-black text-white mb-2">PROFILE SETTINGS</h2>
+                <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tighter">
+                    IDENTITY_PROTOCOL_v{Math.floor(Math.sqrt((currentUser.stats?.xp || 0) / 100)) || 1}
+                </h2>
+                <div className="max-w-xs mb-8">
+                    <div className="flex justify-between text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">
+                        <span>Lvl_{Math.floor(Math.sqrt((currentUser.stats?.xp || 0) / 100)) || 1}</span>
+                        <span className="text-neon-green">{currentUser.stats?.xp || 0} XP</span>
+                    </div>
+                    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                        <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${((currentUser.stats?.xp || 0) % ((Math.floor(Math.sqrt((currentUser.stats?.xp || 0) / 100)) || 1) * 100)) / ((Math.floor(Math.sqrt((currentUser.stats?.xp || 0) / 100)) || 1) * 100) * 100}%` }}
+                            className="h-full bg-neon-green shadow-[0_0_10px_#39FF14]"
+                        />
+                    </div>
+                </div>
                 <p className="text-gray-500 mb-8 font-mono text-sm">Manage your public identity on the grid.</p>
 
                 {error && (

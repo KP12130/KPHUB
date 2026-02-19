@@ -19,12 +19,19 @@ import Hackathons from './pages/Hackathons';
 import CodeReviews from './pages/CodeReviews';
 import Explore from './pages/Explore';
 import Admin from './pages/Admin';
+import About from './pages/About';
+import NexusExchange from './pages/NexusExchange';
+import PulseForge from './pages/PulseForge';
+import Changelog from './pages/Changelog';
+import Economy from './pages/Economy';
 import ProjectCard from './components/ProjectCard';
 import ActivityFeed from './components/ActivityFeed';
 import FeaturedCarousel from './components/FeaturedCarousel';
+import AdUnit from './components/AdUnit';
 import Ticker from './components/Ticker';
-import Footer from './components/Footer'; // Import Footer if needed explicitly, though Layout has it
 import Layout from './components/Layout'; // Import Layout
+import CookieConsent from './components/CookieConsent';
+import AchievementHub from './components/AchievementHub';
 import { LogOut, Upload as UploadIcon, Trophy, User, Code, Terminal, Bell, BellDot, LayoutDashboard, ChevronDown, HelpCircle, Menu, X, Globe, Target } from 'lucide-react';
 import { getReputationTitle } from './utils/reputation';
 import axios from 'axios';
@@ -32,6 +39,8 @@ import { API_BASE } from './api';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const App = () => {
+  const { currentUser } = useAuth();
+
   return (
     <ThemeProvider>
       <Router>
@@ -47,10 +56,15 @@ const App = () => {
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/support" element={<Support />} />
             <Route path="/legal" element={<Legal />} />
+            <Route path="/about" element={<About />} />
             <Route path="/missions" element={<Missions />} />
             <Route path="/hackathons" element={<Hackathons />} />
             <Route path="/reviews" element={<CodeReviews />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/exchange" element={<NexusExchange />} />
+            <Route path="/forge" element={<PulseForge />} />
+            <Route path="/changelog" element={<Changelog />} />
+            <Route path="/economy" element={<Economy />} />
 
 
             <Route path="/studio" element={<Studio />} />
@@ -59,6 +73,8 @@ const App = () => {
 
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <CookieConsent />
+          {currentUser && <AchievementHub currentUser={currentUser} />}
         </Layout>
       </Router>
     </ThemeProvider>
@@ -189,6 +205,29 @@ const Home = () => {
 
       <FeaturedCarousel projects={projects} />
 
+      {/* Promoted Systems */}
+      {projects.some(p => p.boostedUntil && new Date(p.boostedUntil) > new Date()) && (
+        <div className="max-w-7xl mx-auto px-4 mb-20">
+          <section className="space-y-10">
+            <div className="flex items-center gap-3 border-b border-neon-green/20 pb-6">
+              <div className="w-2 h-8 bg-neon-green shadow-[0_0_15px_#39FF14]" />
+              <div>
+                <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter">Promoted_Systems</h2>
+                <p className="text-xs text-gray-500 font-mono italic uppercase">Priority bandwidth allocation via KPC Protocols.</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {projects
+                .filter(p => p.boostedUntil && new Date(p.boostedUntil) > new Date())
+                .slice(0, 4)
+                .map((project, i) => (
+                  <ProjectCard key={`promoted-${project.id}`} project={project} index={i} />
+                ))}
+            </div>
+          </section>
+        </div>
+      )}
+
       {/* Trending Grid */}
       <div className="max-w-7xl mx-auto px-4">
         <section className="space-y-10">
@@ -230,6 +269,8 @@ const Home = () => {
             </div>
           )}
         </section>
+
+        <AdUnit slot="home-feed-slot" format="auto" />
 
         {/* Community Activity */}
         <div className="mt-20">

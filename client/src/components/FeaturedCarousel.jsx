@@ -5,7 +5,13 @@ import { Link } from 'react-router-dom';
 
 const FeaturedCarousel = ({ projects = [] }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
-    const featured = (projects || []).slice(0, 5).sort((a, b) => (b.stats?.likes || 0) - (a.stats?.likes || 0)).slice(0, 3);
+    const featured = (projects || []).sort((a, b) => {
+        const aBoosted = a.boostedUntil && new Date(a.boostedUntil) > new Date();
+        const bBoosted = b.boostedUntil && new Date(b.boostedUntil) > new Date();
+        if (aBoosted && !bBoosted) return -1;
+        if (!aBoosted && bBoosted) return 1;
+        return (b.stats?.likes || 0) - (a.stats?.likes || 0);
+    }).slice(0, 5);
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -47,8 +53,9 @@ const FeaturedCarousel = ({ projects = [] }) => {
 
                     <div className="absolute inset-0 bg-gradient-to-t from-void via-void/40 to-transparent p-8 md:p-16 flex flex-col justify-end">
                         <div className="max-w-2xl">
-                            <span className="inline-flex items-center gap-2 px-3 py-1 bg-neon-green text-black text-[10px] font-black rounded-lg uppercase tracking-widest mb-4">
-                                <Zap className="w-3 h-3 fill-black" /> Featured_Transmission
+                            <span className={`inline-flex items-center gap-2 px-3 py-1 ${featured[currentIndex].boostedUntil && new Date(featured[currentIndex].boostedUntil) > new Date() ? 'bg-neon-green text-black' : 'bg-neon-blue text-white'} text-[10px] font-black rounded-lg uppercase tracking-widest mb-4 shadow-[0_0_15px_rgba(57,255,20,0.2)]`}>
+                                <Zap className={`w-3 h-3 ${featured[currentIndex].boostedUntil && new Date(featured[currentIndex].boostedUntil) > new Date() ? 'fill-black' : 'fill-white'}`} />
+                                {featured[currentIndex].boostedUntil && new Date(featured[currentIndex].boostedUntil) > new Date() ? 'Promoted_System' : 'Trending_Transmission'}
                             </span>
                             <h2 className="text-3xl md:text-5xl font-black text-white tracking-tighter uppercase italic mb-2">
                                 {featured[currentIndex].title}

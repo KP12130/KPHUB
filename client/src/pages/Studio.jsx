@@ -25,8 +25,6 @@ const GlassCard = ({ children, className = "" }) => (
     </div>
 );
 
-
-
 const Studio = () => {
     const { currentUser } = useAuth();
     const [searchParams] = useSearchParams();
@@ -35,19 +33,21 @@ const Studio = () => {
     const [projects, setProjects] = useState([]);
     const [isStudioLoading, setIsStudioLoading] = useState(true);
     const [stats, setStats] = useState({
-        views: 0, downloads: 0, subs: 0, revenue: 0, adRevenue: 0, rep: 0
+        views: 0, downloads: 0, subs: 0, revenue: 0, adRevenue: 0, rep: 0, xp: 0
     });
     const [userTier, setUserTier] = useState('GHOST');
+    const [userLevel, setUserLevel] = useState(1);
+    const [allFlares, setAllFlares] = useState({});
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState('');
     const [profileData, setProfileData] = useState({
         displayName: '', bio: '', website: '', location: '', githubUrl: '', twitterUrl: ''
     });
     const [quests, setQuests] = useState([
-        { id: 1, title: 'DAILY_SYNC', desc: 'Initialize Studio interface for 24h cycle.', reward: 50, completed: false, icon: <Activity className="w-4 h-4" /> },
-        { id: 2, title: 'SYSTEM_EXPANSION', desc: 'Deploy a new transmission to the grid.', reward: 200, completed: false, icon: <Plus className="w-4 h-4" /> },
-        { id: 3, title: 'PULSE_DONOR', desc: 'Like 3 different projects in the discovery grid.', reward: 100, completed: false, icon: <Heart className="w-4 h-4" /> },
-        { id: 4, title: 'STREAK_MAINTAINER', desc: 'Maintain a 3-day sync streak.', reward: 500, completed: false, icon: <Zap className="w-4 h-4" /> }
+        { id: 1, title: 'DAILY_SYNC', desc: 'Initialize Studio interface for 24h cycle.', reward: 50, completed: false, icon: <Activity className="w-10 h-10" /> },
+        { id: 2, title: 'SYSTEM_EXPANSION', desc: 'Deploy a new transmission to the grid.', reward: 200, completed: false, icon: <Plus className="w-10 h-10" /> },
+        { id: 3, title: 'PULSE_DONOR', desc: 'Like 3 different projects in the discovery grid.', reward: 100, completed: false, icon: <Heart className="w-10 h-10" /> },
+        { id: 4, title: 'STREAK_MAINTAINER', desc: 'Maintain a 3-day sync streak.', reward: 500, completed: false, icon: <Zap className="w-10 h-10" /> }
     ]);
 
     useEffect(() => {
@@ -55,9 +55,16 @@ const Studio = () => {
             if (!currentUser || !currentUser.username) return;
 
             try {
-                const res = await axios.get(`${API_BASE}/api/users/profile/${currentUser.username}?viewerId=${currentUser.uid}`);
-                const { user, projects } = res.data;
+                const [profileRes, flaresRes] = await Promise.all([
+                    axios.get(`${API_BASE}/api/users/profile/${currentUser.username}?viewerId=${currentUser.uid}`),
+                    axios.get(`${API_BASE}/api/exchange/flares`)
+                ]);
+
+                const { user, projects } = profileRes.data;
                 setProjects(projects);
+                setAllFlares(flaresRes.data);
+
+                const currentXp = user.stats?.xp || 0;
                 setStats({
                     views: user.stats?.views || 0,
                     downloads: user.stats?.downloads || 0,
@@ -65,9 +72,13 @@ const Studio = () => {
                     revenue: user.stats?.balance || 0,
                     adRevenue: user.stats?.adRevenue || 0,
                     rep: user.stats?.reputation || 0,
+                    xp: currentXp,
                     history: []
                 });
+
                 setUserTier(user.tier || 'GHOST');
+                setUserLevel(Math.floor(Math.sqrt(currentXp / 100)) || 1);
+
                 setProfileData({
                     displayName: user.name || currentUser.displayName || '',
                     bio: user.bio || '',
@@ -81,17 +92,18 @@ const Studio = () => {
                 setQuests(prev => prev.map(q => ({ ...q, completed: completed.includes(q.id) })));
 
                 const history = Array.from({ length: 7 }, (_, i) => ({
-                    name: `Day ${i + 1}`,
-                    views: Math.floor(Math.random() * (user.stats?.views || 100) / 7),
-                    revenue: Math.floor(Math.random() * (user.stats?.balance || 100) / 7)
+                    name: `D_${i + 1}`,
+                    views: Math.floor((user.stats?.views || 0) * (0.5 + Math.random() * 0.5) / 7),
+                    revenue: ((user.stats?.balance || 0) * (0.5 + Math.random() * 0.5) / 7)
                 }));
+
                 let accViews = 0, accRev = 0;
                 setStats(prev => ({
                     ...prev,
                     history: history.map(d => {
                         accViews += d.views;
                         accRev += d.revenue;
-                        return { ...d, views: accViews, revenue: accRev };
+                        return { ...d, views: accViews, revenue: Number(accRev.toFixed(2)) };
                     })
                 }));
 
@@ -151,6 +163,25 @@ const Studio = () => {
         </div>
     );
 
+    const [transactions, setTransactions] = useState([]);
+    const [isLedgerLoading, setIsLedgerLoading] = useState(false);
+
+    useEffect(() => {
+        const fetchLedger = async () => {
+            if (view !== 'TRANSACTIONS' || !currentUser) return;
+            setIsLedgerLoading(true);
+            try {
+                const res = await axios.get(`${API_BASE}/api/exchange/ledger/${currentUser.uid}`);
+                setTransactions(res.data);
+            } catch (err) {
+                console.error("Ledger fetch failed", err);
+            } finally {
+                setIsLedgerLoading(false);
+            }
+        };
+        fetchLedger();
+    }, [view, currentUser]);
+
     const MenuButton = ({ id, icon: Icon, label }) => (
         <button
             onClick={() => setView(id)}
@@ -172,14 +203,51 @@ const Studio = () => {
             >
                 {/* SIDEBAR */}
                 <div className="lg:col-span-1 space-y-6">
-                    <GlassCard className="space-y-6 sticky top-24">
+                    <GlassCard className="space-y-6 sticky top-24 overflow-hidden">
+                        {/* XP Border line */}
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-white/5">
+                            <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${(stats.xp % (userLevel * 100)) / (userLevel * 100) * 100}%` }}
+                                className="h-full bg-neon-green"
+                            />
+                        </div>
+
                         <div className="flex items-center gap-4">
-                            <img src={currentUser.photoURL} className="w-12 h-12 rounded-full border border-neon-green" />
+                            <div className="relative">
+                                <img src={currentUser.photoURL} className="w-14 h-14 rounded-full border-2 border-neon-green/30" />
+                                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-terminal border border-neon-green/30 rounded-lg flex items-center justify-center text-[10px] font-black text-neon-green">
+                                    {userLevel}
+                                </div>
+                            </div>
                             <div>
-                                <h2 className="font-black text-white leading-none">{currentUser.displayName}</h2>
-                                <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-gray-800 text-gray-400 mt-1 inline-block`}>
-                                    {userTier}
-                                </span>
+                                <h2 className="font-black text-white leading-none text-lg flex items-center gap-2">
+                                    <span style={currentUser.activeFlare ? Object.fromEntries(allFlares[currentUser.activeFlare]?.style.split(';').filter(s => s).map(s => s.split(':').map(x => x.trim()))) : {}}>
+                                        {currentUser.displayName}
+                                    </span>
+                                    {currentUser.stats?.verified && <CheckCircle2 className="w-4 h-4 text-neon-blue" />}
+                                </h2>
+                                <div className="flex items-center gap-2 mt-2">
+                                    <span className={`text-[8px] font-mono uppercase px-2 py-0.5 rounded bg-gray-900 text-gray-400`}>
+                                        {userTier}
+                                    </span>
+                                    <span className="text-[8px] font-mono text-neon-green uppercase tracking-widest">{stats.xp.toLocaleString()} XP</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* XP Bar Detail */}
+                        <div className="space-y-1">
+                            <div className="flex justify-between text-[8px] font-black uppercase text-gray-500 tracking-widest">
+                                <span>Lvl_{userLevel}</span>
+                                <span>NEXT_SYNC: {(userLevel * 100) - (stats.xp % (userLevel * 100))} XP</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${(stats.xp % (userLevel * 100)) / (userLevel * 100) * 100}%` }}
+                                    className="h-full bg-neon-green shadow-[0_0_10px_#39FF14]"
+                                />
                             </div>
                         </div>
 
@@ -192,6 +260,7 @@ const Studio = () => {
                                 icon={LifeBuoy}
                                 label={currentUser.username === 'grid_admin' ? 'Support_Grid' : 'Support_Link'}
                             />
+                            <MenuButton id="TRANSACTIONS" icon={CreditCard} label="Financial_Ledger" />
                             <MenuButton id="SENTINEL" icon={Shield} label="Sentinel_HUD" />
                             <MenuButton id="SETTINGS" icon={Settings} label="Config_Settings" />
                         </div>
@@ -216,19 +285,49 @@ const Studio = () => {
                         >
                             {view === 'DASHBOARD' && (
                                 <div className="space-y-8">
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {[
-                                            { label: 'Total_Views', value: stats.views, icon: Eye, color: 'text-neon-blue' },
-                                            { label: 'Downloads', value: stats.downloads, icon: Download, color: 'text-purple-500' },
-                                            { label: 'Followers', value: stats.subs, icon: Users, color: 'text-yellow-500' },
-                                            { label: 'Reputation', value: stats.rep, icon: Trophy, color: 'text-neon-green' }
-                                        ].map((stat, i) => (
-                                            <GlassCard key={i} className="flex flex-col items-center justify-center text-center p-4">
-                                                <stat.icon className={`w-6 h-6 ${stat.color} mb-2`} />
-                                                <span className="text-2xl font-black text-white">{stat.value}</span>
-                                                <span className="text-[9px] text-gray-500 uppercase tracking-widest">{stat.label}</span>
-                                            </GlassCard>
-                                        ))}
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                                        <GlassCard className="flex flex-col items-center justify-center text-center p-4 hover:border-neon-blue/30 transition-colors">
+                                            <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-blue/10 rounded-xl mb-3">
+                                                <Eye className="w-5 h-5 text-neon-blue" />
+                                            </motion.div>
+                                            <span className="text-2xl font-black text-white">{stats.views}</span>
+                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Visits_</span>
+                                        </GlassCard>
+                                        <GlassCard className="flex flex-col items-center justify-center text-center p-4 hover:border-neon-green/30 transition-colors">
+                                            <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-green/10 rounded-xl mb-3">
+                                                <Download className="w-5 h-5 text-neon-green" />
+                                            </motion.div>
+                                            <span className="text-2xl font-black text-white">{stats.downloads}</span>
+                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Syncs_</span>
+                                        </GlassCard>
+                                        <GlassCard className="flex flex-col items-center justify-center text-center p-4 hover:border-neon-purple/30 transition-colors">
+                                            <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-purple/10 rounded-xl mb-3">
+                                                <Users className="w-5 h-5 text-neon-purple" />
+                                            </motion.div>
+                                            <span className="text-2xl font-black text-white">{stats.subs}</span>
+                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Orbitals_</span>
+                                        </GlassCard>
+                                        <GlassCard className="flex flex-col items-center justify-center text-center p-4 hover:border-yellow-500/30 transition-colors">
+                                            <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-yellow-500/10 rounded-xl mb-3">
+                                                <Trophy className="w-5 h-5 text-yellow-500" />
+                                            </motion.div>
+                                            <span className="text-2xl font-black text-white">{stats.rep}</span>
+                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Reputation_</span>
+                                        </GlassCard>
+                                        <GlassCard className="flex flex-col items-center justify-center text-center p-4 hover:border-neon-blue/30 transition-colors">
+                                            <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-blue/10 rounded-xl mb-3">
+                                                <DollarSign className="w-5 h-5 text-neon-blue" />
+                                            </motion.div>
+                                            <span className="text-2xl font-black text-white">{currentUser.stats?.kpcBalance?.toLocaleString() || 0}</span>
+                                            <span className="text-[8px] font-mono text-gray-500 uppercase">KPC_Credits_</span>
+                                        </GlassCard>
+                                        <GlassCard className="flex flex-col items-center justify-center text-center p-4 hover:border-neon-green/30 transition-colors">
+                                            <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-green/10 rounded-xl mb-3">
+                                                <TrendingUp className="w-5 h-5 text-neon-green" />
+                                            </motion.div>
+                                            <span className="text-2xl font-black text-white">${stats.adRevenue.toFixed(2)}</span>
+                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Ad_Protocol_</span>
+                                        </GlassCard>
                                     </div>
 
                                     <div className="space-y-4">
@@ -236,29 +335,42 @@ const Studio = () => {
                                             <Database className="w-5 h-5 text-neon-green" /> Active Protocols
                                         </h3>
                                         {projects.length > 0 ? (
-                                            projects.map(project => (
-                                                <div key={project.id} className="glass-panel p-4 rounded-xl flex items-center gap-4 hover:bg-white/5 transition-colors group">
-                                                    <div className="w-16 h-12 bg-gray-900 rounded-lg overflow-hidden shrink-0">
-                                                        {project.screenshots?.[0] ? (
-                                                            <img src={project.screenshots[0]} className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center bg-gray-800"><Zap className="w-4 h-4 text-gray-600" /></div>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex-grow min-w-0">
-                                                        <h4 className="font-bold text-white truncate">{project.title}</h4>
-                                                        <div className="flex items-center gap-3 text-[10px] text-gray-500 font-mono mt-1">
-                                                            <span className="flex items-center gap-1"><Heart className="w-3 h-3" /> {project.stats?.likes || 0}</span>
-                                                            <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {project.stats?.views || 0}</span>
-                                                            <span className="px-1.5 py-0.5 bg-gray-800 rounded text-gray-300">{project.category}</span>
+                                            projects.map((project, idx) => {
+                                                const isBoosted = project.boostedUntil && new Date(project.boostedUntil) > new Date();
+                                                const boostRemaining = isBoosted ? Math.ceil((new Date(project.boostedUntil) - new Date()) / (1000 * 60 * 60)) : 0;
+
+                                                return (
+                                                    <div key={project.id || `proj-${idx}`} className={`glass-panel p-4 rounded-xl flex items-center gap-4 hover:bg-white/5 transition-all group border ${isBoosted ? 'border-neon-green/30 shadow-[0_0_15px_#39FF1433]' : 'border-white/5'}`}>
+                                                        <div className="w-16 h-12 bg-gray-900 rounded-lg overflow-hidden shrink-0 relative">
+                                                            {project.screenshots?.[0] ? (
+                                                                <img src={project.screenshots[0]} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center bg-gray-800"><Zap className="w-4 h-4 text-gray-600" /></div>
+                                                            )}
+                                                            {isBoosted && <div className="absolute inset-0 bg-neon-green/10 animate-pulse" />}
+                                                        </div>
+                                                        <div className="flex-grow min-w-0">
+                                                            <div className="flex items-center gap-2">
+                                                                <h4 className="font-bold text-white truncate">{project.title}</h4>
+                                                                {isBoosted && (
+                                                                    <span className="text-[8px] bg-neon-green text-black px-1.5 py-0.5 rounded font-black uppercase flex items-center gap-1">
+                                                                        <Zap className="w-2 h-2 fill-current" /> {boostRemaining}h
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-3 text-[10px] text-gray-500 font-mono mt-1">
+                                                                <span className="flex items-center gap-1"><Heart className="w-3 h-3" /> {project.stats?.likes || 0}</span>
+                                                                <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {project.stats?.views || 0}</span>
+                                                                <span className="px-1.5 py-0.5 bg-gray-800 rounded text-gray-300">{project.category}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <Link to={`/edit/${project.id}`} className="p-2 hover:bg-neon-blue/20 text-gray-400 hover:text-neon-blue rounded-lg transition-colors"><Edit3 className="w-4 h-4" /></Link>
+                                                            <button onClick={() => handleDeleteProject(project.id)} className="p-2 hover:bg-red-500/20 text-gray-400 hover:text-red-500 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Link to={`/edit/${project.id}`} className="p-2 hover:bg-neon-blue/20 text-gray-400 hover:text-neon-blue rounded-lg transition-colors"><Edit3 className="w-4 h-4" /></Link>
-                                                        <button onClick={() => handleDeleteProject(project.id)} className="p-2 hover:bg-red-500/20 text-gray-400 hover:text-red-500 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
-                                                    </div>
-                                                </div>
-                                            ))
+                                                );
+                                            })
                                         ) : (
                                             <div className="glass-panel p-8 rounded-xl text-center">
                                                 <p className="text-gray-500 font-mono text-sm mb-4">No active protocols deployed.</p>
@@ -292,6 +404,56 @@ const Studio = () => {
                                             ))}
                                         </div>
                                     </div>
+                                </div>
+                            )}
+
+                            {view === 'TRANSACTIONS' && (
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between">
+                                        <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter flex items-center gap-3">
+                                            <CreditCard className="w-8 h-8 text-neon-blue" />
+                                            Financial_Ledger
+                                        </h2>
+                                        <div className="text-xs font-mono text-gray-500">REALTIME_TRANSACTION_FEED</div>
+                                    </div>
+
+                                    <GlassCard className="p-0 overflow-hidden">
+                                        {isLedgerLoading ? (
+                                            <div className="p-20 text-center space-y-4">
+                                                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="inline-block"><Activity className="w-10 h-10 text-neon-blue" /></motion.div>
+                                                <p className="text-gray-500 font-mono text-xs uppercase animate-pulse">Scanning transaction matrix...</p>
+                                            </div>
+                                        ) : transactions.length > 0 ? (
+                                            <div className="divide-y divide-white/5">
+                                                {transactions.map(tx => (
+                                                    <div key={tx.id} className="p-6 flex items-center justify-between hover:bg-white/5 transition-colors">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className={`p-3 rounded-xl ${tx.amount > 0 ? 'bg-neon-green/10 text-neon-green' : 'bg-red-500/10 text-red-500'}`}>
+                                                                {tx.amount > 0 ? <TrendingUp className="w-5 h-5" /> : <TrendingUp className="w-5 h-5 rotate-180" />}
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="font-bold text-white text-sm uppercase tracking-wider">{tx.type.replace(/_/g, ' ')}</h4>
+                                                                <p className="text-[10px] text-gray-500 font-mono">
+                                                                    {new Date(tx.timestamp?.toDate ? tx.timestamp.toDate() : tx.timestamp).toLocaleString()}
+                                                                    {tx.recipientName && ` // TO: @${tx.recipientName}`}
+                                                                    {tx.donorName && ` // FROM: @${tx.donorName}`}
+                                                                    {tx.item && ` // ITEM: ${tx.item}`}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className={`text-xl font-black font-mono ${tx.amount > 0 ? 'text-neon-green' : 'text-red-500'}`}>
+                                                            {tx.amount > 0 ? '+' : ''}{tx.amount.toLocaleString()} KPC
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="p-20 text-center space-y-4">
+                                                <AlertCircle className="w-12 h-12 text-gray-800 mx-auto" />
+                                                <p className="text-xs text-gray-600 font-mono uppercase">Ledger is empty. No financial activity detected.</p>
+                                            </div>
+                                        )}
+                                    </GlassCard>
                                 </div>
                             )}
 

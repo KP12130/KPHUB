@@ -114,7 +114,10 @@ router.post('/', async (req, res) => {
                 downloads: 0,
                 commentsMade: 0,
                 reputation: 0,
-                balance: 0, // Monetization balance
+                balance: 0, // Monetization balance (USD)
+                kpcBalance: 0, // Virtual currency balance
+                xp: 0, // Experience points
+                verified: false, // Professional verification status
                 supporters: 0
             },
             tier: 'GHOST', // Default tier
@@ -143,6 +146,38 @@ router.get('/:id', async (req, res) => {
         }
 
         let userData = doc.data();
+
+        // --- DAILY PULSE REWARD LOGIC ---
+        const now = new Date();
+        const lastPulse = userData.lastLoginPulse ? (userData.lastLoginPulse.toDate ? userData.lastLoginPulse.toDate() : new Date(userData.lastLoginPulse)) : null;
+        const isNewDay = !lastPulse || (now.setHours(0, 0, 0, 0) > new Date(lastPulse).setHours(0, 0, 0, 0));
+
+        if (isNewDay) {
+            const oneDayMs = 24 * 60 * 60 * 1000;
+            const diffDays = lastPulse ? Math.floor((now - lastPulse) / oneDayMs) : 0;
+
+            let newStreak = (userData.streakCount || 0) + 1;
+            if (diffDays > 1) newStreak = 1;
+
+            const reward = Math.min(100 + (newStreak - 1) * 50, 500);
+
+            await userRef.update({
+                'stats.kpcBalance': admin.firestore.FieldValue.increment(reward),
+                'stats.xp': admin.firestore.FieldValue.increment(reward),
+                'streakCount': newStreak,
+                'lastLoginPulse': admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            userData.stats.kpcBalance = (userData.stats.kpcBalance || 0) + reward;
+            userData.stats.xp = (userData.stats.xp || 0) + reward;
+            userData.streakCount = newStreak;
+            userData.dailyPulseReward = reward;
+
+            await db.collection('kpc_ledger').add({
+                uid: req.params.id, amount: reward, type: 'DAILY_PULSE', streak: newStreak, timestamp: admin.firestore.FieldValue.serverTimestamp()
+            });
+        }
+        // --------------------------------
 
         // Lazy check for achievements
         const newBadges = checkAchievements(userData);
@@ -485,7 +520,8 @@ router.post('/quests/complete', async (req, res) => {
         await userRef.update({
             completedQuests: admin.firestore.FieldValue.arrayUnion(questId),
             'stats.reputation': admin.firestore.FieldValue.increment(reward),
-            'stats.balance': admin.firestore.FieldValue.increment(reward / 10) // Small credit reward too
+            'stats.kpcBalance': admin.firestore.FieldValue.increment(reward * 10), // 10x Rep = KPC payout
+            'stats.xp': admin.firestore.FieldValue.increment(reward * 10) // XP matches KPC payout
         });
 
         res.json({

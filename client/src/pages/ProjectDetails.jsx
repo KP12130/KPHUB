@@ -18,7 +18,7 @@ import AIAssistant from '../components/AIAssistant';
 
 import Devlog from '../components/Devlog';
 import ShowcaseEmbed from '../components/ShowcaseEmbed';
-import SponsoredAd from '../components/SponsoredAd';
+import AdUnit from '../components/AdUnit';
 import DonationModal from '../components/DonationModal';
 import { getReputationTitle } from '../utils/reputation';
 
@@ -585,6 +585,22 @@ const ProjectDetails = () => {
                                         Modify Protocol
                                     </Link>
                                     <button
+                                        onClick={async () => {
+                                            if (window.confirm("Channel 5,000 KPC to boost system visibility for 24h?")) {
+                                                try {
+                                                    await axios.post(`${API_BASE}/api/exchange/boost/${id}`, { userId: currentUser.uid });
+                                                    toast.success("SYSTEM_GLOW: Visibility amplified.");
+                                                    window.location.reload();
+                                                } catch (err) {
+                                                    toast.error(err.response?.data?.error || "Boost failed.");
+                                                }
+                                            }
+                                        }}
+                                        className="block w-full py-3 bg-neon-green/10 text-neon-green text-center font-bold uppercase text-xs tracking-widest rounded-xl hover:bg-neon-green hover:text-black transition-colors border border-neon-green/30"
+                                    >
+                                        Boost Protocol (5k KPC)
+                                    </button>
+                                    <button
                                         onClick={() => setIsRequestOpen(true)}
                                         className="block w-full py-3 bg-neon-blue/20 text-neon-blue text-center font-bold uppercase text-xs tracking-widest rounded-xl hover:bg-neon-blue hover:text-black transition-colors border border-neon-blue/30"
                                     >
@@ -631,7 +647,7 @@ const ProjectDetails = () => {
                             </div>
                         )}
 
-                        <SponsoredAd />
+                        <AdUnit slot="project-sidebar-slot" format="auto" />
                     </div>
                 </div>
             </div>

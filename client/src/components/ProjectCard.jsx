@@ -19,6 +19,8 @@ const ProjectCard = ({ project, loading, index = 0 }) => {
         );
     }
 
+    const isBoosted = project.boostedUntil && new Date(project.boostedUntil) > new Date();
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -26,7 +28,7 @@ const ProjectCard = ({ project, loading, index = 0 }) => {
             transition={{ delay: index * 0.05 }}
             whileHover={{ y: -10, scale: 1.02 }}
             onMouseEnter={() => playSound('hover')}
-            className="group relative h-[400px] w-full rounded-3xl overflow-hidden bg-terminal border border-gray-900 hover:border-neon-green/50 transition-all duration-500 shadow-2xl"
+            className={`group relative h-[400px] w-full rounded-3xl overflow-hidden bg-terminal border transition-all duration-500 shadow-2xl ${isBoosted ? 'border-neon-green/50 shadow-[0_0_30px_rgba(57,255,20,0.15)] ring-1 ring-neon-green/30' : 'border-gray-900 hover:border-neon-green/50'}`}
         >
             <Link to={`/project/${project.id}`} className="block h-full w-full relative">
                 {/* Background Image / Parallax */}
@@ -35,20 +37,26 @@ const ProjectCard = ({ project, loading, index = 0 }) => {
                         <img
                             src={project.screenshots[0]}
                             alt={project.title}
-                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-60 group-hover:opacity-100"
+                            className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${isBoosted ? 'opacity-80' : 'opacity-60'} group-hover:opacity-100`}
                         />
                     ) : (
                         <div className="w-full h-full bg-void flex items-center justify-center relative overflow-hidden">
                             <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(68,68,68,.2)_50%,transparent_75%,transparent_100%)] bg-[length:250%_250%,100%_100%] animate-[shimmer_3s_infinite]" />
-                            <Zap className="w-12 h-12 text-gray-800" />
+                            <Zap className={`w-12 h-12 ${isBoosted ? 'text-neon-green/20' : 'text-gray-800'}`} />
                         </div>
                     )}
                     {/* Gradient Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-void via-void/80 to-transparent opacity-90 group-hover:opacity-70 transition-opacity duration-500" />
+                    {isBoosted && <div className="absolute inset-0 bg-neon-green/5 mix-blend-overlay" />}
                 </div>
 
                 {/* Badges */}
                 <div className="absolute top-4 left-4 z-20 flex flex-wrap gap-2">
+                    {isBoosted && (
+                        <span className="px-3 py-1 bg-neon-green text-black text-[10px] font-black rounded-lg uppercase tracking-widest shadow-[0_0_15px_#39FF14] flex items-center gap-1">
+                            <Zap className="w-3 h-3 fill-current" /> Boosted
+                        </span>
+                    )}
                     <span className="px-3 py-1 bg-black/50 backdrop-blur-xl border border-white/10 text-neon-green text-[10px] font-black rounded-lg uppercase tracking-widest shadow-lg">
                         {project.category}
                     </span>

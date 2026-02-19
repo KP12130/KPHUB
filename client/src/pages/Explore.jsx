@@ -3,7 +3,8 @@ import axios from 'axios';
 import { API_BASE } from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Filter, Terminal, Code, Cpu, Globe, Gamepad2, Layers } from 'lucide-react';
-import ProjectCard from '../components/ProjectCard'; // Assuming this exists or I'll use the one from Home
+import ProjectCard from '../components/ProjectCard';
+import AdUnit from '../components/AdUnit';
 
 const Explore = () => {
     const [projects, setProjects] = useState([]);
@@ -127,6 +128,10 @@ const Explore = () => {
                     ))}
                 </AnimatePresence>
             </div>
+
+            {filteredProjects.length > 3 && (
+                <AdUnit slot="discovery-horizontal-slot" format="auto" />
+            )}
 
             {filteredProjects.length === 0 && (
                 <div className="text-center py-20 text-gray-600 font-mono text-sm uppercase">

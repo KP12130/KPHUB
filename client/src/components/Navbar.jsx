@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
-import { API_BASE } from '../api';
+import { db } from '../firebase';
+import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import {
     LayoutDashboard, Trophy, Code, Upload as UploadIcon, HelpCircle,
-    Bell, BellDot, User, LogOut, Menu, X, Target, Terminal
+    Bell, BellDot, User, LogOut, Menu, X, Target, Terminal, ShoppingCart
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getReputationTitle } from '../utils/reputation';
@@ -18,21 +19,51 @@ const Navbar = ({ onOpenCommandPalette }) => {
     const [notifications, setNotifications] = useState([]);
     const [showNotifications, setShowNotifications] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [allFlares, setAllFlares] = useState({});
+
+    useEffect(() => {
+        const fetchFlares = async () => {
+            try {
+                const res = await axios.get(`${API_BASE}/api/exchange/flares`);
+                setAllFlares(res.data);
+            } catch (err) {
+                console.error("Flares fetch failed", err);
+            }
+        };
+        fetchFlares();
+    }, []);
 
     useEffect(() => {
         if (!currentUser) return;
-        const fetchNotifications = async () => {
-            try {
-                const res = await axios.get(`${API_BASE}/api/notifications/${currentUser.uid}`);
-                setNotifications(res.data);
-            } catch (err) {
-                console.error("Notifications fetch failed", err);
+
+        const q = query(
+            collection(db, 'notifications'),
+            where('recipientId', '==', currentUser.uid)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetched = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })).sort((a, b) => {
+                const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+                const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+                return dateB - dateA;
+            }).slice(0, 20);
+
+            // Check for new notifications to play sound
+            if (fetched.length > notifications.length) {
+                const newOnes = fetched.filter(f => !notifications.find(o => o.id === f.id));
+                if (newOnes.some(n => !n.read)) {
+                    playSound('pop');
+                }
             }
-        };
-        fetchNotifications();
-        const interval = setInterval(fetchNotifications, 30000); // Check every 30s
-        return () => clearInterval(interval);
-    }, [currentUser]);
+
+            setNotifications(fetched);
+        });
+
+        return () => unsubscribe();
+    }, [currentUser, notifications.length]);
 
     const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -43,8 +74,9 @@ const Navbar = ({ onOpenCommandPalette }) => {
 
     const markAsRead = async (id) => {
         try {
-            await axios.put(`${API_BASE}/api/notifications/${id}/read`);
-            setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+            await updateDoc(doc(db, 'notifications', id), {
+                read: true
+            });
         } catch (err) {
             console.error(err);
         }
@@ -134,7 +166,11 @@ const Navbar = ({ onOpenCommandPalette }) => {
                                                                 <span className="text-white font-bold ml-1 truncate max-w-[150px]">{n.projectTitle}</span>
                                                             </p>
                                                             <span className="text-[9px] text-gray-600 font-mono italic mt-1 block">
-                                                                {n.createdAt ? new Date(n.createdAt?._seconds * 1000).toLocaleTimeString() : 'Just now'}
+                                                                {n.createdAt?.toDate
+                                                                    ? n.createdAt.toDate().toLocaleTimeString()
+                                                                    : n.createdAt?.seconds
+                                                                        ? new Date(n.createdAt.seconds * 1000).toLocaleTimeString()
+                                                                        : new Date(n.createdAt).toLocaleTimeString() || 'Just now'}
                                                             </span>
                                                         </div>
                                                     ))
@@ -147,11 +183,31 @@ const Navbar = ({ onOpenCommandPalette }) => {
                                 </AnimatePresence>
                             </div>
 
+                            <div className="flex bg-black/20 rounded-full px-4 py-2 border border-white/5 backdrop-blur-sm shadow-inner gap-4 items-center">
+                                <div className="flex items-center gap-1.5 border-r border-white/10 pr-3">
+                                    <Zap className="w-3.5 h-3.5 text-neon-green" />
+                                    <span className="text-[10px] font-black text-white">{currentUser.stats?.kpcBalance?.toLocaleString() || 0}</span>
+                                    <span className="text-[8px] font-mono text-neon-green uppercase tracking-tighter">KPC</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-5 h-5 bg-terminal border border-neon-blue/30 rounded flex items-center justify-center text-[8px] font-black text-neon-blue">
+                                        {Math.floor(Math.sqrt((currentUser.stats?.xp || 0) / 100)) || 1}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black text-white leading-none">REP: {currentUser.stats?.reputation || 0}</span>
+                                        <span className={`text-[8px] font-mono text-neon-blue uppercase tracking-widest ${getReputationTitle(currentUser.stats?.reputation || 0).color}`}>{getReputationTitle(currentUser.stats?.reputation || 0).title}</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="flex items-center gap-3 pl-4 border-l border-glass-border">
                                 <Link to="/studio" className="flex items-center gap-2 group">
                                     <div className="flex flex-col items-end">
-                                        <p className="text-white font-black text-xs group-hover:text-neon-green transition-colors">
-                                            {currentUser.displayName}
+                                        <p className="text-white font-black text-xs group-hover:text-neon-green transition-colors flex items-center gap-2">
+                                            <span style={currentUser.activeFlare ? Object.fromEntries(allFlares[currentUser.activeFlare]?.style.split(';').filter(s => s).map(s => s.split(':').map(x => x.trim()))) : {}}>
+                                                {currentUser.displayName}
+                                            </span>
+                                            {currentUser.stats?.verified && <Trophy className="w-3 h-3 text-neon-blue" />}
                                         </p>
                                         <p className={`text-[8px] font-mono leading-none mt-1 uppercase tracking-widest ${getReputationTitle(currentUser.stats?.reputation || 0).color}`}>
                                             {getReputationTitle(currentUser.stats?.reputation || 0).title}
@@ -217,6 +273,20 @@ const Navbar = ({ onOpenCommandPalette }) => {
                                     {currentUser && <Link to="/studio" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-black text-neon-green tracking-tighter">STUDIO_ACCESS</Link>}
                                     <Link to="/about" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-gray-600 tracking-widest uppercase">ABOUT_SYSTEM</Link>
                                 </div>
+
+                                {currentUser && notifications.length > 0 && (
+                                    <div className="space-y-4 pt-4 border-t border-gray-900 overflow-y-auto max-h-[30vh]">
+                                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Recent Signals</p>
+                                        {notifications.slice(0, 5).map(n => (
+                                            <div key={`mob-notif-${n.id}`} onClick={() => { markAsRead(n.id); navigate(`/project/${n.projectId}`); setIsMobileMenuOpen(false); }} className="flex items-center gap-3 p-2 bg-white/5 rounded-lg">
+                                                <div className={`w-1.5 h-1.5 rounded-full ${n.read ? 'bg-gray-700' : 'bg-neon-green animate-pulse'}`} />
+                                                <div className="flex-grow min-w-0">
+                                                    <p className="text-[10px] text-white truncate"><span className="text-neon-green font-bold">{n.senderName}</span> {n.type === 'like' ? 'endorsed' : 'commented'}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
 
                                 {currentUser ? (
                                     <button onClick={handleLogout} className="mt-8 text-red-500 font-black uppercase tracking-widest text-sm flex items-center gap-2">

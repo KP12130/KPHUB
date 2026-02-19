@@ -351,6 +351,12 @@ router.get('/', async (req, res) => {
         const { sort } = req.query;
 
         projects.sort((a, b) => {
+            // Priority 1: Promoted/Boosted
+            const aPromoted = a.boostedUntil && new Date(a.boostedUntil) > new Date();
+            const bPromoted = b.boostedUntil && new Date(b.boostedUntil) > new Date();
+            if (aPromoted && !bPromoted) return -1;
+            if (!aPromoted && bPromoted) return 1;
+
             if (sort === 'liked') return (b.stats?.likes || 0) - (a.stats?.likes || 0);
             if (sort === 'viewed') return (b.stats?.views || 0) - (a.stats?.views || 0);
 

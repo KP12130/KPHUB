@@ -16,13 +16,14 @@ const Leaderboard = () => {
     const [hasVoted, setHasVoted] = useState(false);
     const [votedProjectId, setVotedProjectId] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('reputation'); // 'reputation', 'wealth'
 
     useEffect(() => {
         const fetchData = async () => {
+            setLoading(true);
             try {
-
                 const [repRes, auditRes, voteRes] = await Promise.all([
-                    axios.get(`${API_BASE}/api/users/leaderboard`),
+                    axios.get(`${API_BASE}/api/leaderboard?sort=${activeTab}`),
                     axios.get(`${API_BASE}/api/reviews/leaderboard`),
                     axios.get(`${API_BASE}/api/voting/candidates?userId=${currentUser?.uid || ''}`)
                 ]);
@@ -38,7 +39,7 @@ const Leaderboard = () => {
             }
         };
         fetchData();
-    }, []);
+    }, [activeTab, currentUser]);
 
     const getRankIcon = (index) => {
         switch (index) {
@@ -146,9 +147,27 @@ const Leaderboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Main Reputation Leaderboard */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="flex items-center gap-2 mb-4 px-4">
-                        <Star className="text-neon-green w-5 h-5" />
-                        <h2 className="text-xl font-black text-white uppercase tracking-widest">Top Architects</h2>
+                    <div className="flex items-center justify-between mb-4 px-4">
+                        <div className="flex items-center gap-2">
+                            {activeTab === 'reputation' ? <Star className="text-neon-green w-5 h-5" /> : <Crown className="text-yellow-400 w-5 h-5" />}
+                            <h2 className="text-xl font-black text-white uppercase tracking-widest">
+                                {activeTab === 'reputation' ? 'Top Architects' : 'Grid Overlords'}
+                            </h2>
+                        </div>
+                        <div className="flex bg-white/5 p-1 rounded-lg border border-white/10">
+                            <button
+                                onClick={() => setActiveTab('reputation')}
+                                className={`px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'reputation' ? 'bg-neon-green text-black shadow-[0_0_10px_rgba(57,255,20,0.3)]' : 'text-gray-500 hover:text-white'}`}
+                            >
+                                Reputation
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('wealth')}
+                                className={`px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'wealth' ? 'bg-yellow-400 text-black shadow-[0_0_10px_rgba(250,204,21,0.3)]' : 'text-gray-500 hover:text-white'}`}
+                            >
+                                Wealth
+                            </button>
+                        </div>
                     </div>
 
                     <div className="bg-terminal border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
@@ -183,8 +202,17 @@ const Leaderboard = () => {
                                         </div>
 
                                         <div className="text-right shrink-0">
-                                            <p className="text-2xl font-black text-neon-green font-mono">{user.stats?.reputation || 0}</p>
-                                            <p className="text-[10px] text-gray-600 uppercase">Reputation</p>
+                                            {activeTab === 'reputation' ? (
+                                                <>
+                                                    <p className="text-2xl font-black text-neon-green font-mono">{user.stats?.reputation || 0}</p>
+                                                    <p className="text-[10px] text-gray-600 uppercase">Reputation</p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <p className="text-2xl font-black text-yellow-400 font-mono">{(user.stats?.kpcBalance || 0).toLocaleString()}</p>
+                                                    <p className="text-[10px] text-gray-600 uppercase">KPC Credits</p>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 );

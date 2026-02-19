@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Lock, ShieldCheck, ShieldAlert, Activity, Cpu, Database, Eye } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 const Sentinel = () => {
     const [status, setStatus] = useState('ACTIVE');
@@ -11,20 +12,43 @@ const Sentinel = () => {
     ]);
 
     useEffect(() => {
+        const protocols = [
+            'Packet inspection [TCP/UDP]...',
+            'Verifying shard integrity...',
+            'Scanning node: ' + Math.random().toString(16).slice(2, 10),
+            'Filtering inbound grid requests...',
+            'Sentinel sub-process optimized.',
+            'Encrypted handshake verified.'
+        ];
+
         const interval = setInterval(() => {
-            if (Math.random() > 0.8) {
+            if (Math.random() > 0.75) {
+                const isAlert = Math.random() > 0.85;
                 const newLog = {
                     id: Date.now(),
-                    type: Math.random() > 0.8 ? 'ALERT' : 'INFO',
-                    msg: Math.random() > 0.8 ? 'Suspicious packet detected from 192.168.x.x' : 'System integrity check complete.',
+                    type: isAlert ? 'ALERT' : (Math.random() > 0.8 ? 'SYSTEM' : 'INFO'),
+                    msg: isAlert
+                        ? `SUSPICIOUS_UPLINK_ATTEMPT [IP: 142.250.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}]`
+                        : protocols[Math.floor(Math.random() * protocols.length)],
                     time: new Date().toLocaleTimeString([], { hour12: false })
                 };
-                setLogs(prev => [newLog, ...prev.slice(0, 10)]);
+                setLogs(prev => [newLog, ...prev.slice(0, 14)]);
                 if (newLog.type === 'ALERT') setThreats(prev => prev + 1);
             }
-        }, 3000);
+        }, 2000);
         return () => clearInterval(interval);
     }, []);
+
+    const triggerManualScan = () => {
+        const scanLog = {
+            id: Date.now(),
+            type: 'SYSTEM',
+            msg: 'MANUAL_DEEP_SCAN_INITIALIZED...',
+            time: new Date().toLocaleTimeString([], { hour12: false })
+        };
+        setLogs(prev => [scanLog, ...prev.slice(0, 14)]);
+        toast.success("Initializing Perimeter Scan...");
+    };
 
     return (
         <div className="space-y-6">
@@ -39,7 +63,15 @@ const Sentinel = () => {
                     </div>
                     <div>
                         <p className="text-[10px] font-black text-neon-blue uppercase tracking-widest mb-1">Matrix_Shield</p>
-                        <h4 className="text-3xl font-black text-white italic tracking-tighter uppercase">ONLINE</h4>
+                        <div className="flex items-center gap-3">
+                            <h4 className="text-3xl font-black text-white italic tracking-tighter uppercase">ONLINE</h4>
+                            <button
+                                onClick={triggerManualScan}
+                                className="px-2 py-0.5 bg-neon-blue/20 border border-neon-blue/30 text-[8px] font-black text-neon-blue rounded hover:bg-neon-blue hover:text-black transition-all"
+                            >
+                                SCAN
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -94,7 +126,13 @@ const Sentinel = () => {
                                 className="flex gap-4 p-2 rounded hover:bg-white/5 transition-colors border-l-2 border-transparent hover:border-gray-800"
                             >
                                 <span className="text-gray-700">[{log.time}]</span>
-                                <span className={log.type === 'ALERT' ? 'text-neon-purple font-black' : 'text-neon-blue'}>[{log.type}]</span>
+                                <span className={
+                                    log.type === 'ALERT' ? 'text-neon-purple font-black' :
+                                        log.type === 'SYSTEM' ? 'text-neon-green font-bold' :
+                                            'text-neon-blue'
+                                }>
+                                    [{log.type}]
+                                </span>
                                 <span className="text-gray-400">{log.msg}</span>
                             </motion.div>
                         ))}

@@ -17,27 +17,32 @@ const DonationModal = ({ targetUser, onClose, onSuccess }) => {
             return;
         }
 
+        if ((currentUser.stats?.kpcBalance || 0) < amount) {
+            toast.error("Insufficient KPC for transfer.");
+            return;
+        }
+
         setLoading(true);
         try {
-            const res = await axios.post(`${API_BASE}/api/users/donate/${targetUser.uid}`, {
+            const res = await axios.post(`${API_BASE}/api/exchange/donate/${targetUser.uid}`, {
                 donorId: currentUser.uid,
                 amount
             });
 
             if (res.data.success) {
-                toast.success(`TRANSFER COMPLETE: ${amount} Credits sent.`);
+                toast.success(`TRANSFER COMPLETE: ${amount.toLocaleString()} KPC sent.`);
                 confetti({
                     particleCount: 100,
                     spread: 70,
                     origin: { y: 0.6 },
-                    colors: ['#39FF14', '#ffffff'] // Neon Green & White
+                    colors: ['#39FF14', '#ffffff', '#00d4ff']
                 });
                 onSuccess && onSuccess();
                 onClose();
             }
         } catch (err) {
             console.error(err);
-            toast.error("Transfer Failed: Insufficient funds or network error.");
+            toast.error(err.response?.data?.error || "Transfer Failed: Insufficient funds or network error.");
         } finally {
             setLoading(false);
         }
@@ -54,23 +59,27 @@ const DonationModal = ({ targetUser, onClose, onSuccess }) => {
                 </button>
 
                 <div className="text-center mb-6">
-                    <div className="w-16 h-16 bg-neon-green/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-neon-green/30">
-                        <Heart className="w-8 h-8 text-neon-green fill-current" />
+                    <div className="w-16 h-16 bg-neon-green/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-neon-green/30 shadow-[0_0_20px_rgba(57,255,20,0.1)]">
+                        <Zap className="w-8 h-8 text-neon-green fill-current" />
                     </div>
-                    <h2 className="text-2xl font-black text-white uppercase tracking-tight">Support Protocol</h2>
-                    <p className="text-gray-400 text-xs font-mono mt-2">
-                        Transfer credits to <span className="text-neon-green">@{targetUser.username}</span> to fuel their development.
+                    <h2 className="text-2xl font-black text-white uppercase tracking-tight">KPC_TRANSFER</h2>
+                    <p className="text-gray-400 text-[10px] font-mono mt-2 leading-relaxed">
+                        Transmitting credits to <span className="text-neon-green">@{targetUser.username}</span>.
                     </p>
+                    <div className="mt-3 inline-block px-3 py-1 bg-white/5 border border-white/10 rounded-full">
+                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest mr-2">Balance:</span>
+                        <span className="text-[10px] font-black text-white">{currentUser?.stats?.kpcBalance?.toLocaleString() || 0} KPC</span>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mb-6">
-                    {[10, 50, 100, 500].map((val) => (
+                    {[500, 1000, 5000, 10000].map((val) => (
                         <button
                             key={val}
                             onClick={() => setAmount(val)}
                             className={`py-3 px-4 rounded-xl font-bold font-mono text-sm transition-all border ${amount === val
-                                    ? 'bg-neon-green text-black border-neon-green shadow-[0_0_15px_rgba(57,255,20,0.4)]'
-                                    : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
+                                ? 'bg-neon-green text-black border-neon-green shadow-[0_0_15px_rgba(57,255,20,0.4)]'
+                                : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
                                 }`}
                         >
                             <span className="flex items-center justify-center gap-1">
