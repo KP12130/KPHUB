@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import { Upload as UploadIcon, Check, AlertCircle, Loader, Shield, X, File, Image as ImageIcon, Folder } from 'lucide-react';
+import { Upload as UploadIcon, Check, AlertCircle, Loader, Shield, X, File as FileIcon, Image as ImageIcon, Folder } from 'lucide-react';
 import { API_BASE } from '../api';
 
 const Upload = () => {

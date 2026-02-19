@@ -4,7 +4,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
     User, Calendar, Download, Heart, MessageCircle, Share2, ArrowLeft,
     Trash2, Send, Edit, ExternalLink, MessageSquare, X, Shield, Lock,
-    File, Folder, ChevronRight, ChevronDown, Image, CheckCircle2, AlertCircle, Plus,
+    File as FileIcon, Folder, ChevronRight, ChevronDown, CheckCircle2, AlertCircle, Plus,
     CreditCard, Edit3, Code, Database, FileCode, Terminal, Zap, Eye
 } from 'lucide-react';
 import { API_BASE } from '../api';
@@ -430,7 +430,7 @@ const ProjectDetails = () => {
                             >
                                 {activeTab === 'README' && (
                                     <GlassCard className="prose prose-invert max-w-none">
-                                        <SectionTitle icon={File} title="System Documentation" />
+                                        <SectionTitle icon={FileIcon} title="System Documentation" />
                                         <div className="text-gray-300 font-light leading-relaxed">
                                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                                 {project.description}

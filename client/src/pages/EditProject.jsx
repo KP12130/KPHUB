@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import { Save, ChevronLeft, AlertCircle, Loader, Shield, File, ImageIcon, Folder } from 'lucide-react';
+import { Save, ChevronLeft, AlertCircle, Loader, Shield, File as FileIcon, ImageIcon, Folder } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE } from '../api';
 import { toast } from 'react-hot-toast';
