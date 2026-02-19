@@ -6,7 +6,7 @@ import { db } from '../firebase';
 import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import {
     LayoutDashboard, Trophy, Code, Upload as UploadIcon, HelpCircle,
-    Bell, BellDot, User, LogOut, Menu, X, Target, Terminal, ShoppingCart
+    Bell, BellDot, User, LogOut, Menu, X, Target, Terminal, ShoppingCart, Zap
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getReputationTitle } from '../utils/reputation';
