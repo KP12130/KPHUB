@@ -16,8 +16,6 @@ router.post('/submit', async (req, res) => {
             return res.status(400).json({ error: 'Missing required report fields.' });
         }
 
-        const verificationCode = generateCode();
-
         // Save to Firestore
         const ticketRef = db.collection('support_tickets').doc();
         await ticketRef.set({
@@ -26,25 +24,16 @@ router.post('/submit', async (req, res) => {
             subject,
             description,
             userEmail,
-            verificationCode,
             isVerified: false,
             createdAt: new Date().toISOString()
         });
 
-        // Send Email to User
-        try {
-            console.log('[SUPPORT_DEBUG] Attempting to send verification email to:', userEmail);
-            await sendVerificationCode(userEmail, verificationCode);
-            console.log('[SUPPORT_DEBUG] Email sent successfully.');
-        } catch (emailErr) {
-            console.error('[SUPPORT_LOGIC] Verification email failed:', emailErr.message);
-            return res.status(500).json({ error: 'Failed to dispatch verification transmission.' });
-        }
+        console.log('[SUPPORT_DEBUG] Ticket saved successfully:', ticketRef.id);
 
         res.json({
             success: true,
             ticketId: ticketRef.id,
-            message: 'VERIFICATION_CODE_DISPATCHED: Check your communication lines.'
+            message: 'PAYLOAD_INDEXED: Identity signal required.'
         });
 
     } catch (error) {

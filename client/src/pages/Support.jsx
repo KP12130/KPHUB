@@ -226,35 +226,32 @@ const Support = () => {
                                         <ArrowLeft className="w-3 h-3" /> Back_To_Payload
                                     </button>
 
-                                    <div className="text-center space-y-4 pt-4">
+                                    <div className="text-center space-y-6 pt-4">
                                         <div className="w-16 h-16 bg-neon-blue/10 border border-neon-blue/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                                            <Lock className="w-6 h-6 text-neon-blue animate-pulse" />
+                                            <Mail className="w-6 h-6 text-neon-blue animate-pulse" />
                                         </div>
-                                        <h3 className="text-xl font-black text-white italic uppercase tracking-tighter">Identity_Required</h3>
-                                        <p className="text-[10px] text-gray-500 font-mono leading-relaxed">
-                                            A 6-digit confirmation key has been transmitted to <span className="text-white font-bold">{formData.userEmail}</span>.
-                                        </p>
+                                        <div className="space-y-2">
+                                            <h3 className="text-xl font-black text-white italic uppercase tracking-tighter">Identity_Signal_Required</h3>
+                                            <p className="text-[10px] text-gray-500 font-mono leading-relaxed">
+                                                To prevent grid-spam, we require a manual identity signal. Click below to send a pre-filled verification email from <span className="text-white font-bold">{formData.userEmail}</span>.
+                                            </p>
+                                        </div>
                                     </div>
 
-                                    <form onSubmit={handleVerify} className="space-y-6">
-                                        <input
-                                            value={verificationCode}
-                                            onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                            placeholder="000000"
-                                            className="w-full bg-void border border-gray-800 rounded-xl px-4 py-6 text-2xl text-center text-neon-blue font-black tracking-[0.5em] outline-none focus:border-neon-blue focus:shadow-[0_0_20px_rgba(0,212,255,0.1)] transition-all"
-                                        />
-
-                                        <button
-                                            disabled={isSubmitting}
-                                            className="w-full h-14 bg-white text-black font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl flex items-center justify-center gap-2 hover:bg-neon-blue transition-all active:scale-95 disabled:opacity-50"
+                                    <div className="space-y-4">
+                                        <a
+                                            href={`mailto:support@kphub.dev?subject=VERIFY_TICKET_${activeTicketId}&body=Architect,%0D%0A%0D%0AÍme a megerősítő jelzésem a ticketemhez: ${activeTicketId}.%0D%0A%0D%0A--- END_OF_TRANSMISSION ---`}
+                                            onClick={() => setTimeout(() => setPhase('SUCCESS'), 2000)}
+                                            className="w-full h-14 bg-white text-black font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl flex items-center justify-center gap-2 hover:bg-neon-blue transition-all active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
                                         >
-                                            {isSubmitting ? 'VERIFYING...' : 'Confirm_Identity'}
-                                        </button>
+                                            <Send className="w-3 h-3" /> Transmit_Signal
+                                        </a>
 
-                                        <p className="text-center text-[8px] text-gray-700 font-mono uppercase">
-                                            Expired? <button type="button" onClick={handleInitialSubmit} className="text-neon-blue hover:underline">Re-send_Protocol</button>
+                                        <p className="text-center text-[7px] text-gray-700 font-mono uppercase leading-relaxed">
+                                            Clicking "Transmit_Signal" will open your local mail client. <br />
+                                            Once the signal is dispatched, your report will be automatically indexed.
                                         </p>
-                                    </form>
+                                    </div>
                                 </motion.div>
                             )}
 
