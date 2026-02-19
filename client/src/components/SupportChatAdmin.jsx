@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     MessageSquare, Send, Clock, CheckCircle2,
-    AlertCircle, X, Loader2, LifeBuoy, Mail, ExternalLink, Trash2
+    AlertCircle, X, Loader2, LifeBuoy, Mail, ExternalLink, Trash2,
+    Activity, Lock, Shield
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE } from '../api';
@@ -115,8 +116,8 @@ const SupportChatAdmin = () => {
                                 key={chat.id}
                                 onClick={() => setActiveChat(chat)}
                                 className={`w-full text-left p-4 rounded-xl border transition-all relative overflow-hidden group ${activeChat?.id === chat.id
-                                        ? 'bg-white/5 border-neon-blue/30'
-                                        : 'border-white/5 hover:border-white/10'
+                                    ? 'bg-white/5 border-neon-blue/30'
+                                    : 'border-white/5 hover:border-white/10'
                                     }`}
                             >
                                 <div className="flex justify-between items-start gap-2 mb-1">
@@ -190,8 +191,8 @@ const SupportChatAdmin = () => {
                                     >
                                         <div className={`max-w-[80%] space-y-1 ${msg.sender === 'admin' ? 'items-end' : 'items-start'} flex flex-col`}>
                                             <div className={`px-4 py-3 rounded-2xl text-[11px] leading-relaxed font-mono ${msg.sender === 'admin'
-                                                    ? 'bg-white text-black font-bold'
-                                                    : 'bg-white/5 border border-white/10 text-white'
+                                                ? 'bg-white text-black font-bold'
+                                                : 'bg-white/5 border border-white/10 text-white'
                                                 }`}>
                                                 {msg.text}
                                             </div>

@@ -15,13 +15,14 @@ router.post('/submit', async (req, res) => {
             return res.status(400).json({ error: 'Subject, Email and UID required.' });
         }
 
-        // Check 2 active ticket limit
+        // Check 2 active ticket limit - Refactored to avoid composite index
         const activeSnapshot = await db.collection('support_tickets')
             .where('userId', '==', userId)
-            .where('status', '==', 'OPEN')
             .get();
 
-        if (activeSnapshot.size >= 2) {
+        const activeCount = activeSnapshot.docs.filter(doc => doc.data().status === 'OPEN').length;
+
+        if (activeCount >= 2) {
             return res.status(403).json({ error: 'LIMIT_REACHED: Max 2 active tickets allowed.' });
         }
 
@@ -59,13 +60,14 @@ router.get('/my-chats', async (req, res) => {
 
         const snapshot = await db.collection('support_tickets')
             .where('userId', '==', userId)
-            .orderBy('lastActivity', 'desc')
-            .limit(10)
             .get();
 
         const chats = snapshot.docs.map(doc => doc.data());
-        res.json(chats);
+        // Sort in memory to avoid composite index requirement
+        chats.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+        res.json(chats.slice(0, 10));
     } catch (error) {
+        console.error('[SUPPORT] Fetch my-chats error:', error);
         res.status(500).json({ error: 'Failed to fetch your communications.' });
     }
 });
@@ -121,13 +123,14 @@ router.get('/tickets', async (req, res) => {
     try {
         const snapshot = await db.collection('support_tickets')
             .where('status', '==', 'OPEN')
-            .orderBy('lastActivity', 'desc')
-            .limit(50)
             .get();
 
         const tickets = snapshot.docs.map(doc => doc.data());
-        res.json(tickets);
+        // Sort in memory
+        tickets.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+        res.json(tickets.slice(0, 50));
     } catch (error) {
+        console.error('[SUPPORT] Admin fetch error:', error);
         res.status(500).json({ error: 'Failed to retrieve grid data.' });
     }
 });
