@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../api';
 import { motion, AnimatePresence } from 'framer-motion';

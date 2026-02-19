@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 import { API_BASE } from '../api';
 import { Activity, Clock, Zap, MessageCircle, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';

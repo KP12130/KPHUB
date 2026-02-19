@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Radio, Zap, Activity, Users, Star } from 'lucide-react';
+import axios from 'axios';
 import { API_BASE } from '../api';
 
 const Ticker = () => {

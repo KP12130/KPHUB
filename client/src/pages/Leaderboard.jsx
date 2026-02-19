@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { API_BASE } from '../api';
 import { Trophy, Medal, Star, Shield, Code, User, Crown } from 'lucide-react';
 import { Link } from 'react-router-dom';

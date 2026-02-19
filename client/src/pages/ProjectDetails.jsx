@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import axios from 'axios';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
     User, Calendar, Download, Heart, MessageCircle, Share2, ArrowLeft,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
 import { API_BASE } from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Terminal, Calendar, Clock, Trophy, Upload as UploadIcon, X, CheckCircle2, AlertTriangle, Code } from 'lucide-react';

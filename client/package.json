@@ -15,7 +15,7 @@
     "axios": "^1.13.5",
     "canvas-confetti": "^1.9.4",
     "date-fns": "^4.1.0",
-    "firebase": "^12.9.0",
+    "firebase": "^10.12.2",
     "framer-motion": "^11.0.0",
     "lucide-react": "^0.564.0",
     "postcss": "^8.5.6",
