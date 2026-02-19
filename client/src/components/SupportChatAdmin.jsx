@@ -17,6 +17,7 @@ const SupportChatAdmin = () => {
     const [isMessageLoading, setIsMessageLoading] = useState(false);
     const [newMessage, setNewMessage] = useState('');
     const [isSending, setIsSending] = useState(false);
+    const [statusFilter, setStatusFilter] = useState('OPEN'); // 'OPEN' or 'CLOSED'
 
     const scrollRef = useRef(null);
 
@@ -24,7 +25,7 @@ const SupportChatAdmin = () => {
         fetchChats();
         const chatInterval = setInterval(fetchChats, 30000); // 30s poll for new chats
         return () => clearInterval(chatInterval);
-    }, []);
+    }, [statusFilter]);
 
     useEffect(() => {
         if (activeChat) {
@@ -42,8 +43,12 @@ const SupportChatAdmin = () => {
 
     const fetchChats = async () => {
         try {
-            const res = await axios.get(`${API_BASE}/api/support/tickets`);
+            const res = await axios.get(`${API_BASE}/api/support/tickets?status=${statusFilter}`);
             setChats(res.data);
+            // Auto-select if current active is no longer in the list (unless we switched filter)
+            if (activeChat && !res.data.find(c => c.id === activeChat.id) && statusFilter === 'OPEN') {
+                setActiveChat(null);
+            }
         } catch (err) {
             console.error("Chat sync error");
         } finally {
@@ -84,9 +89,14 @@ const SupportChatAdmin = () => {
     };
 
     const handleCloseChat = async (chatId) => {
-        if (!window.confirm("Terminate this support session?")) return;
+        const reason = window.prompt("REASON FOR TERMINATION (Optional):", "Issue Resolved.");
+        if (reason === null) return; // Cancelled
+
         try {
-            await axios.post(`${API_BASE}/api/support/close`, { ticketId: chatId });
+            await axios.post(`${API_BASE}/api/support/close`, {
+                ticketId: chatId,
+                reason: reason.trim() || 'Session closed by Administrator.'
+            });
             toast.success("SESSION_TERMINATED");
             setActiveChat(null);
             fetchChats();
@@ -101,10 +111,25 @@ const SupportChatAdmin = () => {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[700px]">
             {/* Sidebar: Chat List */}
             <div className="lg:col-span-1 border-r border-white/5 pr-6 space-y-6 flex flex-col">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
+                <div className="flex flex-col gap-4">
+                    <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2 px-1">
                         <Activity className="w-4 h-4 text-neon-green" /> Support_Grid
                     </h3>
+
+                    <div className="flex gap-2 p-1 bg-white/5 rounded-lg">
+                        <button
+                            onClick={() => setStatusFilter('OPEN')}
+                            className={`flex-1 py-1.5 text-[8px] font-black uppercase tracking-widest rounded-md transition-all ${statusFilter === 'OPEN' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}
+                        >
+                            Active
+                        </button>
+                        <button
+                            onClick={() => setStatusFilter('CLOSED')}
+                            className={`flex-1 py-1.5 text-[8px] font-black uppercase tracking-widest rounded-md transition-all ${statusFilter === 'CLOSED' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}
+                        >
+                            Archived
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex-grow overflow-y-auto space-y-3 pr-2 scrollbar-none">
@@ -164,13 +189,19 @@ const SupportChatAdmin = () => {
                                 >
                                     <ExternalLink className="w-4 h-4" />
                                 </a>
-                                <button
-                                    onClick={() => handleCloseChat(activeChat.id)}
-                                    className="p-2 border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all"
-                                    title="Close Transmission"
-                                >
-                                    <Lock className="w-4 h-4" />
-                                </button>
+                                {activeChat.status === 'OPEN' ? (
+                                    <button
+                                        onClick={() => handleCloseChat(activeChat.id)}
+                                        className="p-2 border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all"
+                                        title="Close Transmission"
+                                    >
+                                        <Lock className="w-4 h-4" />
+                                    </button>
+                                ) : (
+                                    <div className="px-3 py-1 bg-gray-800 border border-white/5 text-[8px] font-black text-gray-500 uppercase rounded-lg">
+                                        Terminated
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -206,22 +237,35 @@ const SupportChatAdmin = () => {
                         </div>
 
                         {/* Input */}
-                        <form onSubmit={handleSendMessage} className="p-4 bg-void border-t border-white/5">
-                            <div className="relative">
-                                <input
-                                    value={newMessage}
-                                    onChange={(e) => setNewMessage(e.target.value)}
-                                    placeholder="Enter admin response..."
-                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 pr-12 text-[11px] text-white font-mono placeholder:text-gray-700 outline-none focus:border-neon-blue transition-colors"
-                                />
-                                <button
-                                    disabled={!newMessage.trim() || isSending}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-neon-blue hover:text-white transition-colors disabled:opacity-30"
-                                >
-                                    {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                </button>
+                        {activeChat.status === 'OPEN' ? (
+                            <form onSubmit={handleSendMessage} className="p-4 bg-void border-t border-white/5">
+                                <div className="relative">
+                                    <input
+                                        value={newMessage}
+                                        onChange={(e) => setNewMessage(e.target.value)}
+                                        placeholder="Enter admin response..."
+                                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 pr-12 text-[11px] text-white font-mono placeholder:text-gray-700 outline-none focus:border-neon-blue transition-colors"
+                                    />
+                                    <button
+                                        disabled={!newMessage.trim() || isSending}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-neon-blue hover:text-white transition-colors disabled:opacity-30"
+                                    >
+                                        {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                            </form>
+                        ) : (
+                            <div className="p-6 bg-void border-t border-white/5 text-center">
+                                <p className="text-[10px] text-gray-600 font-mono uppercase italic tracking-widest">
+                                    Transmission terminated. Protocol archived.
+                                </p>
+                                {activeChat.closeReason && (
+                                    <p className="text-[9px] text-neon-blue font-mono mt-1 opacity-60">
+                                        Reason: {activeChat.closeReason}
+                                    </p>
+                                )}
                             </div>
-                        </form>
+                        )}
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full space-y-6 opacity-20">

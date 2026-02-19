@@ -51,9 +51,16 @@ const SupportChat = ({ currentUser }) => {
     const fetchChats = async () => {
         try {
             const res = await axios.get(`${API_BASE}/api/support/my-chats?userId=${currentUser.uid}`);
-            setChats(res.data);
-            if (res.data.length > 0 && !activeChat) {
-                setActiveChat(res.data[0]);
+            // Only show OPEN chats to the user as requested
+            const activeChats = res.data.filter(c => c.status === 'OPEN');
+            setChats(activeChats);
+
+            // If the active chat was closed, clear it
+            if (activeChat && !activeChats.find(c => c.id === activeChat.id)) {
+                setActiveChat(null);
+                setMessages([]);
+            } else if (activeChats.length > 0 && !activeChat) {
+                setActiveChat(activeChats[0]);
             }
         } catch (err) {
             toast.error("Failed to sync chat threads.");
@@ -90,6 +97,18 @@ const SupportChat = ({ currentUser }) => {
             toast.error("Message transmission failed.");
         } finally {
             setIsSending(false);
+        }
+    };
+
+    const handleCloseChat = async (chatId) => {
+        if (!window.confirm("Close this support transmission?")) return;
+        try {
+            await axios.post(`${API_BASE}/api/support/close`, { ticketId: chatId });
+            toast.success("TRANSMISSION_CLOSED");
+            setActiveChat(null);
+            fetchChats();
+        } catch (err) {
+            toast.error("Failed to close transmission.");
         }
     };
 
@@ -145,8 +164,8 @@ const SupportChat = ({ currentUser }) => {
                                 key={chat.id}
                                 onClick={() => setActiveChat(chat)}
                                 className={`w-full text-left p-4 rounded-xl border transition-all relative overflow-hidden group ${activeChat?.id === chat.id
-                                        ? 'bg-white/5 border-neon-blue/30'
-                                        : 'border-white/5 hover:border-white/10'
+                                    ? 'bg-white/5 border-neon-blue/30'
+                                    : 'border-white/5 hover:border-white/10'
                                     }`}
                             >
                                 <div className="flex justify-between items-start gap-2 mb-1">
@@ -182,9 +201,18 @@ const SupportChat = ({ currentUser }) => {
                             </div>
                             <div className="flex items-center gap-3">
                                 {activeChat.status === 'OPEN' && (
-                                    <span className="flex items-center gap-1.5 text-[8px] font-black text-neon-green uppercase tracking-[0.2em] bg-neon-green/10 px-3 py-1 rounded-full animate-pulse">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-neon-green" /> Live_Sync
-                                    </span>
+                                    <>
+                                        <span className="flex items-center gap-1.5 text-[8px] font-black text-neon-green uppercase tracking-[0.2em] bg-neon-green/10 px-3 py-1 rounded-full animate-pulse">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-neon-green" /> Live_Sync
+                                        </span>
+                                        <button
+                                            onClick={() => handleCloseChat(activeChat.id)}
+                                            className="p-1.5 border border-white/5 text-gray-500 hover:text-red-500 hover:border-red-500/30 rounded-lg transition-all"
+                                            title="Close Transmission"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -210,8 +238,8 @@ const SupportChat = ({ currentUser }) => {
                                     >
                                         <div className={`max-w-[80%] space-y-1 ${msg.sender === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
                                             <div className={`px-4 py-3 rounded-2xl text-[11px] leading-relaxed font-mono ${msg.sender === 'user'
-                                                    ? 'bg-neon-blue text-black font-bold'
-                                                    : 'bg-white/5 border border-white/10 text-white'
+                                                ? 'bg-neon-blue text-black font-bold'
+                                                : 'bg-white/5 border border-white/10 text-white'
                                                 }`}>
                                                 {msg.text}
                                             </div>

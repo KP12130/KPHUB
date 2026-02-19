@@ -121,8 +121,9 @@ router.post('/chat/:id/message', async (req, res) => {
 // GET /api/support/tickets - Admin List
 router.get('/tickets', async (req, res) => {
     try {
+        const { status = 'OPEN' } = req.query; // Support status filtering
         const snapshot = await db.collection('support_tickets')
-            .where('status', '==', 'OPEN')
+            .where('status', '==', status)
             .get();
 
         const tickets = snapshot.docs.map(doc => doc.data());
@@ -138,8 +139,27 @@ router.get('/tickets', async (req, res) => {
 // POST /api/support/close - Admin/User Close Ticket
 router.post('/close', async (req, res) => {
     try {
-        const { ticketId } = req.body;
-        await db.collection('support_tickets').doc(ticketId).update({ status: 'CLOSED' });
+        const { ticketId, reason } = req.body;
+        const updateData = {
+            status: 'CLOSED',
+            closedAt: new Date().toISOString()
+        };
+        if (reason) updateData.closeReason = reason;
+
+        const ticketRef = db.collection('support_tickets').doc(ticketId);
+        await ticketRef.update(updateData);
+
+        // Optionally add a system message for the reason
+        if (reason) {
+            const messageRef = ticketRef.collection('messages').doc();
+            await messageRef.set({
+                id: messageRef.id,
+                text: `[SYSTEM_TERMINATION]: ${reason}`,
+                sender: 'admin',
+                timestamp: new Date().toISOString()
+            });
+        }
+
         res.json({ success: true, message: 'PROTOCOL_TERMINATED' });
     } catch (error) {
         res.status(500).json({ error: 'System error during termination.' });
