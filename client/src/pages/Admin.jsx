@@ -104,11 +104,7 @@ const Admin = () => {
         }
     };
 
-    const openDirectMail = (ticket) => {
-        const subject = encodeURIComponent(`Re: [SYSTEM_SYNC] Data Received: ${ticket.subject}`);
-        const body = encodeURIComponent(`Architect,\n\n regarding your transmission "${ticket.subject}":\n\n--- [ADMIN_RESPONSE] ---\n\n`);
-        window.location.href = `mailto:${ticket.userEmail}?subject=${subject}&body=${body}`;
-    };
+
 
     if (!isAuthenticated) {
         return (
@@ -225,12 +221,12 @@ const Admin = () => {
 
                                         <div className="shrink-0 flex flex-col gap-2">
                                             {/* Mailto Opener (Always available as fallback) */}
-                                            <button
-                                                onClick={() => openDirectMail(ticket)}
+                                            <a
+                                                href={`mailto:${ticket.userEmail}?subject=${encodeURIComponent(`Re: [SYSTEM_SYNC] Data Received: ${ticket.subject}`)}&body=${encodeURIComponent(`Architect,\n\n regarding your transmission "${ticket.subject}":\n\n--- [ADMIN_RESPONSE] ---\n\n`)}`}
                                                 className="px-6 py-2 bg-white/5 border border-white/10 text-white text-[9px] font-black uppercase tracking-widest rounded-lg transition-all hover:bg-white hover:text-black flex items-center justify-center gap-2"
                                             >
                                                 <ExternalLink className="w-3 h-3" /> Direct_Email_Relay
-                                            </button>
+                                            </a>
 
                                             {ticket.isVerified ? (
                                                 !ticket.responded && respondingTo !== ticket.id && (
