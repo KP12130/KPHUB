@@ -73,11 +73,17 @@ const Admin = () => {
 
         setIsSending(true);
         try {
-            await axios.post(`${API_BASE}/api/support/respond`, {
+            const res = await axios.post(`${API_BASE}/api/support/respond`, {
                 ticketId,
                 responseText
             });
-            toast.success("RESPONSE_TRANSMITTED: User notified.");
+
+            if (res.data.warning) {
+                toast.error(res.data.message, { duration: 6000 });
+            } else {
+                toast.success("RESPONSE_TRANSMITTED: User notified.");
+            }
+
             setRespondingTo(null);
             setResponseText('');
             fetchTickets();
@@ -184,7 +190,7 @@ const Admin = () => {
                                         <div className="space-y-4 flex-grow">
                                             <div className="flex flex-wrap items-center gap-3">
                                                 <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${ticket.type === 'BUG' ? 'bg-red-500/20 text-red-500' :
-                                                        ticket.type === 'REQUEST' ? 'bg-neon-blue/20 text-neon-blue' : 'bg-purple-500/20 text-purple-500'
+                                                    ticket.type === 'REQUEST' ? 'bg-neon-blue/20 text-neon-blue' : 'bg-purple-500/20 text-purple-500'
                                                     }`}>
                                                     {ticket.type}
                                                 </span>

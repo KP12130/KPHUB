@@ -116,21 +116,33 @@ router.post('/respond', async (req, res) => {
         }
 
         const ticket = doc.data();
+        let emailSent = false;
+        let emailError = null;
 
-        // Send Email to User
+        // Try to send Email to User
         try {
             await sendAdminResponse(ticket.userEmail, ticket.subject, responseText);
+            emailSent = true;
         } catch (emailErr) {
             console.error('[SUPPORT_LOGIC] Admin response email failed:', emailErr.message);
-            return res.status(500).json({ error: 'Failed to transmit response email.' });
+            emailError = emailErr.message;
         }
 
-        // Update Firestore
+        // ALWAYS update Firestore, even if email fails (so admin can use Mailto relay)
         await ticketRef.update({
             responded: true,
             adminResponse: responseText,
-            respondedAt: new Date().toISOString()
+            respondedAt: new Date().toISOString(),
+            emailDeliveryFailed: !emailSent
         });
+
+        if (!emailSent) {
+            return res.status(200).json({
+                success: true,
+                warning: 'SERVER_SMTP_TIMEOUT',
+                message: 'DB_SYNCED but EMAIL_FAILED. Please use the Direct_Email_Relay (Brave icon) to reply manually.'
+            });
+        }
 
         res.json({
             success: true,
