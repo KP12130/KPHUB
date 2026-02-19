@@ -8,6 +8,7 @@ const generateCode = () => Math.floor(100000 + Math.random() * 900000).toString(
 
 // POST /api/support/submit - Initial Step
 router.post('/submit', async (req, res) => {
+    console.log('[SUPPORT_DEBUG] Received submit request:', req.body.userEmail);
     try {
         const { type, subject, description, userEmail } = req.body;
 
@@ -32,7 +33,9 @@ router.post('/submit', async (req, res) => {
 
         // Send Email to User
         try {
+            console.log('[SUPPORT_DEBUG] Attempting to send verification email to:', userEmail);
             await sendVerificationCode(userEmail, verificationCode);
+            console.log('[SUPPORT_DEBUG] Email sent successfully.');
         } catch (emailErr) {
             console.error('[SUPPORT_LOGIC] Verification email failed:', emailErr.message);
             return res.status(500).json({ error: 'Failed to dispatch verification transmission.' });
