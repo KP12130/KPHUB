@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Shield, Bug, HelpCircle, FileText, Send, CheckCircle2,
-    AlertTriangle, ChevronDown, Search, Terminal, Mail, Lock, ArrowLeft
+    AlertTriangle, ChevronDown, Search, Terminal, Mail, Lock, ArrowLeft, Activity
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE } from '../api';

@@ -98,9 +98,38 @@ const sendVerificationCode = async (userEmail, code) => {
     return transporter.sendMail(mailOptions);
 };
 
+/**
+ * Send an admin response to a support ticket
+ */
+const sendAdminResponse = async (userEmail, originalSubject, responseText) => {
+    const mailOptions = {
+        from: DEFAULT_FROM,
+        to: userEmail,
+        subject: `Re: [SYSTEM_SYNC] Data Received: ${originalSubject}`,
+        html: `
+            <div style="font-family: monospace; background: #0a0a0a; color: #fff; padding: 40px; border: 1px solid #111;">
+                <h1 style="color: #00ff9d; text-transform: uppercase;">Admin_Response</h1>
+                <p>Architect,</p>
+                <p>An administrator has reviewed your transmission regarding <strong>"${originalSubject}"</strong> and issued the following response:</p>
+                <div style="background: #111; padding: 25px; border-left: 4px solid #00ff9d; margin: 30px 0; color: #eee; white-space: pre-wrap;">
+${responseText}
+                </div>
+                <div style="border-top: 1px solid #333; margin-top: 40px; padding-top: 20px;">
+                    <p style="color: #666; font-size: 10px;">TRANS_ID: ${Math.random().toString(36).substring(7).toUpperCase()}</p>
+                    <p style="color: #00d4ff; font-weight: bold;">KPHUB // OPERATIONS_NODE</p>
+                </div>
+            </div>
+        `
+    };
+
+    return transporter.sendMail(mailOptions);
+};
+
 module.exports = {
     sendAdminAlert,
     sendUserConfirmation,
-    sendVerificationCode
+    sendVerificationCode,
+    sendAdminResponse
 };
+
 

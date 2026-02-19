@@ -18,6 +18,7 @@ import Missions from './pages/Missions';
 import Hackathons from './pages/Hackathons';
 import CodeReviews from './pages/CodeReviews';
 import Explore from './pages/Explore';
+import Admin from './pages/Admin';
 import ProjectCard from './components/ProjectCard';
 import ActivityFeed from './components/ActivityFeed';
 import FeaturedCarousel from './components/FeaturedCarousel';
@@ -49,6 +50,8 @@ const App = () => {
             <Route path="/missions" element={<Missions />} />
             <Route path="/hackathons" element={<Hackathons />} />
             <Route path="/reviews" element={<CodeReviews />} />
+            <Route path="/admin" element={<Admin />} />
+
 
             <Route path="/studio" element={<Studio />} />
             <Route path="/upload" element={<Upload />} />

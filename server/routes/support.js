@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { sendUserConfirmation, sendVerificationCode } = require('../utils/email');
+const { sendUserConfirmation, sendVerificationCode, sendAdminResponse } = require('../utils/email');
 const { db } = require('../config/firebase');
 
 // Utility to generate 6-digit code
@@ -93,6 +93,50 @@ router.post('/verify', async (req, res) => {
     } catch (error) {
         console.error('[SUPPORT_LOGIC] Verify Error:', error);
         res.status(500).json({ error: 'System error during verification.' });
+    }
+});
+
+// POST /api/support/respond - Admin Response
+router.post('/respond', async (req, res) => {
+    try {
+        const { ticketId, responseText } = req.body;
+
+        if (!ticketId || !responseText) {
+            return res.status(400).json({ error: 'Ticket ID and response required.' });
+        }
+
+        const ticketRef = db.collection('support_tickets').doc(ticketId);
+        const doc = await ticketRef.get();
+
+        if (!doc.exists) {
+            return res.status(404).json({ error: 'Ticket not found.' });
+        }
+
+        const ticket = doc.data();
+
+        // Send Email to User
+        try {
+            await sendAdminResponse(ticket.userEmail, ticket.subject, responseText);
+        } catch (emailErr) {
+            console.error('[SUPPORT_LOGIC] Admin response email failed:', emailErr.message);
+            return res.status(500).json({ error: 'Failed to transmit response email.' });
+        }
+
+        // Update Firestore
+        await ticketRef.update({
+            responded: true,
+            adminResponse: responseText,
+            respondedAt: new Date().toISOString()
+        });
+
+        res.json({
+            success: true,
+            message: 'RESPONSE_TRANSMITTED: The user has been notified via secure line.'
+        });
+
+    } catch (error) {
+        console.error('[SUPPORT_LOGIC] Respond Error:', error);
+        res.status(500).json({ error: 'System error during response synchronization.' });
     }
 });
 

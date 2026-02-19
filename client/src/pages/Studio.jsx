@@ -9,7 +9,7 @@ import {
     MoreVertical, Eye, Download, Heart, Trash2, Edit3,
     Lock, Globe, Shield, CreditCard, TrendingUp, Users,
     CheckCircle2, AlertCircle, Plus, Zap, Star, Trophy, Activity,
-    DollarSign, BarChart3, PieChart, X, LifeBuoy, Mail, Clock
+    DollarSign, BarChart3, PieChart, X, LifeBuoy, Mail, Clock, Send
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -26,6 +26,9 @@ const GlassCard = ({ children, className = "" }) => (
 const SupportGrid = () => {
     const [tickets, setTickets] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [respondingTo, setRespondingTo] = useState(null);
+    const [responseText, setResponseText] = useState('');
+    const [isSending, setIsSending] = useState(false);
 
     const fetchTickets = async () => {
         try {
@@ -42,6 +45,29 @@ const SupportGrid = () => {
         fetchTickets();
     }, []);
 
+    const handleSendResponse = async (ticketId) => {
+        if (!responseText.trim()) {
+            toast.error("Protocol requires response data.");
+            return;
+        }
+
+        setIsSending(true);
+        try {
+            await axios.post(`${API_BASE}/api/support/respond`, {
+                ticketId,
+                responseText
+            });
+            toast.success("RESPONSE_TRANSMITTED: User notified.");
+            setRespondingTo(null);
+            setResponseText('');
+            fetchTickets(); // Refresh list to show responded status
+        } catch (err) {
+            toast.error("Transmission failed.");
+        } finally {
+            setIsSending(false);
+        }
+    };
+
     if (isLoading) return <div className="text-center py-20 text-gray-500 font-mono text-[10px] animate-pulse">EXTRACTING_VERIFIED_DATA...</div>;
 
     return (
@@ -53,30 +79,90 @@ const SupportGrid = () => {
             {tickets.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
                     {tickets.map((ticket, i) => (
-                        <GlassCard key={i} className="group relative overflow-hidden border-white/5 hover:border-neon-blue/30 transition-all">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                <div className="space-y-2 flex-grow">
-                                    <div className="flex items-center gap-3">
-                                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${ticket.type === 'BUG' ? 'bg-red-500/20 text-red-500' :
-                                            ticket.type === 'REQUEST' ? 'bg-neon-blue/20 text-neon-blue' : 'bg-purple-500/20 text-purple-500'
-                                            }`}>
-                                            {ticket.type}
-                                        </span>
-                                        <h4 className="font-bold text-white text-sm uppercase tracking-tight">{ticket.subject}</h4>
+                        <GlassCard key={i} className={`group relative overflow-hidden border-white/5 hover:border-neon-blue/30 transition-all ${ticket.responded ? 'opacity-60' : ''}`}>
+                            <div className="flex flex-col gap-6">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                    <div className="space-y-2 flex-grow">
+                                        <div className="flex items-center gap-3">
+                                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${ticket.type === 'BUG' ? 'bg-red-500/20 text-red-500' :
+                                                    ticket.type === 'REQUEST' ? 'bg-neon-blue/20 text-neon-blue' : 'bg-purple-500/20 text-purple-500'
+                                                }`}>
+                                                {ticket.type}
+                                            </span>
+                                            <h4 className="font-bold text-white text-sm uppercase tracking-tight">{ticket.subject}</h4>
+                                            {ticket.responded && (
+                                                <span className="flex items-center gap-1 text-[8px] font-black text-neon-green uppercase tracking-widest bg-neon-green/10 px-2 py-0.5 rounded">
+                                                    <CheckCircle2 className="w-2 h-2" /> Responded
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-[10px] text-gray-400 font-mono leading-relaxed bg-black/20 p-4 rounded-xl border border-white/5">
+                                            {ticket.description}
+                                        </p>
+                                        <div className="flex items-center gap-4 text-[9px] text-gray-500 font-mono uppercase">
+                                            <span className="flex items-center gap-1.5"><Mail className="w-3 h-3 text-neon-green" /> {ticket.userEmail}</span>
+                                            <span className="flex items-center gap-1.5"><Clock className="w-3 h-3" /> {new Date(ticket.createdAt).toLocaleTimeString()}</span>
+                                        </div>
                                     </div>
-                                    <p className="text-[10px] text-gray-400 font-mono leading-relaxed bg-black/20 p-4 rounded-xl border border-white/5">
-                                        {ticket.description}
-                                    </p>
-                                    <div className="flex items-center gap-4 text-[9px] text-gray-500 font-mono uppercase">
-                                        <span className="flex items-center gap-1.5"><Mail className="w-3 h-3 text-neon-green" /> {ticket.userEmail}</span>
-                                        <span className="flex items-center gap-1.5"><Clock className="w-3 h-3" /> {new Date(ticket.createdAt).toLocaleTimeString()}</span>
+                                    <div className="shrink-0 flex md:flex-col gap-2">
+                                        {!ticket.responded && respondingTo !== ticket.id && (
+                                            <button
+                                                onClick={() => setRespondingTo(ticket.id)}
+                                                className="px-4 py-2 bg-white/5 hover:bg-neon-blue hover:text-black text-white text-[9px] font-black uppercase tracking-widest rounded-lg transition-all"
+                                            >
+                                                Respond_Protocol
+                                            </button>
+                                        )}
+                                        {ticket.responded && (
+                                            <div className="text-[8px] text-gray-600 font-mono uppercase text-right">
+                                                Synced: {new Date(ticket.respondedAt).toLocaleDateString()}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                                <div className="shrink-0 flex md:flex-col gap-2">
-                                    <button className="px-4 py-2 bg-white/5 hover:bg-neon-blue hover:text-black text-white text-[9px] font-black uppercase tracking-widest rounded-lg transition-all">
-                                        Acknowledge
-                                    </button>
-                                </div>
+
+                                {respondingTo === ticket.id && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        className="space-y-4 pt-4 border-t border-white/5"
+                                    >
+                                        <div className="space-y-2">
+                                            <label className="text-[8px] font-bold text-gray-600 uppercase">Response_Payload</label>
+                                            <textarea
+                                                value={responseText}
+                                                onChange={(e) => setResponseText(e.target.value)}
+                                                rows={4}
+                                                placeholder="Enter response transmission details..."
+                                                className="w-full bg-void border border-gray-800 rounded-xl px-4 py-3 text-[10px] text-white font-mono placeholder:text-gray-800 outline-none focus:border-neon-blue transition-colors resize-none"
+                                            />
+                                        </div>
+                                        <div className="flex justify-end gap-3">
+                                            <button
+                                                onClick={() => setRespondingTo(null)}
+                                                className="px-4 py-2 text-[9px] font-black text-gray-600 uppercase tracking-widest hover:text-white transition-colors"
+                                            >
+                                                Abort
+                                            </button>
+                                            <button
+                                                disabled={isSending}
+                                                onClick={() => handleSendResponse(ticket.id)}
+                                                className="px-6 py-2 bg-neon-blue text-black font-black uppercase tracking-widest text-[9px] rounded-lg transition-all hover:bg-white flex items-center gap-2"
+                                            >
+                                                {isSending ? 'TRANSMITTING...' : <><Send className="w-3 h-3" /> Push_To_Grid</>}
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                )}
+
+                                {ticket.responded && ticket.adminResponse && (
+                                    <div className="pt-4 border-t border-white/5">
+                                        <p className="text-[8px] font-bold text-neon-green uppercase mb-2">Previous_Response:</p>
+                                        <p className="text-[9px] text-gray-500 font-mono italic bg-white/5 p-3 rounded-lg border border-white/5">
+                                            "{ticket.adminResponse}"
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </GlassCard>
                     ))}
@@ -538,6 +624,4 @@ const Studio = () => {
     );
 };
 
-
 export default Studio;
-
