@@ -6,182 +6,141 @@ const { db } = require('../config/firebase');
 // Utility to generate 6-digit code
 const generateCode = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-// POST /api/support/submit - Initial Step
+// POST /api/support/submit - Initialize Chat
 router.post('/submit', async (req, res) => {
-    console.log('[SUPPORT_DEBUG] Received submit request:', req.body.userEmail);
     try {
-        const { type, subject, description, userEmail } = req.body;
+        const { type, subject, userEmail, userId } = req.body;
 
-        if (!type || !subject || !description || !userEmail) {
-            return res.status(400).json({ error: 'Missing required report fields.' });
+        if (!subject || !userEmail || !userId) {
+            return res.status(400).json({ error: 'Subject, Email and UID required.' });
         }
 
-        // Save to Firestore
+        // Check 2 active ticket limit
+        const activeSnapshot = await db.collection('support_tickets')
+            .where('userId', '==', userId)
+            .where('status', '==', 'OPEN')
+            .get();
+
+        if (activeSnapshot.size >= 2) {
+            return res.status(403).json({ error: 'LIMIT_REACHED: Max 2 active tickets allowed.' });
+        }
+
         const ticketRef = db.collection('support_tickets').doc();
         await ticketRef.set({
             id: ticketRef.id,
-            type,
+            type: type || 'REQUEST',
             subject,
-            description,
             userEmail,
-            isVerified: false,
-            createdAt: new Date().toISOString()
+            userId,
+            status: 'OPEN',
+            isVerified: true,
+            responded: false,
+            createdAt: new Date().toISOString(),
+            lastActivity: new Date().toISOString()
         });
-
-        console.log('[SUPPORT_DEBUG] Ticket saved successfully:', ticketRef.id);
 
         res.json({
             success: true,
             ticketId: ticketRef.id,
-            message: 'PAYLOAD_INDEXED: Identity signal required.'
+            message: 'CHAT_INITIALIZED'
         });
 
     } catch (error) {
         console.error('[SUPPORT_LOGIC] Submit Error:', error);
-        res.status(500).json({ error: 'System error during report initialization.' });
+        res.status(500).json({ error: 'System error during chat initialization.' });
     }
 });
 
-// POST /api/support/verify - Final Step
-router.post('/verify', async (req, res) => {
+// GET /api/support/my-chats - Fetch user's tickets
+router.get('/my-chats', async (req, res) => {
     try {
-        const { ticketId, code } = req.body;
-
-        if (!ticketId || !code) {
-            return res.status(400).json({ error: 'Identification required.' });
-        }
-
-        const ticketRef = db.collection('support_tickets').doc(ticketId);
-        const doc = await ticketRef.get();
-
-        if (!doc.exists) {
-            return res.status(404).json({ error: 'Transmission signature not found.' });
-        }
-
-        const ticket = doc.data();
-
-        if (ticket.verificationCode !== code) {
-            return res.status(400).json({ error: 'INVALID_CODE: Verification failed.' });
-        }
-
-        // Update to verified
-        await ticketRef.update({
-            isVerified: true,
-            verifiedAt: new Date().toISOString()
-        });
-
-        // Send Confirmation to User
-        try {
-            await sendUserConfirmation(ticket.userEmail, ticket.subject);
-        } catch (emailErr) {
-            console.error('[SUPPORT_LOGIC] Confirmation email failed:', emailErr.message);
-        }
-
-        res.json({
-            success: true,
-            message: 'IDENTITY_CONFIRMED: Bug report has been indexed in the Support_Grid.'
-        });
-
-    } catch (error) {
-        console.error('[SUPPORT_LOGIC] Verify Error:', error);
-        res.status(500).json({ error: 'System error during verification.' });
-    }
-});
-
-// POST /api/support/respond - Admin Response
-router.post('/respond', async (req, res) => {
-    try {
-        const { ticketId, responseText } = req.body;
-
-        if (!ticketId || !responseText) {
-            return res.status(400).json({ error: 'Ticket ID and response required.' });
-        }
-
-        const ticketRef = db.collection('support_tickets').doc(ticketId);
-        const doc = await ticketRef.get();
-
-        if (!doc.exists) {
-            return res.status(404).json({ error: 'Ticket not found.' });
-        }
-
-        const ticket = doc.data();
-        let emailSent = false;
-        let emailError = null;
-
-        // Try to send Email to User
-        try {
-            await sendAdminResponse(ticket.userEmail, ticket.subject, responseText);
-            emailSent = true;
-        } catch (emailErr) {
-            console.error('[SUPPORT_LOGIC] Admin response email failed:', emailErr.message);
-            emailError = emailErr.message;
-        }
-
-        // ALWAYS update Firestore, even if email fails (so admin can use Mailto relay)
-        await ticketRef.update({
-            responded: true,
-            adminResponse: responseText,
-            respondedAt: new Date().toISOString(),
-            emailDeliveryFailed: !emailSent
-        });
-
-        if (!emailSent) {
-            return res.status(200).json({
-                success: true,
-                warning: 'SERVER_SMTP_TIMEOUT',
-                message: 'DB_SYNCED but EMAIL_FAILED. Please use the Direct_Email_Relay (Brave icon) to reply manually.'
-            });
-        }
-
-        res.json({
-            success: true,
-            message: 'RESPONSE_TRANSMITTED: The user has been notified via secure line.'
-        });
-
-    } catch (error) {
-        console.error('[SUPPORT_LOGIC] Respond Error:', error);
-        res.status(500).json({ error: 'System error during response synchronization.' });
-    }
-});
-
-// GET /api/support/tickets - Admin List (For Studio/Admin)
-router.get('/tickets', async (req, res) => {
-    try {
-        // Return all tickets from last 24h to allow troubleshooting unverified ones
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { userId } = req.query;
+        if (!userId) return res.status(400).json({ error: 'User ID required.' });
 
         const snapshot = await db.collection('support_tickets')
-            .where('createdAt', '>=', twentyFourHoursAgo)
-            .orderBy('createdAt', 'desc')
-            .limit(100)
+            .where('userId', '==', userId)
+            .orderBy('lastActivity', 'desc')
+            .limit(10)
+            .get();
+
+        const chats = snapshot.docs.map(doc => doc.data());
+        res.json(chats);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch your communications.' });
+    }
+});
+
+// GET /api/support/chat/:id/messages
+router.get('/chat/:id/messages', async (req, res) => {
+    try {
+        const snapshot = await db.collection('support_tickets')
+            .doc(req.params.id)
+            .collection('messages')
+            .orderBy('timestamp', 'asc')
+            .get();
+
+        const messages = snapshot.docs.map(doc => doc.data());
+        res.json(messages);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to sync message history.' });
+    }
+});
+
+// POST /api/support/chat/:id/message - Send Message
+router.post('/chat/:id/message', async (req, res) => {
+    try {
+        const { text, sender } = req.body;
+        if (!text || !sender) return res.status(400).json({ error: 'Message payload required.' });
+
+        const ticketRef = db.collection('support_tickets').doc(req.params.id);
+        const messageRef = ticketRef.collection('messages').doc();
+
+        const messageData = {
+            id: messageRef.id,
+            text,
+            sender, // 'user' or 'admin'
+            timestamp: new Date().toISOString()
+        };
+
+        await messageRef.set(messageData);
+
+        // Update last activity
+        await ticketRef.update({
+            lastActivity: new Date().toISOString(),
+            responded: sender === 'admin'
+        });
+
+        res.json({ success: true, message: messageData });
+    } catch (error) {
+        res.status(500).json({ error: 'Transmission failure.' });
+    }
+});
+
+// GET /api/support/tickets - Admin List
+router.get('/tickets', async (req, res) => {
+    try {
+        const snapshot = await db.collection('support_tickets')
+            .where('status', '==', 'OPEN')
+            .orderBy('lastActivity', 'desc')
+            .limit(50)
             .get();
 
         const tickets = snapshot.docs.map(doc => doc.data());
         res.json(tickets);
     } catch (error) {
-        console.error('[SUPPORT_LOGIC] Fetch Error:', error);
-        res.status(500).json({ error: 'Failed to retrieve documentation.' });
+        res.status(500).json({ error: 'Failed to retrieve grid data.' });
     }
 });
 
-// POST /api/support/manual-verify - Admin Manual Action
-router.post('/manual-verify', async (req, res) => {
+// POST /api/support/close - Admin/User Close Ticket
+router.post('/close', async (req, res) => {
     try {
         const { ticketId } = req.body;
-        if (!ticketId) return res.status(400).json({ error: 'Ticket ID required.' });
-
-        const ticketRef = db.collection('support_tickets').doc(ticketId);
-        await ticketRef.update({
-            isVerified: true,
-            manuallyVerified: true,
-            verifiedAt: new Date().toISOString()
-        });
-
-        res.json({ success: true, message: 'MANUAL_VERIFICATION_COMPLETE' });
+        await db.collection('support_tickets').doc(ticketId).update({ status: 'CLOSED' });
+        res.json({ success: true, message: 'PROTOCOL_TERMINATED' });
     } catch (error) {
-        res.status(500).json({ error: 'System error during manual synchronization.' });
+        res.status(500).json({ error: 'System error during termination.' });
     }
 });
-
 
 module.exports = router;
