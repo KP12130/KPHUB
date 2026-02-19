@@ -1,43 +1,120 @@
 const express = require('express');
 const router = express.Router();
-const { sendAdminAlert, sendUserConfirmation } = require('../utils/email');
+const { sendUserConfirmation, sendVerificationCode } = require('../utils/email');
+const { db } = require('../config/firebase');
 
-// POST /api/support
-router.post('/', async (req, res) => {
+// Utility to generate 6-digit code
+const generateCode = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+// POST /api/support/submit - Initial Step
+router.post('/submit', async (req, res) => {
     try {
         const { type, subject, description, userEmail } = req.body;
 
-        if (!type || !subject || !description) {
+        if (!type || !subject || !description || !userEmail) {
             return res.status(400).json({ error: 'Missing required report fields.' });
         }
 
-        console.log(`[SUPPORT_NODE] Processing ${type} report: ${subject}`);
+        const verificationCode = generateCode();
 
-        // 1. Send Admin Notification
+        // Save to Firestore
+        const ticketRef = db.collection('support_tickets').doc();
+        await ticketRef.set({
+            id: ticketRef.id,
+            type,
+            subject,
+            description,
+            userEmail,
+            verificationCode,
+            isVerified: false,
+            createdAt: new Date().toISOString()
+        });
+
+        // Send Email to User
         try {
-            await sendAdminAlert({ type, subject, description, userEmail });
+            await sendVerificationCode(userEmail, verificationCode);
         } catch (emailErr) {
-            console.error('[SUPPORT_NODE] Admin email failed:', emailErr.message);
-            // We continue even if admin email fails, so user gets their confirmation
-        }
-
-        // 2. Send User Confirmation
-        if (userEmail) {
-            try {
-                await sendUserConfirmation(userEmail, subject);
-            } catch (emailErr) {
-                console.error('[SUPPORT_NODE] User confirmation failed:', emailErr.message);
-            }
+            console.error('[SUPPORT_LOGIC] Verification email failed:', emailErr.message);
+            return res.status(500).json({ error: 'Failed to dispatch verification transmission.' });
         }
 
         res.json({
             success: true,
-            message: 'GLITCH_REPORT_INDEXED: Administrators notified and confirmation dispatched.'
+            ticketId: ticketRef.id,
+            message: 'VERIFICATION_CODE_DISPATCHED: Check your communication lines.'
         });
 
     } catch (error) {
-        console.error('[SUPPORT_NODE] Critical failure:', error);
-        res.status(500).json({ error: 'System error during report synchronization.' });
+        console.error('[SUPPORT_LOGIC] Submit Error:', error);
+        res.status(500).json({ error: 'System error during report initialization.' });
+    }
+});
+
+// POST /api/support/verify - Final Step
+router.post('/verify', async (req, res) => {
+    try {
+        const { ticketId, code } = req.body;
+
+        if (!ticketId || !code) {
+            return res.status(400).json({ error: 'Identification required.' });
+        }
+
+        const ticketRef = db.collection('support_tickets').doc(ticketId);
+        const doc = await ticketRef.get();
+
+        if (!doc.exists) {
+            return res.status(404).json({ error: 'Transmission signature not found.' });
+        }
+
+        const ticket = doc.data();
+
+        if (ticket.verificationCode !== code) {
+            return res.status(400).json({ error: 'INVALID_CODE: Verification failed.' });
+        }
+
+        // Update to verified
+        await ticketRef.update({
+            isVerified: true,
+            verifiedAt: new Date().toISOString()
+        });
+
+        // Send Confirmation to User
+        try {
+            await sendUserConfirmation(ticket.userEmail, ticket.subject);
+        } catch (emailErr) {
+            console.error('[SUPPORT_LOGIC] Confirmation email failed:', emailErr.message);
+        }
+
+        res.json({
+            success: true,
+            message: 'IDENTITY_CONFIRMED: Bug report has been indexed in the Support_Grid.'
+        });
+
+    } catch (error) {
+        console.error('[SUPPORT_LOGIC] Verify Error:', error);
+        res.status(500).json({ error: 'System error during verification.' });
+    }
+});
+
+// GET /api/support/tickets - Admin List (For Studio)
+router.get('/tickets', async (req, res) => {
+    try {
+        // Simple 12h filter + only verified
+        const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+
+        const snapshot = await db.collection('support_tickets')
+            .where('isVerified', '==', true)
+            .where('createdAt', '>=', twelveHoursAgo)
+            .orderBy('createdAt', 'desc')
+            .limit(50)
+            .get();
+
+        const tickets = snapshot.docs.map(doc => doc.data());
+
+        res.json(tickets);
+    } catch (error) {
+        console.error('[SUPPORT_LOGIC] Fetch Error:', error);
+        res.status(500).json({ error: 'Failed to retrieve documentation.' });
     }
 });
 

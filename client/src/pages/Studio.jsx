@@ -9,7 +9,7 @@ import {
     MoreVertical, Eye, Download, Heart, Trash2, Edit3,
     Lock, Globe, Shield, CreditCard, TrendingUp, Users,
     CheckCircle2, AlertCircle, Plus, Zap, Star, Trophy, Activity,
-    DollarSign, BarChart3, PieChart, X
+    DollarSign, BarChart3, PieChart, X, LifeBuoy, Mail, Clock
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -23,6 +23,76 @@ const GlassCard = ({ children, className = "" }) => (
     </div>
 );
 
+const SupportGrid = () => {
+    const [tickets, setTickets] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const fetchTickets = async () => {
+        try {
+            const res = await axios.get(`${API_BASE}/api/support/tickets`);
+            setTickets(res.data);
+        } catch (err) {
+            console.error("Support fetch failed", err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchTickets();
+    }, []);
+
+    if (isLoading) return <div className="text-center py-20 text-gray-500 font-mono text-[10px] animate-pulse">EXTRACTING_VERIFIED_DATA...</div>;
+
+    return (
+        <div className="space-y-6">
+            <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
+                <LifeBuoy className="w-5 h-5 text-neon-blue" /> Support_Grid_Telemetry
+            </h3>
+
+            {tickets.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4">
+                    {tickets.map((ticket, i) => (
+                        <GlassCard key={i} className="group relative overflow-hidden border-white/5 hover:border-neon-blue/30 transition-all">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                <div className="space-y-2 flex-grow">
+                                    <div className="flex items-center gap-3">
+                                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${ticket.type === 'BUG' ? 'bg-red-500/20 text-red-500' :
+                                                ticket.type === 'REQUEST' ? 'bg-neon-blue/20 text-neon-blue' : 'bg-purple-500/20 text-purple-500'
+                                            }`}>
+                                            {ticket.type}
+                                        </span>
+                                        <h4 className="font-bold text-white text-sm uppercase tracking-tight">{ticket.subject}</h4>
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 font-mono leading-relaxed bg-black/20 p-4 rounded-xl border border-white/5">
+                                        {ticket.description}
+                                    </p>
+                                    <div className="flex items-center gap-4 text-[9px] text-gray-500 font-mono uppercase">
+                                        <span className="flex items-center gap-1.5"><Mail className="w-3 h-3 text-neon-green" /> {ticket.userEmail}</span>
+                                        <span className="flex items-center gap-1.5"><Clock className="w-3 h-3" /> {new Date(ticket.createdAt).toLocaleTimeString()}</span>
+                                    </div>
+                                </div>
+                                <div className="shrink-0 flex md:flex-col gap-2">
+                                    <button className="px-4 py-2 bg-white/5 hover:bg-neon-blue hover:text-black text-white text-[9px] font-black uppercase tracking-widest rounded-lg transition-all">
+                                        Acknowledge
+                                    </button>
+                                </div>
+                            </div>
+                        </GlassCard>
+                    ))}
+                </div>
+            ) : (
+                <div className="glass-panel p-20 rounded-[2.5rem] text-center border border-gray-900 bg-terminal/30">
+                    <LifeBuoy className="w-12 h-12 text-gray-800 mx-auto mb-4" />
+                    <p className="text-gray-600 font-mono text-xs uppercase tracking-widest leading-relaxed">
+                        No verified transmissions detected in the last 12 grid cycles.
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const Studio = () => {
     const { currentUser } = useAuth();
     const [view, setView] = useState('DASHBOARD');
@@ -32,7 +102,6 @@ const Studio = () => {
         views: 0, downloads: 0, subs: 0, revenue: 0, adRevenue: 0, rep: 0
     });
     const [userTier, setUserTier] = useState('GHOST');
-    const [communityComments, setCommunityComments] = useState([]);
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState('');
     const [profileData, setProfileData] = useState({
@@ -60,7 +129,7 @@ const Studio = () => {
                     revenue: user.stats?.balance || 0,
                     adRevenue: user.stats?.adRevenue || 0,
                     rep: user.stats?.reputation || 0,
-                    history: [] // Will populate mock history below
+                    history: []
                 });
                 setUserTier(user.tier || 'GHOST');
                 setProfileData({
@@ -72,17 +141,14 @@ const Studio = () => {
                     twitterUrl: user.twitterUrl || ''
                 });
 
-                // Sync Quests
                 const completed = user.completedQuests || [];
                 setQuests(prev => prev.map(q => ({ ...q, completed: completed.includes(q.id) })));
 
-                // Mock History
                 const history = Array.from({ length: 7 }, (_, i) => ({
                     name: `Day ${i + 1}`,
                     views: Math.floor(Math.random() * (user.stats?.views || 100) / 7),
                     revenue: Math.floor(Math.random() * (user.stats?.balance || 100) / 7)
                 }));
-                // Accumulate
                 let accViews = 0, accRev = 0;
                 setStats(prev => ({
                     ...prev,
@@ -185,6 +251,7 @@ const Studio = () => {
                             <MenuButton id="DASHBOARD" icon={LayoutDashboard} label="Command_Center" />
                             <MenuButton id="ANALYTICS" icon={PieChart} label="Data_Analytics" />
                             <MenuButton id="MONETIZATION" icon={DollarSign} label="Monetization" />
+                            <MenuButton id="SUPPORT_GRID" icon={LifeBuoy} label="Support_Grid" />
                             <MenuButton id="SENTINEL" icon={Shield} label="Sentinel_HUD" />
                             <MenuButton id="SETTINGS" icon={Settings} label="Config_Settings" />
                         </div>
@@ -209,7 +276,6 @@ const Studio = () => {
                         >
                             {view === 'DASHBOARD' && (
                                 <div className="space-y-8">
-                                    {/* Stats Grid */}
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         {[
                                             { label: 'Total_Views', value: stats.views, icon: Eye, color: 'text-neon-blue' },
@@ -225,7 +291,6 @@ const Studio = () => {
                                         ))}
                                     </div>
 
-                                    {/* Projects List */}
                                     <div className="space-y-4">
                                         <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
                                             <Database className="w-5 h-5 text-neon-green" /> Active Protocols
@@ -264,7 +329,6 @@ const Studio = () => {
                                         )}
                                     </div>
 
-                                    {/* Quests (Mini) */}
                                     <div className="space-y-4">
                                         <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
                                             <Activity className="w-5 h-5 text-yellow-500" /> Daily Objectives
@@ -438,6 +502,15 @@ const Studio = () => {
                                     <Sentinel />
                                 </motion.div>
                             )}
+
+                            {view === 'SUPPORT_GRID' && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                >
+                                    <SupportGrid />
+                                </motion.div>
+                            )}
                         </motion.div>
                     </AnimatePresence>
                 </div>
@@ -464,5 +537,12 @@ const Studio = () => {
         </div>
     );
 };
+
+// SVG components to fix Activity icon if needed
+const Activity = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+    </svg>
+);
 
 export default Studio;

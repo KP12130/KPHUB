@@ -58,8 +58,8 @@ const sendUserConfirmation = async (userEmail, subject) => {
             <div style="font-family: monospace; background: #0a0a0a; color: #fff; padding: 40px; border: 1px solid #111;">
                 <h1 style="color: #00ff9d; text-transform: uppercase;">Message_Stabilized</h1>
                 <p>Architect,</p>
-                <p>Your transmission regarding <strong>"${subject}"</strong> has been indexed in the support grid.</p>
-                <p>Our agents are currently analyzing the data. Stability will be restored shortly.</p>
+                <p>Your transmission regarding <strong>"${subject}"</strong> has been documented.</p>
+                <p>Our agents are currently analyzing the data in the Support_Grid.</p>
                 <div style="border-top: 1px solid #333; margin-top: 40px; padding-top: 20px;">
                     <p style="color: #666; font-size: 10px;">DO NOT REPLY TO THIS TRANSMISSION.</p>
                     <p style="color: #00d4ff; font-weight: bold;">KPHUB // OPERATIONS_NODE</p>
@@ -71,7 +71,36 @@ const sendUserConfirmation = async (userEmail, subject) => {
     return transporter.sendMail(mailOptions);
 };
 
+/**
+ * Send a verification code to the user
+ */
+const sendVerificationCode = async (userEmail, code) => {
+    const mailOptions = {
+        from: DEFAULT_FROM,
+        to: userEmail,
+        subject: `[IDENTITY_VERIFY] Your Support Code: ${code}`,
+        html: `
+            <div style="font-family: monospace; background: #0a0a0a; color: #fff; padding: 40px; border: 1px solid #111;">
+                <h1 style="color: #00d4ff; text-transform: uppercase;">Verification_Required</h1>
+                <p>Architect,</p>
+                <p>To finalize your glitch report transmission, please enter the following verification code in the Support interface:</p>
+                <div style="background: #111; padding: 30px; border-radius: 10px; margin: 30px 0; text-align: center;">
+                    <span style="color: #00ff9d; font-size: 32px; font-weight: bold; letter-spacing: 15px;">${code}</span>
+                </div>
+                <p style="color: #666; font-size: 10px;">This code will expire in 12 grid cycles (hours).</p>
+                <div style="border-top: 1px solid #333; margin-top: 40px; padding-top: 20px;">
+                    <p style="color: #00d4ff; font-weight: bold;">KPHUB // SECURITY_MAINFRAME</p>
+                </div>
+            </div>
+        `
+    };
+
+    return transporter.sendMail(mailOptions);
+};
+
 module.exports = {
     sendAdminAlert,
-    sendUserConfirmation
+    sendUserConfirmation,
+    sendVerificationCode
 };
+

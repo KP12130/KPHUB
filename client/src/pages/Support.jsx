@@ -1,213 +1,304 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    HelpCircle, Shield, AlertTriangle, Zap, Search,
-    ChevronDown, ChevronUp, MessageSquare, Send,
-    Activity, Globe, Cpu, CheckCircle2
+    Shield, Bug, HelpCircle, FileText, Send, CheckCircle2,
+    AlertTriangle, ChevronDown, Search, Terminal, Mail, Lock, ArrowLeft
 } from 'lucide-react';
-import { toast } from 'react-hot-toast';
 import axios from 'axios';
 import { API_BASE } from '../api';
 import { useAuth } from '../context/AuthContext';
-
-
-const FAQItem = ({ question, answer }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    return (
-        <div className="border border-gray-900 bg-terminal/50 rounded-2xl overflow-hidden mb-4 transition-all hover:border-neon-blue/30">
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-full px-6 py-4 flex justify-between items-center text-left"
-            >
-                <span className="text-sm font-black text-white italic uppercase tracking-tighter">{question}</span>
-                {isOpen ? <ChevronUp className="w-4 h-4 text-neon-blue" /> : <ChevronDown className="w-4 h-4 text-gray-600" />}
-            </button>
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="px-6 pb-6 text-xs text-gray-500 font-mono leading-relaxed"
-                    >
-                        {answer}
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
-    );
-};
+import { toast } from 'react-hot-toast';
 
 const Support = () => {
-    const [searchQuery, setSearchQuery] = useState('');
+    const { currentUser } = useAuth();
+    const [phase, setPhase] = useState('FORM'); // FORM, VERIFY, SUCCESS
     const [reportType, setReportType] = useState('BUG');
-    const [formData, setFormData] = useState({ subject: '', description: '' });
+    const [formData, setFormData] = useState({
+        subject: '',
+        description: '',
+        userEmail: currentUser?.email || ''
+    });
+    const [verificationCode, setVerificationCode] = useState('');
+    const [activeTicketId, setActiveTicketId] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const faqs = [
-        { q: "HOW_TO_UPGRADE_TIER?", a: "Access your Studio interface and navigate to the Monetization tab. Choose between PRO or ELITE protocols to unlock advanced grid features." },
-        { q: "WHAT_IS_REPUTATION?", a: "Reputation measures your impact on the grid. Earn points via transmissions (uploads), pulses (likes), and community interactions." },
-        { q: "PRIVATE_SYSTEM_SECURITY?", a: "Private systems are encrypted at the node level. Only the architect has authorized access unless explicit clearance is granted." },
-        { q: "WITHDRAWAL_PROTOCOL?", a: "Creators can withdraw credits once their balance exceeds 10.00 CODE_CREDITS. Processing takes approximately 24-48 grid cycles." }
-    ];
+    useEffect(() => {
+        if (currentUser?.email && !formData.userEmail) {
+            setFormData(prev => ({ ...prev, userEmail: currentUser.email }));
+        }
+    }, [currentUser]);
 
-    const { currentUser } = useAuth();
-
-    const handleSubmit = async (e) => {
+    const handleInitialSubmit = async (e) => {
         e.preventDefault();
+        if (!formData.subject || !formData.description || !formData.userEmail) {
+            toast.error("All protocols fields required.");
+            return;
+        }
+
         setIsSubmitting(true);
         try {
-            await axios.post(`${API_BASE}/api/support`, {
+            const res = await axios.post(`${API_BASE}/api/support/submit`, {
                 type: reportType,
-                subject: formData.subject,
-                description: formData.description,
-                userEmail: currentUser?.email
+                ...formData
             });
-            toast.success("GLITCH_REPORT_INJECTED: System administrators notified.");
-            setFormData({ subject: '', description: '' });
+            setActiveTicketId(res.data.ticketId);
+            setPhase('VERIFY');
+            toast.success("VERIFICATION_INITIALIZED: Check your email.");
         } catch (err) {
-            console.error('Support submission error:', err);
-            toast.error("SYNC_ERROR: Failed to transmit glitch report.");
+            toast.error(err.response?.data?.error || "Transmission failure.");
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const statusModules = [
-        { name: 'MAINFRAME', status: 'Operational', color: 'text-neon-green' },
-        { name: 'INDEX_GRID', status: 'Operational', color: 'text-neon-green' },
-        { name: 'AI_ASSISTANT', status: 'Degraded', color: 'text-yellow-500' },
-        { name: 'PAYMENT_NODE', status: 'Operational', color: 'text-neon-green' }
+    const handleVerify = async (e) => {
+        e.preventDefault();
+        if (verificationCode.length !== 6) {
+            toast.error("Protocol requires 6-digit signature.");
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            await axios.post(`${API_BASE}/api/support/verify`, {
+                ticketId: activeTicketId,
+                code: verificationCode
+            });
+            setPhase('SUCCESS');
+            toast.success("IDENTITY_CONFIRMED: Report indexed.");
+        } catch (err) {
+            toast.error(err.response?.data?.error || "Verification failed.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const faqs = [
+        { q: "HOW TO UPGRADE TIER?", a: "Navigate to Studio > Monetization and select an expansion protocol." },
+        { q: "WHAT IS REPUTATION?", a: "REP measures your grid influence. Earn it by deploying systems and completing quests." },
+        { q: "PRIVATE_SYSTEM_SECURITY?", a: "All transmissions are encrypted. We prioritize node integrity over data harvesting." }
     ];
 
     return (
-        <div className="min-h-screen pt-32 pb-20 px-4 max-w-6xl mx-auto">
+        <div className="min-h-screen pt-32 pb-20 px-4 max-w-7xl mx-auto">
             {/* Header */}
-            <header className="text-center mb-16">
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="inline-flex items-center gap-2 px-4 py-1.5 bg-neon-blue/10 border border-neon-blue/30 text-neon-blue text-[10px] font-black rounded-full uppercase tracking-widest mb-6"
-                >
-                    <Shield className="w-3 h-3" /> Assistance_Sovereignty
-                </motion.div>
-                <h1 className="text-5xl md:text-7xl font-black text-white italic uppercase tracking-tighter mb-4">
+            <header className="mb-20 text-center">
+                <h1 className="text-6xl md:text-8xl font-black text-white italic tracking-tighter uppercase mb-4">
                     Assistance <span className="text-neon-blue">Hub_</span>
                 </h1>
-                <p className="text-gray-500 font-mono text-xs uppercase tracking-widest">Knowledge Synchronization and Glitch Mitigation Protocol.</p>
+                <p className="text-gray-500 font-mono text-xs tracking-[0.3em] uppercase">Knowledge synchronization and glitch mitigation protocol.</p>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-                {/* Left: Status & Knowledge */}
+                {/* Left: FAQ & Status */}
                 <div className="lg:col-span-2 space-y-12">
-                    {/* Status Dashboard */}
-                    <section className="bg-terminal border border-gray-900 rounded-3xl p-8 relative overflow-hidden">
+                    {/* Grid Status */}
+                    <div className="glass-panel p-8 rounded-[2.5rem] bg-terminal border border-gray-900 overflow-hidden relative">
                         <div className="absolute top-0 right-0 p-8 opacity-5">
-                            <Activity className="w-32 h-32 text-white" />
+                            <Activity className="w-32 h-32" />
                         </div>
-                        <h2 className="text-xs font-black text-white uppercase tracking-widest mb-8 flex items-center gap-2">
-                            <Cpu className="w-4 h-4 text-neon-green" /> Grid_Status_Telemetry
-                        </h2>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                            {statusModules.map(m => (
-                                <div key={m.name} className="space-y-1">
-                                    <p className="text-[10px] text-gray-500 font-mono">{m.name}</p>
+                        <h3 className="text-[10px] font-black text-neon-green uppercase tracking-[0.3em] mb-8 flex items-center gap-2">
+                            <Terminal className="w-4 h-4" /> Grid_Status_Telemetry
+                        </h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                            {[
+                                { label: 'Mainframe', status: 'OPERATIONAL', color: 'bg-neon-green' },
+                                { label: 'Index_Grid', status: 'OPERATIONAL', color: 'bg-neon-green' },
+                                { label: 'AI_Assistant', status: 'DEGRADED', color: 'bg-yellow-500' },
+                                { label: 'Payment_Node', status: 'OPERATIONAL', color: 'bg-neon-green' }
+                            ].map(sys => (
+                                <div key={sys.label} className="space-y-1">
+                                    <p className="text-[8px] text-gray-600 font-mono uppercase">{sys.label}</p>
                                     <div className="flex items-center gap-2">
-                                        <div className={`w-1.5 h-1.5 rounded-full bg-current ${m.color} animate-pulse`} />
-                                        <span className={`text-[10px] font-black uppercase ${m.color}`}>{m.status}</span>
+                                        <div className={`w-1.5 h-1.5 rounded-full ${sys.color} animate-pulse`} />
+                                        <span className="text-[9px] text-white font-black">{sys.status}</span>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                    </section>
+                    </div>
 
                     {/* FAQ */}
-                    <section>
-                        <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
-                                <HelpCircle className="w-4 h-4 text-neon-blue" /> Knowledge_Vault
-                            </h2>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-600" />
-                                <input
-                                    type="text"
-                                    placeholder="Search_Protocols..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="bg-void border border-gray-900 rounded-lg pl-9 pr-4 py-2 text-[10px] text-white focus:border-neon-blue outline-none font-mono"
-                                />
-                            </div>
-                        </div>
-                        <div className="space-y-4">
+                    <div className="space-y-6">
+                        <h3 className="text-[10px] font-black text-neon-blue uppercase tracking-[0.3em] flex items-center gap-2">
+                            <Search className="w-4 h-4" /> Knowledge_Vault
+                        </h3>
+                        <div className="space-y-3">
                             {faqs.map((faq, i) => (
-                                <FAQItem key={i} question={faq.q} answer={faq.a} />
+                                <details key={i} className="group glass-panel rounded-2xl border border-gray-900 bg-terminal/50 overflow-hidden transition-all">
+                                    <summary className="flex items-center justify-between p-6 cursor-pointer list-none">
+                                        <span className="text-xs font-black text-white italic uppercase tracking-widest">{faq.q}</span>
+                                        <ChevronDown className="w-4 h-4 text-gray-600 group-open:rotate-180 transition-transform" />
+                                    </summary>
+                                    <div className="p-6 pt-0 text-[11px] text-gray-400 font-mono leading-relaxed uppercase border-t border-white/5 bg-black/20">
+                                        {faq.a}
+                                    </div>
+                                </details>
                             ))}
                         </div>
-                    </section>
+                    </div>
                 </div>
 
-                {/* Right: Glitch Reporting */}
+                {/* Right: Glitch Report Protocol */}
                 <div className="lg:col-span-1">
-                    <section className="bg-terminal border border-gray-900 p-8 rounded-3xl sticky top-32">
-                        <h2 className="text-xs font-black text-white uppercase tracking-widest mb-8 flex items-center gap-2">
-                            <AlertTriangle className="w-4 h-4 text-red-500" /> Glitch_Report_Protocol
-                        </h2>
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            <div className="flex gap-2 p-1 bg-void border border-gray-800 rounded-xl">
-                                {['BUG', 'REQUEST', 'ACCESS'].map(t => (
-                                    <button
-                                        key={t}
-                                        type="button"
-                                        onClick={() => setReportType(t)}
-                                        className={`flex-grow py-2 text-[8px] font-black rounded-lg transition-all ${reportType === t ? 'bg-gray-800 text-white shadow-xl' : 'text-gray-600'
-                                            }`}
-                                    >
-                                        {t}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[9px] font-black text-gray-600 uppercase tracking-widest ml-2">Subject</label>
-                                <input
-                                    required
-                                    value={formData.subject}
-                                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                                    className="w-full bg-void border border-gray-800 rounded-xl px-4 py-3 text-xs text-white focus:border-neon-blue outline-none"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[9px] font-black text-gray-600 uppercase tracking-widest ml-2">Description</label>
-                                <textarea
-                                    required
-                                    rows={4}
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    className="w-full bg-void border border-gray-800 rounded-xl px-4 py-3 text-xs text-white focus:border-neon-blue outline-none font-mono resize-none"
-                                />
-                            </div>
-                            <button
-                                disabled={isSubmitting}
-                                className="w-full py-4 bg-neon-blue text-black font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-white transition-all shadow-[0_0_20px_rgba(0,212,255,0.2)] flex items-center justify-center gap-2"
-                            >
-                                {isSubmitting ? (
-                                    <Zap className="w-4 h-4 animate-spin" />
-                                ) : (
-                                    <><Send className="w-4 h-4" /> Inject_Report</>
-                                )}
-                            </button>
-                        </form>
+                    <div className="glass-panel p-8 rounded-[2.5rem] bg-terminal border border-gray-900 sticky top-24">
+                        <AnimatePresence mode="wait">
+                            {phase === 'FORM' && (
+                                <motion.div
+                                    key="form"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    className="space-y-8"
+                                >
+                                    <h3 className="text-[10px] font-black text-red-500 uppercase tracking-[0.3em] flex items-center gap-2">
+                                        <AlertTriangle className="w-4 h-4" /> Glitch_Report_Protocol
+                                    </h3>
 
-                        <div className="mt-8 pt-8 border-t border-gray-900">
-                            <div className="flex items-center gap-4 text-xs text-gray-500 hover:text-white transition-colors cursor-pointer group">
-                                <MessageSquare className="w-4 h-4 group-hover:text-neon-green" />
-                                <span className="font-black uppercase tracking-widest text-[9px]">Direct_Admin_Comms</span>
-                            </div>
-                        </div>
-                    </section>
+                                    {/* Type Toggle */}
+                                    <div className="flex p-1 bg-void rounded-xl border border-gray-900">
+                                        {['BUG', 'REQUEST', 'ACCESS'].map(t => (
+                                            <button
+                                                key={t}
+                                                onClick={() => setReportType(t)}
+                                                className={`flex-grow py-2 text-[8px] font-black rounded-lg transition-all ${reportType === t ? 'bg-gray-800 text-white shadow-xl' : 'text-gray-600 hover:text-gray-400'}`}
+                                            >
+                                                {t}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <form onSubmit={handleInitialSubmit} className="space-y-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[8px] font-bold text-gray-600 uppercase ml-1">Identity_Email</label>
+                                            <div className="relative group">
+                                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-600 group-focus-within:text-neon-blue" />
+                                                <input
+                                                    type="email"
+                                                    value={formData.userEmail}
+                                                    onChange={(e) => setFormData({ ...formData, userEmail: e.target.value })}
+                                                    placeholder="architecht@grid.node"
+                                                    className="w-full bg-void border border-gray-800 rounded-xl pl-10 pr-4 py-3 text-[10px] text-white font-mono placeholder:text-gray-800 outline-none focus:border-neon-blue transition-colors"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <label className="text-[8px] font-bold text-gray-600 uppercase ml-1">Transmission_Subject</label>
+                                            <input
+                                                value={formData.subject}
+                                                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                                                placeholder="Brief summary of extraction error..."
+                                                className="w-full bg-void border border-gray-800 rounded-xl px-4 py-3 text-[10px] text-white font-mono placeholder:text-gray-800 outline-none focus:border-neon-blue transition-colors"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <label className="text-[8px] font-bold text-gray-600 uppercase ml-1">Data_Payload</label>
+                                            <textarea
+                                                value={formData.description}
+                                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                                rows={5}
+                                                placeholder="Provide detailed glitch telemetry..."
+                                                className="w-full bg-void border border-gray-800 rounded-xl px-4 py-3 text-[10px] text-white font-mono placeholder:text-gray-800 outline-none focus:border-neon-blue transition-colors resize-none"
+                                            />
+                                        </div>
+
+                                        <button
+                                            disabled={isSubmitting}
+                                            className="w-full h-14 bg-neon-blue text-black font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl flex items-center justify-center gap-2 hover:bg-white hover:shadow-[0_0_30px_rgba(0,212,255,0.3)] transition-all active:scale-95 disabled:opacity-50"
+                                        >
+                                            {isSubmitting ? 'INITIALIZING...' : <><Send className="w-3 h-3" /> Initialize_Protocol</>}
+                                        </button>
+                                    </form>
+                                </motion.div>
+                            )}
+
+                            {phase === 'VERIFY' && (
+                                <motion.div
+                                    key="verify"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    className="space-y-8"
+                                >
+                                    <button onClick={() => setPhase('FORM')} className="text-[8px] font-black text-gray-500 uppercase flex items-center gap-1 hover:text-white transition-colors">
+                                        <ArrowLeft className="w-3 h-3" /> Back_To_Payload
+                                    </button>
+
+                                    <div className="text-center space-y-4 pt-4">
+                                        <div className="w-16 h-16 bg-neon-blue/10 border border-neon-blue/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                                            <Lock className="w-6 h-6 text-neon-blue animate-pulse" />
+                                        </div>
+                                        <h3 className="text-xl font-black text-white italic uppercase tracking-tighter">Identity_Required</h3>
+                                        <p className="text-[10px] text-gray-500 font-mono leading-relaxed">
+                                            A 6-digit confirmation key has been transmitted to <span className="text-white font-bold">{formData.userEmail}</span>.
+                                        </p>
+                                    </div>
+
+                                    <form onSubmit={handleVerify} className="space-y-6">
+                                        <input
+                                            value={verificationCode}
+                                            onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                            placeholder="000000"
+                                            className="w-full bg-void border border-gray-800 rounded-xl px-4 py-6 text-2xl text-center text-neon-blue font-black tracking-[0.5em] outline-none focus:border-neon-blue focus:shadow-[0_0_20px_rgba(0,212,255,0.1)] transition-all"
+                                        />
+
+                                        <button
+                                            disabled={isSubmitting}
+                                            className="w-full h-14 bg-white text-black font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl flex items-center justify-center gap-2 hover:bg-neon-blue transition-all active:scale-95 disabled:opacity-50"
+                                        >
+                                            {isSubmitting ? 'VERIFYING...' : 'Confirm_Identity'}
+                                        </button>
+
+                                        <p className="text-center text-[8px] text-gray-700 font-mono uppercase">
+                                            Expired? <button type="button" onClick={handleInitialSubmit} className="text-neon-blue hover:underline">Re-send_Protocol</button>
+                                        </p>
+                                    </form>
+                                </motion.div>
+                            )}
+
+                            {phase === 'SUCCESS' && (
+                                <motion.div
+                                    key="success"
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="py-12 text-center space-y-6"
+                                >
+                                    <div className="w-20 h-20 bg-neon-green/10 border border-neon-green/30 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-[0_0_50px_rgba(57,255,20,0.1)]">
+                                        <CheckCircle2 className="w-10 h-10 text-neon-green" />
+                                    </div>
+                                    <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter">Transmission_Complete</h3>
+                                    <p className="text-[10px] text-gray-500 font-mono leading-relaxed px-4">
+                                        Your glitch report has been successfully indexed. An administrator will review your payload in the next grid cycle.
+                                    </p>
+                                    <div className="pt-8">
+                                        <button
+                                            onClick={() => {
+                                                setPhase('FORM');
+                                                setFormData({ subject: '', description: '', userEmail: currentUser?.email || '' });
+                                                setVerificationCode('');
+                                            }}
+                                            className="px-8 py-3 border border-gray-800 rounded-xl text-[9px] font-black text-gray-500 uppercase tracking-widest hover:text-white hover:border-gray-600 transition-all"
+                                        >
+                                            Return_To_Mainframe
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
             </div>
         </div>
     );
 };
+
+// Activity icon missing in lucide-react? No, it's there.
+const Activity = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+    </svg>
+);
 
 export default Support;

@@ -50,7 +50,8 @@ const Footer = () => {
                             <li><Link to="/support" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Help_Center</Link></li>
                             <li><Link to="/support" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Status_Mainframe</Link></li>
                             <li><Link to="/support" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Glitch_Report</Link></li>
-                            <li><Link to="/legal/about" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Mission_Briefing</Link></li>
+                            <li><Link to="/legal" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Mission_Briefing</Link></li>
+
                         </ul>
                     </div>
 
@@ -58,10 +59,11 @@ const Footer = () => {
                     <div>
                         <h4 className="text-[10px] font-black text-white uppercase tracking-[0.3em] mb-6">Grid_Laws</h4>
                         <ul className="space-y-4">
-                            <li><Link to="/legal/terms" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Terms_Of_Sync</Link></li>
-                            <li><Link to="/legal/privacy" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Data_Encryption_Policy</Link></li>
-                            <li><Link to="/legal/guidelines" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Conduct_Protocols</Link></li>
-                            <li><Link to="/legal/cookies" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Tracker_Policy</Link></li>
+                            <li><Link to="/legal" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Terms_Of_Sync</Link></li>
+                            <li><Link to="/legal" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Data_Encryption_Policy</Link></li>
+                            <li><Link to="/legal" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Conduct_Protocols</Link></li>
+                            <li><Link to="/legal" className="text-xs text-gray-500 hover:text-white transition-colors font-mono uppercase tracking-widest">Tracker_Policy</Link></li>
+
                         </ul>
                     </div>
                 </div>
