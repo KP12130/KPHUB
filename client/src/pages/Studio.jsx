@@ -154,15 +154,6 @@ const Studio = () => {
         }
     };
 
-    if (isStudioLoading) return (
-        <div className="min-h-screen flex items-center justify-center">
-            <div className="flex flex-col items-center gap-4">
-                <div className="w-12 h-12 border-4 border-neon-purple/30 border-t-neon-purple rounded-full animate-spin" />
-                <span className="text-neon-purple font-mono text-xs animate-pulse tracking-widest">LOADING_STUDIO_ENV...</span>
-            </div>
-        </div>
-    );
-
     const [transactions, setTransactions] = useState([]);
     const [isLedgerLoading, setIsLedgerLoading] = useState(false);
 
@@ -181,6 +172,15 @@ const Studio = () => {
         };
         fetchLedger();
     }, [view, currentUser]);
+
+    if (isStudioLoading) return (
+        <div className="min-h-screen flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-4 border-neon-purple/30 border-t-neon-purple rounded-full animate-spin" />
+                <span className="text-neon-purple font-mono text-xs animate-pulse tracking-widest">LOADING_STUDIO_ENV...</span>
+            </div>
+        </div>
+    );
 
     const MenuButton = ({ id, icon: Icon, label }) => (
         <button

@@ -25,7 +25,7 @@ app.use(helmet({
             "worker-src": ["'self'", "blob:"],
 
             "child-src": ["'self'", "blob:", "https://*.firebaseapp.com", "https://*.googlesyndication.com"],
-            "frame-src": ["'self'", "https://*.google.com", "https://*.firebaseapp.com", "https://*.doubleclick.net", "https://*.googlesyndication.com", "https://*.googleadservices.com"],
+            "frame-src": ["'self'", "https://*.google.com", "https://*.firebaseapp.com", "https://*.doubleclick.net", "https://*.googlesyndication.com", "https://*.googleadservices.com", "https://*.adtrafficquality.google"],
             "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://*.gstatic.com"],
             "font-src": ["'self'", "https://fonts.gstatic.com"],
             "object-src": ["'none'"],
