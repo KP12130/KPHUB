@@ -47,59 +47,50 @@ const SupportChat = ({ currentUser }) => {
 
     const scrollRef = useRef(null);
 
-    useEffect(() => {
+    // Fetch chats via REST (works for banned users who lack Firestore read access)
+    const fetchChats = async () => {
         if (!currentUser?.uid) return;
-
-        const q = query(
-            collection(db, 'support_tickets'),
-            where('userId', '==', currentUser.uid),
-            where('status', '==', viewMode === 'ACTIVE' ? 'OPEN' : 'CLOSED')
-        );
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const ticketList = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-
-            // Sort in memory by lastActivity
-            ticketList.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
-
+        try {
+            const res = await axios.get(`${API_BASE}/api/support/my-chats`, {
+                params: { userId: currentUser.uid, status: viewMode === 'ACTIVE' ? 'OPEN' : 'CLOSED' }
+            });
+            const ticketList = res.data;
             setChats(ticketList);
             if (ticketList.length > 0 && !activeChat) {
                 setActiveChat(ticketList[0]);
             }
+        } catch (err) {
+            console.error("Chat fetch error:", err);
+        } finally {
             setIsLoading(false);
-        }, (err) => {
-            console.error("Chats listener error:", err);
-            toast.error("Real-time sync failed.");
-            setIsLoading(false);
-        });
+        }
+    };
 
-        return () => unsubscribe();
+    useEffect(() => {
+        fetchChats();
+        const interval = setInterval(fetchChats, 5000);
+        return () => clearInterval(interval);
     }, [currentUser?.uid, viewMode]);
+
+    // Fetch messages via REST
+    const fetchMessages = async () => {
+        if (!activeChat?.id) return;
+        try {
+            const res = await axios.get(`${API_BASE}/api/support/chat/${activeChat.id}/messages`);
+            setMessages(res.data);
+        } catch (err) {
+            console.error("Messages fetch error:", err);
+        } finally {
+            setIsMessageLoading(false);
+        }
+    };
 
     useEffect(() => {
         if (!activeChat?.id) return;
-
-        const msgQuery = query(
-            collection(db, 'support_tickets', activeChat.id, 'messages'),
-            orderBy('timestamp', 'asc')
-        );
-
-        const unsubscribe = onSnapshot(msgQuery, (snapshot) => {
-            const msgs = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setMessages(msgs);
-            setIsMessageLoading(false);
-        }, (err) => {
-            console.error("Messages listener error:", err);
-            setIsMessageLoading(false);
-        });
-
-        return () => unsubscribe();
+        setIsMessageLoading(true);
+        fetchMessages();
+        const interval = setInterval(fetchMessages, 3000);
+        return () => clearInterval(interval);
     }, [activeChat?.id]);
 
     useEffect(() => {
@@ -246,7 +237,7 @@ const SupportChat = ({ currentUser }) => {
     );
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[700px] relative">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full relative">
             {/* Sidebar: Chat List */}
             <div className="lg:col-span-1 border-r border-white/5 pr-6 space-y-6 flex flex-col">
                 <div className="flex items-center justify-between">

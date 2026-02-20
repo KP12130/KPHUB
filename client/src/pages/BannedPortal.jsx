@@ -15,7 +15,7 @@ const BannedPortal = () => {
                 <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-red-900/10 rounded-full blur-[150px] animate-pulse-slow" style={{ animationDelay: '2s' }} />
             </div>
 
-            <div className="w-full max-w-5xl z-10 flex border border-red-500/20 bg-black/60 backdrop-blur-md rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(239,68,68,0.1)]">
+            <div className="w-full max-w-5xl z-10 flex border border-red-500/20 bg-black/60 backdrop-blur-md rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(239,68,68,0.1)]" style={{ height: '85vh', maxHeight: '700px' }}>
 
                 {/* Left Side: Ban Notice */}
                 <div className="w-1/3 p-8 border-r border-red-500/20 bg-red-950/20 flex flex-col justify-between">
@@ -49,15 +49,15 @@ const BannedPortal = () => {
                 </div>
 
                 {/* Right Side: Embedded Support Chat */}
-                <div className="w-2/3 p-6 bg-gradient-to-br from-black/40 to-black/80">
-                    <div className="mb-4 flex items-center justify-between border-b border-white/5 pb-4">
+                <div className="w-2/3 p-6 bg-gradient-to-br from-black/40 to-black/80 flex flex-col min-h-0">
+                    <div className="mb-4 flex items-center justify-between border-b border-white/5 pb-4 shrink-0">
                         <h2 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                             Appeal_Terminal
                         </h2>
                     </div>
                     {/* Render existing SupportChat directly - it inherits user context automatically */}
-                    <div className="h-[600px]">
+                    <div className="flex-1 min-h-0 overflow-hidden">
                         <SupportChat currentUser={currentUser} />
                     </div>
                 </div>

@@ -63,15 +63,19 @@ router.post('/submit', async (req, res) => {
 // GET /api/support/my-chats - Fetch user's tickets
 router.get('/my-chats', async (req, res) => {
     try {
-        const { userId } = req.query;
+        const { userId, status } = req.query;
         if (!userId) return res.status(400).json({ error: 'User ID required.' });
 
-        const snapshot = await db.collection('support_tickets')
-            .where('userId', '==', userId)
-            .get();
+        let query = db.collection('support_tickets').where('userId', '==', userId);
 
-        const chats = snapshot.docs.map(doc => doc.data());
-        // Sort in memory to avoid composite index requirement
+        const snapshot = await query.get();
+        let chats = snapshot.docs.map(doc => doc.data());
+
+        // Filter by status if provided
+        if (status) {
+            chats = chats.filter(c => c.status === status);
+        }
+
         chats.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
         res.json(chats.slice(0, 10));
     } catch (error) {
