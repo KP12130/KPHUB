@@ -40,6 +40,14 @@ const Admin = () => {
         if (isAuthenticated) fetchTickets();
     }, [isAuthenticated]);
 
+    const [activeTab, setActiveTab] = useState('SUPPORT'); // SUPPORT, VERIFICATION, USER_MANAGEMENT
+    const [pendingVerifications, setPendingVerifications] = useState([]);
+    const [isVerifying, setIsVerifying] = useState(false);
+
+    useEffect(() => {
+        if (isAuthenticated && activeTab === 'VERIFICATION') fetchPendingVerifications();
+    }, [isAuthenticated, activeTab]);
+
     const handleLogin = (e) => {
         e.preventDefault();
         if (loginData.user === ADMIN_USER && loginData.pass === ADMIN_PASS) {
@@ -64,6 +72,18 @@ const Admin = () => {
             setTickets(res.data);
         } catch (err) {
             toast.error("Data extraction failure.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const fetchPendingVerifications = async () => {
+        setIsLoading(true);
+        try {
+            const res = await axios.get(`${API_BASE}/api/exchange/admin/pending-verifications`);
+            setPendingVerifications(res.data);
+        } catch (err) {
+            toast.error("Verification data sync failure.");
         } finally {
             setIsLoading(false);
         }
@@ -95,6 +115,42 @@ const Admin = () => {
             toast.error("Transmission failed. Use Direct_Email_Relay instead.");
         } finally {
             setIsSending(false);
+        }
+    };
+
+    const handleVerifyAction = async (uid, action) => {
+        const feedback = action === 'REJECT' ? window.prompt("REJECTION_REASON:", "Insufficient grid presence.") : null;
+        if (action === 'REJECT' && feedback === null) return;
+
+        setIsVerifying(true);
+        try {
+            await axios.post(`${API_BASE}/api/exchange/admin/verify-action`, { uid, action, feedback });
+            toast.success(`VERIFICATION_${action}: Citizen protocol updated.`);
+            fetchPendingVerifications();
+        } catch (err) {
+            toast.error("Audit action failed.");
+        } finally {
+            setIsVerifying(false);
+        }
+    };
+
+    const handleBanUser = async (e) => {
+        e.preventDefault();
+        if (!banIdentifier.trim()) return;
+        setIsBanning(true);
+        try {
+            await axios.post(`${API_BASE}/api/users/admin/ban`, {
+                identifier: banIdentifier,
+                reason: banReason,
+                adminToken: loginData.pass
+            });
+            toast.success(`SEVERED: Entity ${banIdentifier} has been isolated.`);
+            setBanIdentifier('');
+            setBanReason('');
+        } catch (err) {
+            toast.error(err.response?.data?.error || "Ban execution failed.");
+        } finally {
+            setIsBanning(false);
         }
     };
 
@@ -138,46 +194,6 @@ const Admin = () => {
                 </div>
             </div>
         );
-    }
-
-    const [activeTab, setActiveTab] = useState('SUPPORT'); // SUPPORT, VERIFICATION, USER_MANAGEMENT
-    const [pendingVerifications, setPendingVerifications] = useState([]);
-    const [isVerifying, setIsVerifying] = useState(false);
-
-    useEffect(() => {
-        if (isAuthenticated && activeTab === 'VERIFICATION') fetchPendingVerifications();
-    }, [isAuthenticated, activeTab]);
-
-    const fetchPendingVerifications = async () => {
-        setIsLoading(true);
-        try {
-            const res = await axios.get(`${API_BASE}/api/exchange/admin/pending-verifications`);
-            setPendingVerifications(res.data);
-        } catch (err) {
-            toast.error("Verification data sync failure.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleVerifyAction = async (uid, action) => {
-        const feedback = action === 'REJECT' ? window.prompt("REJECTION_REASON:", "Insufficient grid presence.") : null;
-        if (action === 'REJECT' && feedback === null) return;
-
-        setIsVerifying(true);
-        try {
-            await axios.post(`${API_BASE}/api/exchange/admin/verify-action`, { uid, action, feedback });
-            toast.success(`VERIFICATION_${action}: Citizen protocol updated.`);
-            fetchPendingVerifications();
-        } catch (err) {
-            toast.error("Audit action failed.");
-        } finally {
-            setIsVerifying(false);
-        }
-    };
-
-    if (!isAuthenticated) {
-        // ... (existing login UI)
     }
 
     return (
