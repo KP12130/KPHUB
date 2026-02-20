@@ -29,7 +29,7 @@ const PublicProfile = () => {
         const fetchProfile = async () => {
             setLoading(true);
             try {
-                const [res, badgesRes, flaresRes] = await Promise.all([
+                const [res, badgesRes, flaresRes, donorsRes, ranksRes] = await Promise.all([
                     axios.get(`${API_BASE}/api/users/profile/${username}?viewerId=${currentUser?.uid || ''}`),
                     axios.get(`${API_BASE}/api/users/badges/definitions`),
                     axios.get(`${API_BASE}/api/exchange/flares`),
