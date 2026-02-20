@@ -45,48 +45,36 @@ const SupportChatAdmin = () => {
 
     const scrollRef = useRef(null);
 
-    useEffect(() => {
-        const q = query(
-            collection(db, 'support_tickets'),
-            where('status', '==', statusFilter)
-        );
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const ticketList = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-
-            // Sort in memory
-            ticketList.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
-
+    // Fetch chats via REST (admin has no Firebase Auth session)
+    const fetchChats = async () => {
+        try {
+            const res = await axios.get(`${API_BASE}/api/support/tickets`, {
+                params: { status: statusFilter }
+            });
+            const ticketList = res.data;
             setChats(ticketList);
-            // Auto-deselect if the current active chat is no longer in the filtered list
             if (activeChat && !ticketList.find(c => c.id === activeChat.id) && statusFilter === 'OPEN') {
                 setActiveChat(null);
             }
+        } catch (err) {
+            console.error("Admin chats fetch error:", err);
+        } finally {
             setIsLoading(false);
-        }, (err) => {
-            console.error("Admin chats listener error:", err);
-            setIsLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [statusFilter]);
+        }
+    };
 
     useEffect(() => {
+        fetchChats();
+        const interval = setInterval(fetchChats, 5000);
+        return () => clearInterval(interval);
+    }, [statusFilter]);
+
+    // Fetch messages via REST
+    const fetchMessages = async () => {
         if (!activeChat?.id) return;
-
-        const msgQuery = query(
-            collection(db, 'support_tickets', activeChat.id, 'messages'),
-            orderBy('timestamp', 'asc')
-        );
-
-        const unsubscribe = onSnapshot(msgQuery, (snapshot) => {
-            const msgs = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+        try {
+            const res = await axios.get(`${API_BASE}/api/support/chat/${activeChat.id}/messages`);
+            const msgs = res.data;
 
             // Notification Logic
             if (msgs.length > lastMsgCountRef.current && msgs.length > 0) {
@@ -96,15 +84,20 @@ const SupportChatAdmin = () => {
                 }
             }
             lastMsgCountRef.current = msgs.length;
-
             setMessages(msgs);
+        } catch (err) {
+            console.error("Admin messages fetch error:", err);
+        } finally {
             setIsMessageLoading(false);
-        }, (err) => {
-            console.error("Admin messages listener error:", err);
-            setIsMessageLoading(false);
-        });
+        }
+    };
 
-        return () => unsubscribe();
+    useEffect(() => {
+        if (!activeChat?.id) return;
+        setIsMessageLoading(true);
+        fetchMessages();
+        const interval = setInterval(fetchMessages, 3000);
+        return () => clearInterval(interval);
     }, [activeChat?.id]);
 
     useEffect(() => {
@@ -113,8 +106,6 @@ const SupportChatAdmin = () => {
         }
     }, [messages]);
 
-    const fetchChats = () => { };
-    const fetchMessages = () => { };
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
