@@ -654,10 +654,24 @@ router.post('/withdraw', async (req, res) => {
     }
 });
 
+// Quick in-memory cache to prevent rapid-fire quest claims (Anti-Cheat Cooldown)
+const claimCooldowns = new Map();
+const COOLDOWN_MS = 3000; // 3 seconds
+
 // POST /api/users/quests/complete
 router.post('/quests/complete', async (req, res) => {
     try {
         const { uid, questId } = req.body;
+
+        // Anti-Cheat: Prevent rapid-fire duplicate requests
+        const cooldownKey = `${uid}_${questId}`;
+        const lastClaim = claimCooldowns.get(cooldownKey);
+        if (lastClaim && Date.now() - lastClaim < COOLDOWN_MS) {
+            console.warn(`[ANTI_CHEAT] Dropped duplicate quest claim from ${uid} for ${questId}`);
+            return res.status(429).json({ error: 'Action on cooldown. Please wait.' });
+        }
+        claimCooldowns.set(cooldownKey, Date.now());
+
         const QUEST_REWARDS = {
             1: 50,  // DAILY_SYNC
             2: 200, // SYSTEM_EXPANSION

@@ -1,6 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const { db, admin } = require('../config/firebase');
+const rateLimit = require('express-rate-limit');
+
+// -- ANTI-CHEAT RATE LIMITER --
+const commentLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 5,
+    message: { error: 'ANTI_CHEAT: Comment velocity exceeded. Take a breath.' }
+});
 
 // GET /api/comments/user/:uid - Get all comments for projects owned by the user
 router.get('/user/:uid', async (req, res) => {
@@ -68,7 +76,7 @@ router.get('/:projectId', async (req, res) => {
 });
 
 // POST /api/comments/:projectId - Add a new comment
-router.post('/:projectId', async (req, res) => {
+router.post('/:projectId', commentLimiter, async (req, res) => {
     try {
         const { userId, userName, userAvatar, content } = req.body;
         const { projectId } = req.params;
