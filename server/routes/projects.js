@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const AdmZip = require('adm-zip');
 const { db, admin } = require('../config/firebase');
-const { getFileUrl, getFileBuffer } = require('../utils/storage');
+const { uploadFile, getFileUrl, getFileBuffer } = require('../utils/storage');
 const { createNotification } = require('./notifications');
 const rateLimit = require('express-rate-limit');
 
