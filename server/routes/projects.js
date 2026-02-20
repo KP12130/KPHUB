@@ -3,8 +3,22 @@ const router = express.Router();
 const multer = require('multer');
 const AdmZip = require('adm-zip');
 const { db, admin } = require('../config/firebase');
-const { uploadFile, getFileUrl, getFileBuffer } = require('../utils/storage');
+const { getFileUrl, getFileBuffer } = require('../utils/storage');
 const { createNotification } = require('./notifications');
+const rateLimit = require('express-rate-limit');
+
+// -- ANTI-CHEAT RATE LIMITERS --
+const likeLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 10,
+    message: { error: 'ANTI_CHEAT: Like velocity exceeded. Try again later.' }
+});
+
+const viewLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 30,
+    message: { error: 'ANTI_CHEAT: View velocity exceeded. Try again later.' }
+});
 
 // Memory storage for Multer
 const storage = multer.memoryStorage();
@@ -202,7 +216,7 @@ router.get('/:id/files', async (req, res) => {
 });
 
 // POST /api/projects/:id/like
-router.post('/:id/like', async (req, res) => {
+router.post('/:id/like', likeLimiter, async (req, res) => {
     try {
         const { userId } = req.body;
         if (!userId) return res.status(400).json({ error: 'User ID required' });
@@ -277,7 +291,7 @@ router.post('/:id/like', async (req, res) => {
 });
 
 // POST /api/projects/:id/view
-router.post('/:id/view', async (req, res) => {
+router.post('/:id/view', viewLimiter, async (req, res) => {
     try {
         const { userId } = req.body;
         const docRef = db.collection('projects').doc(req.params.id);

@@ -1,5 +1,6 @@
 // Custom Sanitization Engine (Matrix Shield)
 // Bypasses the immutable property errors of deprecated libraries like xss-clean
+const admin = require('firebase-admin');
 
 const sanitize = (val) => {
     if (typeof val !== 'string') return val;
@@ -50,7 +51,59 @@ const securityMiddleware = (req, res, next) => {
     next();
 };
 
+// --- IP BAN FIREWALL ---
+const bannedIPs = new Set();
+let isIpListLoaded = false;
+
+// Middleware to block requests from banned IPs
+const ipBanMiddleware = async (req, res, next) => {
+    const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+    // Load from DB once on startup (lazy load)
+    if (!isIpListLoaded) {
+        try {
+            const { db } = require('../config/firebase');
+            if (db && db.collection) {
+                const snapshot = await db.collection('banned_ips').get();
+                snapshot.forEach(doc => bannedIPs.add(doc.id));
+                isIpListLoaded = true;
+                console.log(`[FIREWALL] Loaded ${bannedIPs.size} banned IPs from grid.`);
+            }
+        } catch (e) {
+            console.error('[FIREWALL] Failed to load banned IPs grid data.', e.message);
+        }
+    }
+
+    if (bannedIPs.has(clientIp)) {
+        return res.status(403).json({ error: 'ACCESS_DENIED_IP_BAN', message: 'Your IP address has been permanently isolated from the grid.' });
+    }
+    next();
+};
+
+// Functions to manage IP bans from other routes
+const banIp = async (ip, reason = 'Admin Action') => {
+    bannedIPs.add(ip);
+    try {
+        const { db } = require('../config/firebase');
+        await db.collection('banned_ips').doc(ip).set({ bannedAt: new Date().toISOString(), reason });
+    } catch (e) { console.error('[FIREWALL] DB ban sync failed:', e); }
+};
+
+const unbanIp = async (ip) => {
+    bannedIPs.delete(ip);
+    try {
+        const { db } = require('../config/firebase');
+        await db.collection('banned_ips').doc(ip).delete();
+    } catch (e) { console.error('[FIREWALL] DB unban sync failed:', e); }
+};
+
+const getBannedIps = () => Array.from(bannedIPs);
+
 module.exports = {
     securityMiddleware,
-    sanitizeInput
+    sanitizeInput,
+    ipBanMiddleware,
+    banIp,
+    unbanIp,
+    getBannedIps
 };

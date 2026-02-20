@@ -7,7 +7,7 @@ const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { db } = require('./config/firebase');
-const { securityMiddleware, sanitizeInput } = require('./middleware/security');
+const { securityMiddleware, sanitizeInput, ipBanMiddleware, getBannedIps, banIp, unbanIp } = require('./middleware/security');
 
 const app = express();
 app.set('trust proxy', 1); // Required for express-rate-limit on Render
@@ -53,6 +53,9 @@ app.use(cors({
 app.use(express.json({ limit: '10kb' })); // Body limit to prevent DOS
 app.use(sanitizeInput); // Data sanitization against XSS
 app.use(securityMiddleware); // Custom security logic
+
+// Apply IP Ban Firewall on all routes EARLY
+app.use(ipBanMiddleware);
 
 // Rate Limiting
 const limiter = rateLimit({
@@ -109,6 +112,33 @@ app.use('/api/voting', require('./routes/voting'));
 // Static File Hosting (Frontend)
 const distPath = path.join(__dirname, '../client/dist');
 app.use(express.static(distPath));
+
+// --- SECURITY & IP BAN MANAGEMENT ROUTES ---
+app.get('/api/security/banned-ips', (req, res) => {
+    res.json({ success: true, bannedIps: getBannedIps() });
+});
+
+app.post('/api/security/ban-ip', async (req, res) => {
+    try {
+        const { ip, reason } = req.body;
+        if (!ip) return res.status(400).json({ error: 'IP address required' });
+        await banIp(ip, reason);
+        res.json({ success: true, message: `IP ${ip} permanently banned.` });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to ban IP' });
+    }
+});
+
+app.post('/api/security/unban-ip', async (req, res) => {
+    try {
+        const { ip } = req.body;
+        if (!ip) return res.status(400).json({ error: 'IP address required' });
+        await unbanIp(ip);
+        res.json({ success: true, message: `IP ${ip} unbanned.` });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to unban IP' });
+    }
+});
 
 // DIRECT ROUTE INJECTION FOR DEBUGGING
 // POST /api/redeem

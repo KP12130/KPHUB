@@ -136,6 +136,131 @@ router.post('/', async (req, res) => {
 
 const { checkAchievements } = require('../utils/achievements');
 
+// Helper: resolve user by identifier (email / @username / UID)
+async function resolveUser(identifier) {
+    if (!identifier) return null;
+    if (identifier.includes('@') && !identifier.startsWith('@')) {
+        const snap = await db.collection('users').where('email', '==', identifier.toLowerCase()).get();
+        if (!snap.empty) return { ref: snap.docs[0].ref, data: snap.docs[0].data(), id: snap.docs[0].id };
+    } else if (identifier.startsWith('@')) {
+        const snap = await db.collection('users').where('username', '==', identifier.substring(1)).get();
+        if (!snap.empty) return { ref: snap.docs[0].ref, data: snap.docs[0].data(), id: snap.docs[0].id };
+    } else {
+        const doc = await db.collection('users').doc(identifier).get();
+        if (doc.exists) return { ref: doc.ref, data: doc.data(), id: doc.id };
+        const snap = await db.collection('users').where('username', '==', identifier).get();
+        if (!snap.empty) return { ref: snap.docs[0].ref, data: snap.docs[0].data(), id: snap.docs[0].id };
+    }
+    return null;
+}
+
+// GET /api/users/admin/user-info?identifier=...
+router.get('/admin/user-info', async (req, res) => {
+    try {
+        const { identifier } = req.query;
+        const user = await resolveUser(identifier);
+        if (!user) return res.status(404).json({ error: 'User not found.' });
+
+        const now = new Date();
+        const r = user.data.restrictions || {};
+        const updates = {};
+        if (r.mutedUntil && new Date(r.mutedUntil) < now) { updates['restrictions.muted'] = false; updates['restrictions.mutedUntil'] = null; }
+        if (r.uploadBlockedUntil && new Date(r.uploadBlockedUntil) < now) { updates['restrictions.uploadBlocked'] = false; updates['restrictions.uploadBlockedUntil'] = null; }
+        if (r.cashoutBlockedUntil && new Date(r.cashoutBlockedUntil) < now) { updates['restrictions.cashoutBlocked'] = false; updates['restrictions.cashoutBlockedUntil'] = null; }
+        if (r.downloadBlockedUntil && new Date(r.downloadBlockedUntil) < now) { updates['restrictions.downloadBlocked'] = false; updates['restrictions.downloadBlockedUntil'] = null; }
+        if (user.data.tier === 'BANNED' && r.banExpiry && new Date(r.banExpiry) < now) { updates['tier'] = 'FREE'; updates['restrictions.banExpiry'] = null; }
+        if (Object.keys(updates).length > 0) { await user.ref.update(updates); }
+
+        res.json({ uid: user.id, username: user.data.username, email: user.data.email, tier: user.data.tier, restrictions: user.data.restrictions || {}, lastKnownIp: user.data.lastKnownIp });
+    } catch (err) {
+        console.error('Admin User Info Error:', err);
+        res.status(500).json({ error: 'Failed to retrieve user info.' });
+    }
+});
+
+// POST /api/users/admin/moderate
+router.post('/admin/moderate', async (req, res) => {
+    try {
+        const { identifier, action, reason, duration } = req.body;
+        if (!identifier || !action) return res.status(400).json({ error: 'identifier and action required.' });
+        const user = await resolveUser(identifier);
+        if (!user) return res.status(404).json({ error: 'User not found.' });
+        const expiresAt = duration ? new Date(Date.now() + duration * 60 * 60 * 1000).toISOString() : null;
+        const updates = {};
+        switch (action) {
+            case 'BAN': updates.tier = 'BANNED'; updates.banReason = reason || 'Protocol violation.'; updates.bannedAt = new Date().toISOString(); if (expiresAt) updates['restrictions.banExpiry'] = expiresAt; break;
+            case 'UNBAN': updates.tier = 'FREE'; updates['restrictions.banExpiry'] = null; break;
+            case 'MUTE': updates['restrictions.muted'] = true; updates['restrictions.mutedUntil'] = expiresAt; updates['restrictions.muteReason'] = reason || null; break;
+            case 'UNMUTE': updates['restrictions.muted'] = false; updates['restrictions.mutedUntil'] = null; updates['restrictions.muteReason'] = null; break;
+            case 'BLOCK_UPLOAD': updates['restrictions.uploadBlocked'] = true; updates['restrictions.uploadBlockedUntil'] = expiresAt; break;
+            case 'UNBLOCK_UPLOAD': updates['restrictions.uploadBlocked'] = false; updates['restrictions.uploadBlockedUntil'] = null; break;
+            case 'BLOCK_CASHOUT': updates['restrictions.cashoutBlocked'] = true; updates['restrictions.cashoutBlockedUntil'] = expiresAt; break;
+            case 'UNBLOCK_CASHOUT': updates['restrictions.cashoutBlocked'] = false; updates['restrictions.cashoutBlockedUntil'] = null; break;
+            case 'BLOCK_DOWNLOAD': updates['restrictions.downloadBlocked'] = true; updates['restrictions.downloadBlockedUntil'] = expiresAt; break;
+            case 'UNBLOCK_DOWNLOAD': updates['restrictions.downloadBlocked'] = false; updates['restrictions.downloadBlockedUntil'] = null; break;
+            default: return res.status(400).json({ error: `Unknown action: ${action}` });
+        }
+        await user.ref.update(updates);
+
+        // Log violation
+        const isRevoke = action.startsWith('UN') || action.startsWith('UNBLOCK');
+        await db.collection('violations').add({
+            uid: user.id,
+            username: user.data.username,
+            action,
+            reason: reason || null,
+            duration: duration || null,
+            expiresAt: expiresAt || null,
+            appliedAt: new Date().toISOString(),
+            revoked: isRevoke,
+        });
+
+        res.json({ success: true, action, uid: user.id, username: user.data.username });
+    } catch (err) {
+        console.error('Moderate Error:', err);
+        res.status(500).json({ error: 'Moderation action failed.' });
+    }
+});
+
+// GET /api/users/admin/violations
+router.get('/admin/violations', async (req, res) => {
+    try {
+        const { uid, period } = req.query;
+        if (!uid) return res.status(400).json({ error: 'uid required' });
+
+        // Removing .orderBy() because it requires a composite index (uid ASC, appliedAt DESC).
+        // Since we sort the records array in JS later on, the DB query just needs the where() clause.
+        const snapshot = await db.collection('violations').where('uid', '==', uid).get();
+        let records = [];
+        snapshot.forEach(doc => {
+            records.push({ id: doc.id, ...doc.data() });
+        });
+
+        if (period && period !== 'lifetime') {
+            const now = new Date();
+            let msToSub = 0;
+            switch (period) {
+                case '1h': msToSub = 60 * 60 * 1000; break;
+                case '1d': msToSub = 24 * 60 * 60 * 1000; break;
+                case '7d': msToSub = 7 * 24 * 60 * 60 * 1000; break;
+                case '30d': msToSub = 30 * 24 * 60 * 60 * 1000; break;
+                case '365d': msToSub = 365 * 24 * 60 * 60 * 1000; break;
+            }
+            if (msToSub > 0) {
+                const cutoff = new Date(now.getTime() - msToSub).toISOString();
+                records = records.filter(r => r.appliedAt >= cutoff);
+            }
+        }
+
+        records.sort((a, b) => new Date(b.appliedAt) - new Date(a.appliedAt));
+
+        res.json(records);
+    } catch (err) {
+        console.error('Fetch violations error:', err);
+        res.status(500).json({ error: 'Failed to fetch violations' });
+    }
+});
+
 // GET /api/users/:id
 router.get('/:id', async (req, res) => {
     try {
@@ -146,15 +271,57 @@ router.get('/:id', async (req, res) => {
         }
 
         let userData = doc.data();
+        const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+        if (userData.lastKnownIp !== clientIp) {
+            await userRef.update({ lastKnownIp: clientIp });
+            userData.lastKnownIp = clientIp;
+        }
+
+        // --- AUTO-EXPIRE BAN & RESTRICTIONS ---
+        const now = new Date();
+        const r = userData.restrictions || {};
+        const expireUpdates = {};
+
+        if (userData.tier === 'BANNED' && r.banExpiry && new Date(r.banExpiry) < now) {
+            expireUpdates.tier = 'FREE';
+            expireUpdates['restrictions.banExpiry'] = null;
+        }
+        if (r.mutedUntil && new Date(r.mutedUntil) < now) {
+            expireUpdates['restrictions.muted'] = false;
+            expireUpdates['restrictions.mutedUntil'] = null;
+        }
+        if (r.uploadBlockedUntil && new Date(r.uploadBlockedUntil) < now) {
+            expireUpdates['restrictions.uploadBlocked'] = false;
+            expireUpdates['restrictions.uploadBlockedUntil'] = null;
+        }
+        if (r.cashoutBlockedUntil && new Date(r.cashoutBlockedUntil) < now) {
+            expireUpdates['restrictions.cashoutBlocked'] = false;
+            expireUpdates['restrictions.cashoutBlockedUntil'] = null;
+        }
+        if (r.downloadBlockedUntil && new Date(r.downloadBlockedUntil) < now) {
+            expireUpdates['restrictions.downloadBlocked'] = false;
+            expireUpdates['restrictions.downloadBlockedUntil'] = null;
+        }
+        if (Object.keys(expireUpdates).length > 0) {
+            await userRef.update(expireUpdates);
+            if (expireUpdates.tier) userData.tier = expireUpdates.tier;
+            Object.assign(userData.restrictions || {}, Object.fromEntries(
+                Object.entries(expireUpdates)
+                    .filter(([k]) => k.startsWith('restrictions.'))
+                    .map(([k, v]) => [k.replace('restrictions.', ''), v])
+            ));
+        }
+        // ----------------------------------------
 
         // --- DAILY PULSE REWARD LOGIC ---
-        const now = new Date();
+        const nowPulse = new Date();
         const lastPulse = userData.lastLoginPulse ? (userData.lastLoginPulse.toDate ? userData.lastLoginPulse.toDate() : new Date(userData.lastLoginPulse)) : null;
-        const isNewDay = !lastPulse || (now.setHours(0, 0, 0, 0) > new Date(lastPulse).setHours(0, 0, 0, 0));
+        const isNewDay = !lastPulse || (nowPulse.setHours(0, 0, 0, 0) > new Date(lastPulse).setHours(0, 0, 0, 0));
 
         if (isNewDay) {
             const oneDayMs = 24 * 60 * 60 * 1000;
-            const diffDays = lastPulse ? Math.floor((now - lastPulse) / oneDayMs) : 0;
+            const diffDays = lastPulse ? Math.floor((nowPulse - lastPulse) / oneDayMs) : 0;
 
             let newStreak = (userData.streakCount || 0) + 1;
             if (diffDays > 1) newStreak = 1;
@@ -458,6 +625,11 @@ router.post('/withdraw', async (req, res) => {
 
         if (!doc.exists) return res.status(404).json({ error: 'User not found' });
         const userData = doc.data();
+
+        if (userData.restrictions?.cashoutBlocked) {
+            return res.status(403).json({ error: 'CASHOUT_BLOCKED — Financial withdrawals are restricted on your account.' });
+        }
+
         const currentBalance = userData.stats?.balance || 0;
 
         if (amount > currentBalance) {
@@ -536,66 +708,27 @@ router.post('/quests/complete', async (req, res) => {
         res.status(500).json({ error: 'Failed' });
     }
 });
-// POST /api/users/admin/ban
-router.post('/admin/ban', async (req, res) => {
+// GET /api/users/admin/violations?uid=...&period=1h|1d|7d|30d|365d|lifetime
+router.get('/admin/violations', async (req, res) => {
     try {
-        const { identifier, reason } = req.body;
-        if (!identifier) return res.status(400).json({ error: 'User identifier required' });
+        const { uid, period = 'lifetime' } = req.query;
+        if (!uid) return res.status(400).json({ error: 'uid required' });
 
-        let userRef;
-        let userData;
+        const periodMap = { '1h': 1 / 24, '1d': 1, '7d': 7, '30d': 30, '365d': 365 };
+        let query = db.collection('violations').where('uid', '==', uid).orderBy('appliedAt', 'desc');
 
-        // Determine identifier type
-        if (identifier.includes('@') && !identifier.startsWith('@')) {
-            // Email
-            const snapshot = await db.collection('users').where('email', '==', identifier.toLowerCase()).get();
-            if (!snapshot.empty) {
-                userRef = snapshot.docs[0].ref;
-                userData = snapshot.docs[0].data();
-            }
-        } else if (identifier.startsWith('@')) {
-            // Username (with @)
-            const username = identifier.substring(1);
-            const snapshot = await db.collection('users').where('username', '==', username).get();
-            if (!snapshot.empty) {
-                userRef = snapshot.docs[0].ref;
-                userData = snapshot.docs[0].data();
-            }
-        } else {
-            // UID or Username without @
-            const doc = await db.collection('users').doc(identifier).get();
-            if (doc.exists) {
-                userRef = doc.ref;
-                userData = doc.data();
-            } else {
-                // Fallback: Check if it's a username without @
-                const snapshot = await db.collection('users').where('username', '==', identifier).get();
-                if (!snapshot.empty) {
-                    userRef = snapshot.docs[0].ref;
-                    userData = snapshot.docs[0].data();
-                }
-            }
+        if (period !== 'lifetime' && periodMap[period]) {
+            const since = new Date(Date.now() - periodMap[period] * 24 * 60 * 60 * 1000).toISOString();
+            query = query.where('appliedAt', '>=', since);
         }
 
-        if (!userRef) {
-            return res.status(404).json({ error: 'User not found in system.' });
-        }
-
-        if (userData.tier === 'BANNED') {
-            return res.status(400).json({ error: 'User is already banned.' });
-        }
-
-        await userRef.update({
-            tier: 'BANNED',
-            banReason: reason || 'Violation of system protocols.',
-            bannedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-
-        res.json({ success: true, message: `System access revoked for ${userData.username || userData.email}` });
-    } catch (error) {
-        console.error('Ban User Error:', error);
-        res.status(500).json({ error: 'Failed to execute ban protocol.' });
+        const snap = await query.limit(100).get();
+        res.json(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (err) {
+        console.error('Violations Error:', err);
+        res.status(500).json({ error: 'Failed to fetch violations.' });
     }
 });
 
 module.exports = router;
+
