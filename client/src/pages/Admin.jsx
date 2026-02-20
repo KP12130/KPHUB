@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Shield, Lock, Terminal, Activity, LifeBuoy, Mail,
     Clock, CheckCircle2, Send, ArrowLeft, LogOut, Loader2,
-    AlertCircle, Check, ExternalLink
+    AlertCircle, Check, ExternalLink, Users, Slash
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE } from '../api';
@@ -27,6 +27,9 @@ const Admin = () => {
     const [respondingTo, setRespondingTo] = useState(null);
     const [responseText, setResponseText] = useState('');
     const [isSending, setIsSending] = useState(false);
+    const [banIdentifier, setBanIdentifier] = useState('');
+    const [banReason, setBanReason] = useState('');
+    const [isBanning, setIsBanning] = useState(false);
 
     useEffect(() => {
         const session = localStorage.getItem('admin_session');
@@ -137,7 +140,7 @@ const Admin = () => {
         );
     }
 
-    const [activeTab, setActiveTab] = useState('SUPPORT');
+    const [activeTab, setActiveTab] = useState('SUPPORT'); // SUPPORT, VERIFICATION, USER_MANAGEMENT
     const [pendingVerifications, setPendingVerifications] = useState([]);
     const [isVerifying, setIsVerifying] = useState(false);
 
@@ -188,9 +191,11 @@ const Admin = () => {
                     <p className="text-gray-500 font-mono text-xs tracking-[0.3em] uppercase mt-2">System command & support orchestration.</p>
                 </div>
                 <div className="flex gap-4">
-                    <button onClick={activeTab === 'SUPPORT' ? fetchTickets : fetchPendingVerifications} className="px-4 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-white/10 transition-all flex items-center gap-2">
-                        <Loader2 className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} /> Sync_Data
-                    </button>
+                    {activeTab !== 'USER_MANAGEMENT' && (
+                        <button onClick={activeTab === 'SUPPORT' ? fetchTickets : fetchPendingVerifications} className="px-4 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-white/10 transition-all flex items-center gap-2">
+                            <Loader2 className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} /> Sync_Data
+                        </button>
+                    )}
                     <button onClick={handleLogout} className="px-6 py-3 border border-red-500/30 text-red-500 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center gap-2">
                         <LogOut className="w-3 h-3" /> Terminate_Session
                     </button>
@@ -210,65 +215,120 @@ const Admin = () => {
                 >
                     Identity_Audits
                 </button>
+                <button
+                    onClick={() => setActiveTab('USER_MANAGEMENT')}
+                    className={`px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${activeTab === 'USER_MANAGEMENT' ? 'bg-red-500 text-black shadow-[0_0_20px_rgba(239,68,68,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
+                >
+                    User_Management
+                </button>
             </div>
 
-            <div className="space-y-6">
-                {activeTab === 'SUPPORT' ? (
-                    <SupportChatAdmin />
-                ) : (
-                    <div className="space-y-8">
-                        <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic flex items-center gap-3">
-                            <Shield className="text-neon-green" /> Pending_Citizen_Audits
-                        </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {pendingVerifications.length > 0 ? (
-                                pendingVerifications.map(user => (
-                                    <GlassCard key={user.id} className="relative group overflow-hidden border border-white/5 hover:border-neon-green/30 transition-all">
-                                        <div className="flex items-center gap-4 mb-6">
-                                            <img src={user.photoURL} className="w-12 h-12 rounded-full border border-white/10" />
-                                            <div>
-                                                <h3 className="font-black text-white uppercase text-sm tracking-widest">{user.username}</h3>
-                                                <p className="text-[10px] text-gray-500 font-mono tracking-tighter truncate max-w-[150px]">{user.id}</p>
-                                            </div>
+            {activeTab === 'SUPPORT' && (
+                <SupportChatAdmin />
+            )}
+
+            {activeTab === 'VERIFICATION' && (
+                <div className="space-y-8">
+                    <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic flex items-center gap-3">
+                        <Shield className="text-neon-green" /> Pending_Citizen_Audits
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {pendingVerifications.length > 0 ? (
+                            pendingVerifications.map(user => (
+                                <GlassCard key={user.id} className="relative group overflow-hidden border border-white/5 hover:border-neon-green/30 transition-all">
+                                    <div className="flex items-center gap-4 mb-6">
+                                        <img src={user.photoURL} alt="avatar" className="w-12 h-12 rounded-full border border-white/10" />
+                                        <div>
+                                            <h3 className="font-black text-white uppercase text-sm tracking-widest">{user.username}</h3>
+                                            <p className="text-[10px] text-gray-500 font-mono tracking-tighter truncate max-w-[150px]">{user.id}</p>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4 mb-6 text-[10px] font-mono">
-                                            <div className="bg-white/5 p-2 rounded-lg">
-                                                <p className="text-gray-500 uppercase">REP_INDEX</p>
-                                                <p className="text-neon-green font-bold">{user.stats?.reputation || 0}</p>
-                                            </div>
-                                            <div className="bg-white/5 p-2 rounded-lg">
-                                                <p className="text-gray-500 uppercase">SYS_UPLOADS</p>
-                                                <p className="text-neon-blue font-bold">{user.stats?.uploads || 0}</p>
-                                            </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 mb-6 text-[10px] font-mono">
+                                        <div className="bg-white/5 p-2 rounded-lg">
+                                            <p className="text-gray-500 uppercase">REP_INDEX</p>
+                                            <p className="text-neon-green font-bold">{user.stats?.reputation || 0}</p>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleVerifyAction(user.id, 'APPROVE')}
-                                                disabled={isVerifying}
-                                                className="flex-1 py-3 bg-neon-green/20 text-neon-green hover:bg-neon-green hover:text-black transition-all rounded-xl font-black uppercase text-[10px] tracking-widest"
-                                            >
-                                                Authorize
-                                            </button>
-                                            <button
-                                                onClick={() => handleVerifyAction(user.id, 'REJECT')}
-                                                disabled={isVerifying}
-                                                className="flex-1 py-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all rounded-xl font-black uppercase text-[10px] tracking-widest"
-                                            >
-                                                Deny_Access
-                                            </button>
+                                        <div className="bg-white/5 p-2 rounded-lg">
+                                            <p className="text-gray-500 uppercase">SYS_UPLOADS</p>
+                                            <p className="text-neon-blue font-bold">{user.stats?.uploads || 0}</p>
                                         </div>
-                                    </GlassCard>
-                                ))
-                            ) : (
-                                <div className="col-span-full py-20 text-center glass-panel rounded-3xl border border-dashed border-white/5">
-                                    <CheckCircle2 className="w-12 h-12 text-gray-800 mx-auto mb-4" />
-                                    <p className="text-gray-500 font-mono text-xs uppercase tracking-widest">No pending audits in the verification queue.</p>
-                                </div>
-                            )}
-                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => handleVerifyAction(user.id, 'APPROVE')}
+                                            disabled={isVerifying}
+                                            className="flex-1 py-3 bg-neon-green/20 text-neon-green hover:bg-neon-green hover:text-black transition-all rounded-xl font-black uppercase text-[10px] tracking-widest"
+                                        >
+                                            Authorize
+                                        </button>
+                                        <button
+                                            onClick={() => handleVerifyAction(user.id, 'REJECT')}
+                                            disabled={isVerifying}
+                                            className="flex-1 py-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all rounded-xl font-black uppercase text-[10px] tracking-widest"
+                                        >
+                                            Deny_Access
+                                        </button>
+                                    </div>
+                                </GlassCard>
+                            ))
+                        ) : (
+                            <div className="col-span-full py-20 text-center glass-panel rounded-3xl border border-dashed border-white/5">
+                                <CheckCircle2 className="w-12 h-12 text-gray-800 mx-auto mb-4" />
+                                <p className="text-gray-500 font-mono text-xs uppercase tracking-widest">No pending audits in the verification queue.</p>
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
+                </div>
+            )}
+
+            {activeTab === 'USER_MANAGEMENT' && (
+                <div className="space-y-8 max-w-2xl">
+                    <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic flex items-center gap-3">
+                        <Slash className="text-red-500" /> Revoke_Access_Protocol
+                    </h2>
+
+                    <div className="glass-panel p-8 rounded-[2.5rem] border border-red-500/20 bg-red-950/20">
+                        <p className="text-gray-400 font-mono text-xs mb-8">
+                            Specify a user identity to permanently sever their connection to the main grid. They will be isolated to the Banned Portal.
+                        </p>
+
+                        <form onSubmit={handleBanUser} className="space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-2">
+                                    <Users className="w-3 h-3 text-red-500" /> Identifier (Email, UID, or @username)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={banIdentifier}
+                                    onChange={(e) => setBanIdentifier(e.target.value)}
+                                    placeholder="e.g., user@domain.com, @neo_coder, abc123def456"
+                                    className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white font-mono placeholder:text-gray-700 outline-none focus:border-red-500 transition-colors"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-2">
+                                    <AlertCircle className="w-3 h-3 text-red-500" /> Ban Reason (Optional)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={banReason}
+                                    onChange={(e) => setBanReason(e.target.value)}
+                                    placeholder="Internal reason for audit logs"
+                                    className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white font-mono placeholder:text-gray-700 outline-none focus:border-red-500 transition-colors"
+                                />
+                            </div>
+
+                            <button
+                                disabled={isBanning || !banIdentifier.trim()}
+                                className="w-full h-14 bg-red-500/10 border border-red-500/30 text-red-500 font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl flex items-center justify-center gap-2 hover:bg-red-500 hover:text-white transition-all disabled:opacity-50"
+                            >
+                                {isBanning ? 'Executing Protocol...' : 'Sever_Connection'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

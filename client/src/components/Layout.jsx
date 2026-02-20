@@ -5,8 +5,11 @@ import Footer from './Footer';
 import { motion, AnimatePresence } from 'framer-motion';
 import CommandPalette from './CommandPalette';
 import GridChat from './GridChat';
+import { useAuth } from '../context/AuthContext';
+import BannedPortal from '../pages/BannedPortal';
 
 const Layout = ({ children }) => {
+    const { currentUser } = useAuth();
     const location = useLocation();
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
@@ -20,6 +23,11 @@ const Layout = ({ children }) => {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
+
+    // BANNED USER TRAP (Must be after all hooks!)
+    if (currentUser?.tier === 'BANNED') {
+        return <BannedPortal />;
+    }
 
     return (
         <div className="min-h-screen flex flex-col relative overflow-hidden scanlines noise">

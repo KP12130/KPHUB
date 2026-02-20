@@ -536,7 +536,66 @@ router.post('/quests/complete', async (req, res) => {
         res.status(500).json({ error: 'Failed' });
     }
 });
+// POST /api/users/admin/ban
+router.post('/admin/ban', async (req, res) => {
+    try {
+        const { identifier, reason } = req.body;
+        if (!identifier) return res.status(400).json({ error: 'User identifier required' });
 
+        let userRef;
+        let userData;
 
+        // Determine identifier type
+        if (identifier.includes('@') && !identifier.startsWith('@')) {
+            // Email
+            const snapshot = await db.collection('users').where('email', '==', identifier.toLowerCase()).get();
+            if (!snapshot.empty) {
+                userRef = snapshot.docs[0].ref;
+                userData = snapshot.docs[0].data();
+            }
+        } else if (identifier.startsWith('@')) {
+            // Username (with @)
+            const username = identifier.substring(1);
+            const snapshot = await db.collection('users').where('username', '==', username).get();
+            if (!snapshot.empty) {
+                userRef = snapshot.docs[0].ref;
+                userData = snapshot.docs[0].data();
+            }
+        } else {
+            // UID or Username without @
+            const doc = await db.collection('users').doc(identifier).get();
+            if (doc.exists) {
+                userRef = doc.ref;
+                userData = doc.data();
+            } else {
+                // Fallback: Check if it's a username without @
+                const snapshot = await db.collection('users').where('username', '==', identifier).get();
+                if (!snapshot.empty) {
+                    userRef = snapshot.docs[0].ref;
+                    userData = snapshot.docs[0].data();
+                }
+            }
+        }
+
+        if (!userRef) {
+            return res.status(404).json({ error: 'User not found in system.' });
+        }
+
+        if (userData.tier === 'BANNED') {
+            return res.status(400).json({ error: 'User is already banned.' });
+        }
+
+        await userRef.update({
+            tier: 'BANNED',
+            banReason: reason || 'Violation of system protocols.',
+            bannedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        res.json({ success: true, message: `System access revoked for ${userData.username || userData.email}` });
+    } catch (error) {
+        console.error('Ban User Error:', error);
+        res.status(500).json({ error: 'Failed to execute ban protocol.' });
+    }
+});
 
 module.exports = router;
