@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     MessageSquare, Send, Clock, CheckCircle2,
@@ -76,7 +77,7 @@ const SupportChat = ({ currentUser }) => {
         });
 
         return () => unsubscribe();
-    }, [currentUser?.uid]);
+    }, [currentUser?.uid, viewMode]);
 
     useEffect(() => {
         if (!activeChat?.id) return;
@@ -172,7 +173,7 @@ const SupportChat = ({ currentUser }) => {
         try {
             const res = await axios.post(`${API_BASE}/api/support/submit`, {
                 subject,
-                userEmail: currentUser.email,
+                userEmail: currentUser.email || 'unknown@grid.nexus',
                 userId: currentUser.uid,
                 type: 'REQUEST'
             });
@@ -190,8 +191,62 @@ const SupportChat = ({ currentUser }) => {
 
     if (isLoading) return <div className="text-center py-20 animate-pulse font-mono text-[10px] text-gray-500">SYNCING_SUPPORT_MATRIX...</div>;
 
+    const modalContent = (
+        <AnimatePresence>
+            {isModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        className="w-full max-w-md glass-panel p-8 rounded-[2.5rem] border border-white/10 relative shadow-2xl"
+                    >
+                        <button
+                            onClick={() => setIsModalOpen(false)}
+                            className="absolute top-6 right-6 p-2 text-gray-500 hover:text-white transition-all z-20"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+
+                        <div className="text-center space-y-4 mb-8">
+                            <div className="w-16 h-16 bg-neon-blue/10 border border-neon-blue/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <Plus className="w-8 h-8 text-neon-blue" />
+                            </div>
+                            <h3 className="text-xl font-black text-white italic uppercase tracking-tight">New_Support_Protocol</h3>
+                            <p className="text-[10px] text-gray-500 font-mono uppercase">Provide subject telemetry to initialize link.</p>
+                        </div>
+
+                        <form onSubmit={handleCreateTicket} className="space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-[8px] font-bold text-gray-600 uppercase ml-1">Transmission_Subject</label>
+                                <input
+                                    autoFocus
+                                    value={subject}
+                                    onChange={(e) => setSubject(e.target.value)}
+                                    placeholder="Brief summary of glitch (e.g. Login Loop)"
+                                    className="w-full bg-void border border-gray-800 rounded-xl px-4 py-3 text-[10px] text-white font-mono placeholder:text-gray-800 outline-none focus:border-neon-blue transition-colors"
+                                />
+                            </div>
+
+                            <button
+                                disabled={isSubmitting || !subject.trim()}
+                                className="w-full h-14 bg-neon-blue text-black font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl flex items-center justify-center gap-2 hover:bg-white transition-all disabled:opacity-50"
+                            >
+                                {isSubmitting ? 'INITIALIZING...' : 'Establish_Link'}
+                            </button>
+
+                            <p className="text-center text-[7px] text-gray-700 font-mono uppercase">
+                                Active Ticket Limit: 2/user
+                            </p>
+                        </form>
+                    </motion.div>
+                </div>
+            )}
+        </AnimatePresence>
+    );
+
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[700px]">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[700px] relative">
             {/* Sidebar: Chat List */}
             <div className="lg:col-span-1 border-r border-white/5 pr-6 space-y-6 flex flex-col">
                 <div className="flex items-center justify-between">
@@ -386,58 +441,8 @@ const SupportChat = ({ currentUser }) => {
                 )}
             </div>
 
-            {/* New Ticket Modal */}
-            <AnimatePresence>
-                {isModalOpen && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            className="w-full max-w-md glass-panel p-8 rounded-[2.5rem] border border-white/10 relative"
-                        >
-                            <button
-                                onClick={() => setIsModalOpen(false)}
-                                className="absolute top-6 right-6 p-2 text-gray-500 hover:text-white transition-all"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-
-                            <div className="text-center space-y-4 mb-8">
-                                <div className="w-16 h-16 bg-neon-blue/10 border border-neon-blue/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                    <Plus className="w-8 h-8 text-neon-blue" />
-                                </div>
-                                <h3 className="text-xl font-black text-white italic uppercase tracking-tight">New_Support_Protocol</h3>
-                                <p className="text-[10px] text-gray-500 font-mono uppercase">Provide subject telemetry to initialize link.</p>
-                            </div>
-
-                            <form onSubmit={handleCreateTicket} className="space-y-6">
-                                <div className="space-y-2">
-                                    <label className="text-[8px] font-bold text-gray-600 uppercase ml-1">Transmission_Subject</label>
-                                    <input
-                                        autoFocus
-                                        value={subject}
-                                        onChange={(e) => setSubject(e.target.value)}
-                                        placeholder="Brief summary of glitch (e.g. Login Loop)"
-                                        className="w-full bg-void border border-gray-800 rounded-xl px-4 py-3 text-[10px] text-white font-mono placeholder:text-gray-800 outline-none focus:border-neon-blue transition-colors"
-                                    />
-                                </div>
-
-                                <button
-                                    disabled={isSubmitting || !subject.trim()}
-                                    className="w-full h-14 bg-neon-blue text-black font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl flex items-center justify-center gap-2 hover:bg-white transition-all disabled:opacity-50"
-                                >
-                                    {isSubmitting ? 'INITIALIZING...' : 'Establish_Link'}
-                                </button>
-
-                                <p className="text-center text-[7px] text-gray-700 font-mono uppercase">
-                                    Active Ticket Limit: 2/user
-                                </p>
-                            </form>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+            {/* Render Modal via Portal */}
+            {typeof window === 'object' && createPortal(modalContent, document.body)}
         </div>
     );
 };
