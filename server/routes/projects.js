@@ -6,30 +6,34 @@ const { db, admin } = require('../config/firebase');
 const { uploadFile, getFileUrl, getFileBuffer } = require('../utils/storage');
 const { createNotification } = require('./notifications');
 const rateLimit = require('express-rate-limit');
-const { triggerAutoModeration } = require('../middleware/security');
+const { triggerAutoModeration, checkMuteMiddleware } = require('../middleware/security');
 
 const antiCheatHandler = (actionType) => async (req, res, next, options) => {
-    const userId = req.body.userId;
+    const userId = req.body?.userId || req.query?.userId || req.params?.uid; // Detection parity
     const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    if (userId) {
-        // Await the moderation logic so the database is guaranteed to be updated BEFORE returning 429.
-        // This prevents the frontend from force-reloading and fetching a stale user profile.
-        await triggerAutoModeration(userId, ip, actionType).catch(console.error);
-    }
-    res.status(options.statusCode || 429).json(options.message);
+
+    // Await moderation logic regardless of userId (anonymous triggers IP ban)
+    await triggerAutoModeration(userId, ip, actionType).catch(console.error);
+
+    // Merge options.message with forceReload flag
+    const responseBody = typeof options.message === 'string'
+        ? { error: options.message, forceReload: true }
+        : { ...options.message, forceReload: true };
+
+    res.status(options.statusCode || 429).json(responseBody);
 };
 
 // -- ANTI-CHEAT RATE LIMITERS --
 const likeLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: 10,
+    max: 15, // Increased from 5 to allow normal browsing
     handler: antiCheatHandler('Like Spam'),
     message: { error: 'ANTI_CHEAT: Like velocity exceeded. You have received an automated strike.' }
 });
 
 const viewLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: 30,
+    max: 20, // Tightened from 30
     handler: antiCheatHandler('View Spam'),
     message: { error: 'ANTI_CHEAT: View velocity exceeded. You have received an automated strike.' }
 });
@@ -230,7 +234,7 @@ router.get('/:id/files', async (req, res) => {
 });
 
 // POST /api/projects/:id/like
-router.post('/:id/like', likeLimiter, async (req, res) => {
+router.post('/:id/like', checkMuteMiddleware, likeLimiter, async (req, res) => {
     try {
         const { userId } = req.body;
         if (!userId) return res.status(400).json({ error: 'User ID required' });
@@ -244,6 +248,10 @@ router.post('/:id/like', likeLimiter, async (req, res) => {
         const likes = project.likes || [];
         const isLiked = likes.includes(userId);
         const authorId = project.author.uid;
+
+        // Invalidate cache on change
+        projectDetailCache.store.delete(req.params.id);
+        projectsCache.clear();
 
         if (isLiked) {
             await docRef.update({
@@ -305,7 +313,7 @@ router.post('/:id/like', likeLimiter, async (req, res) => {
 });
 
 // POST /api/projects/:id/view
-router.post('/:id/view', viewLimiter, async (req, res) => {
+router.post('/:id/view', checkMuteMiddleware, viewLimiter, async (req, res) => {
     try {
         const { userId } = req.body;
         const docRef = db.collection('projects').doc(req.params.id);
@@ -348,18 +356,82 @@ router.post('/:id/view', viewLimiter, async (req, res) => {
     }
 });
 
+// Simple Memory Cache for Projects List (TTL 30 seconds)
+const projectsCache = {
+    store: new Map(),
+    get(key) {
+        const item = this.store.get(key);
+        if (!item) return null;
+        if (Date.now() > item.expiry) {
+            this.store.delete(key);
+            return null;
+        }
+        return item.value;
+    },
+    set(key, value) {
+        if (this.store.size > 100) this.store.clear();
+        this.store.set(key, { value, expiry: Date.now() + 30000 });
+    },
+    clear() { this.store.clear(); }
+};
+
+// Cache for Individual Project Details (TTL 30 seconds)
+const projectDetailCache = {
+    store: new Map(),
+    get(id) {
+        const item = this.store.get(id);
+        if (item && Date.now() < item.expiry) return item.value;
+        return null;
+    },
+    set(id, value) {
+        if (this.store.size > 500) this.store.clear();
+        this.store.set(id, { value, expiry: Date.now() + 30000 });
+    }
+};
+
+// Cache for Devlogs/Updates (TTL 60 seconds)
+const updatesCache = {
+    store: new Map(),
+    get(id) {
+        const item = this.store.get(id);
+        if (item && Date.now() < item.expiry) return item.value;
+        return null;
+    },
+    set(id, value) {
+        if (this.store.size > 500) this.store.clear();
+        this.store.set(id, { value, expiry: Date.now() + 60000 });
+    }
+};
+
+
+// GET /api/projects/user/:uid
+router.get('/user/:uid', async (req, res) => {
+    try {
+        const snapshot = await db.collection('projects').where('author.uid', '==', req.params.uid).get();
+        const projects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.json(projects);
+    } catch (error) {
+        console.error('[DATABASE_ERROR] User Projects Fetch failed:', error);
+        res.status(500).json({ error: 'Failed' });
+    }
+});
+
 // GET /api/projects
 router.get('/', async (req, res) => {
     try {
-        const { search, category } = req.query;
+        const { search, category, sort, limit } = req.query;
+        const cacheKey = JSON.stringify({ search, category, sort, limit });
+        const cachedData = projectsCache.get(cacheKey);
+
+        if (cachedData) {
+            return res.json(cachedData);
+        }
+
         let query = db.collection('projects');
 
         if (category && category !== 'All') {
             query = query.where('category', '==', category);
         }
-
-        // REMOVED FIRESTORE FILTER TO AVOID INDEX ISSUES
-        // query = query.where('isPrivate', '!=', true);
 
         const snapshot = await query.get();
         let projects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -376,8 +448,6 @@ router.get('/', async (req, res) => {
             );
         }
 
-        const { sort } = req.query;
-
         projects.sort((a, b) => {
             // Priority 1: Promoted/Boosted
             const aPromoted = a.boostedUntil && new Date(a.boostedUntil) > new Date();
@@ -393,6 +463,9 @@ router.get('/', async (req, res) => {
             return dateB - dateA;
         });
 
+        // Store in Cache
+        projectsCache.set(cacheKey, projects);
+
         res.json(projects);
     } catch (error) {
         console.error('[DATABASE_ERROR] Project List Fetch failed:', error);
@@ -403,11 +476,21 @@ router.get('/', async (req, res) => {
 // GET /api/projects/:id
 router.get('/:id', async (req, res) => {
     try {
-        const doc = await db.collection('projects').doc(req.params.id).get();
+        const projectId = req.params.id;
+        const { userId } = req.query;
+
+        // Try cache first (if not checking membership or dev status)
+        const cached = projectDetailCache.get(projectId);
+        if (cached && !cached.memberOnly) {
+            return res.json(cached);
+        }
+
+        const doc = await db.collection('projects').doc(projectId).get();
         if (!doc.exists) return res.status(404).json({ error: 'Project not found' });
 
         const data = doc.data();
-        const { userId } = req.query;
+        if (!data.memberOnly) projectDetailCache.set(projectId, data);
+
 
         if (data.memberOnly && data.author.uid !== userId) {
             if (!userId) {
@@ -494,18 +577,23 @@ router.put('/:id', async (req, res) => {
 // GET /api/projects/:id/updates
 router.get('/:id/updates', async (req, res) => {
     try {
-        const doc = await db.collection('projects').doc(req.params.id).get();
+        const projectId = req.params.id;
+        const cached = updatesCache.get(projectId);
+        if (cached) return res.json(cached);
+
+        const doc = await db.collection('projects').doc(projectId).get();
         if (!doc.exists) return res.status(404).json({ error: 'Project not found' });
 
         const project = doc.data();
         const updates = project.updates || [];
 
-        // Sort by date desc
+        // Sort by date desc (in memory, no index required)
         updates.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
+        updatesCache.set(projectId, updates);
         res.json(updates);
     } catch (error) {
-        console.error('[DATABASE_ERROR] Fetch Files failed:', error);
+        console.error('[DATABASE_ERROR] Fetch Updates failed:', error);
         res.status(500).json({ error: 'Failed' });
     }
 });
@@ -528,6 +616,9 @@ router.post('/:id/updates', async (req, res) => {
             updatedAt: new Date().toISOString()
         });
 
+        // Invalidate cache
+        updatesCache.store.delete(req.params.id);
+
         // Return all updates to sync state
         const doc = await docRef.get();
         const project = doc.data();
@@ -536,7 +627,7 @@ router.post('/:id/updates', async (req, res) => {
 
         res.json(updates);
     } catch (error) {
-        console.error('[DATABASE_ERROR] Fetch Files failed:', error);
+        console.error('[DATABASE_ERROR] Post Update failed:', error);
         res.status(500).json({ error: 'Failed' });
     }
 });

@@ -99,11 +99,13 @@ router.get('/chat/:id/messages', async (req, res) => {
         const snapshot = await db.collection('support_tickets')
             .doc(req.params.id)
             .collection('messages')
-            .orderBy('timestamp', 'asc')
+            .orderBy('timestamp', 'desc')
+            .limit(50)
             .get();
 
         const messages = snapshot.docs.map(doc => doc.data());
-        res.json(messages);
+        // Reverse to maintain chronological order in frontend
+        res.json(messages.reverse());
     } catch (error) {
         res.status(500).json({ error: 'Failed to sync message history.' });
     }

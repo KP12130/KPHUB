@@ -9,8 +9,7 @@ const sanitize = (val) => {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#x27;')
-        .replace(/\//g, '&#x2F;');
+        .replace(/'/g, '&#x27;');
 };
 
 const sanitizeObject = (obj) => {
@@ -39,7 +38,6 @@ const securityMiddleware = (req, res, next) => {
     // 1. Log sensitive activity
     const sensitiveEndpoints = ['/api/redeem', '/api/users/login', '/api/users/register'];
     if (sensitiveEndpoints.includes(req.path) && req.method === 'POST') {
-        console.log(`[FIREWALL_ALERT] Sensitive access attempt on ${req.path} from IP: ${req.ip}`);
     }
 
     // 2. Add security headers (Extra layer)
@@ -66,7 +64,6 @@ const ipBanMiddleware = async (req, res, next) => {
             if (db && db.collection) {
                 const snapshot = await db.collection('banned_ips').get();
                 snapshot.forEach(doc => bannedIPs.add(doc.id));
-                console.log(`[FIREWALL] Loaded ${bannedIPs.size} banned IPs from grid.`);
             }
         } catch (e) {
             console.error('[FIREWALL] Failed to load banned IPs grid data.', e.message);
@@ -104,10 +101,99 @@ const unbanIp = async (ip) => {
 const getBannedIps = () => Array.from(bannedIPs);
 
 // --- AUTO-MODERATION ENGINE ---
-const strikeLocks = new Map(); // Cooldown map to prevent burst-strikes progressing tiers
+const strikeLocks = new Map(); // --- In-memory lock systems for anti-cheat ---
 const activeStrikes = new Map(); // Promise tracker to fix concurrent HTTP race conditions
 
+// Immediately lock out users the moment a ban/mute decision is made,
+// before the Firestore write completes. Prevents concurrent requests from slipping through.
+const pendingBans = new Set();
+const pendingMutes = new Map(); // uid -> mutedUntil ISO string
+
+/**
+ * Middleware to check if a user is muted or banned before allowing interaction.
+ * Should be used on all POST/PUT/DELETE interaction routes.
+ */
+const checkMuteMiddleware = async (req, res, next) => {
+    // Robust detection: Body -> Query -> Params
+    const userId = req.body?.userId || req.query?.userId || req.params?.uid || req.params?.userId;
+    if (!userId) return next();
+
+    try {
+        // 0. INSTANT CHECK: In-memory pending restriction
+        if (pendingBans.has(userId)) {
+            // Re-verify against DB to allow manual admin resets to bypass memory
+            const { db } = require('../config/firebase');
+            const userDoc = await db.collection('users').doc(userId).get();
+            if (userDoc.exists && userDoc.data().tier !== 'BANNED') {
+                pendingBans.delete(userId);
+            } else {
+                return res.status(403).json({ error: 'ACCOUNT_BANNED', message: 'Your credentials have been permanently isolated from the grid.', forceReload: true });
+            }
+        }
+
+        const pendingMuteUntil = pendingMutes.get(userId);
+        if (pendingMuteUntil && new Date(pendingMuteUntil) > new Date()) {
+            // Re-verify against DB to allow manual admin clears
+            const { db } = require('../config/firebase');
+            const userDoc = await db.collection('users').doc(userId).get();
+            if (userDoc.exists && userDoc.data().restrictions?.muted === false) {
+                pendingMutes.delete(userId);
+            } else {
+                const remaining = Math.ceil((new Date(pendingMuteUntil) - new Date()) / (1000 * 60));
+                return res.status(403).json({ error: 'ACCOUNT_MUTED', message: `Interaction restricted for ${remaining} more minutes.`, forceReload: true });
+            }
+        }
+
+        const { db } = require('../config/firebase');
+        const userDoc = await db.collection('users').doc(userId).get();
+        if (!userDoc.exists) return next();
+
+        const userData = userDoc.data();
+        const restrictions = userData.restrictions || {};
+
+        // 1. Check if Banned
+        if (userData.tier === 'BANNED') {
+            const banExpiry = restrictions.banExpiry ? new Date(restrictions.banExpiry) : null;
+            if (!banExpiry || banExpiry > new Date()) {
+                return res.status(403).json({
+                    error: 'ACCOUNT_BANNED',
+                    message: userData.banReason || 'Your credentials have been permanently isolated from the grid.',
+                    forceReload: true
+                });
+            }
+        }
+
+        // 2. Check if Muted
+        if (restrictions.muted) {
+            const mutedUntil = restrictions.mutedUntil ? new Date(restrictions.mutedUntil) : null;
+            if (mutedUntil && mutedUntil > new Date()) {
+                const remaining = Math.ceil((mutedUntil - new Date()) / (1000 * 60));
+                return res.status(403).json({
+                    error: 'ACCOUNT_MUTED',
+                    message: restrictions.muteReason || `Your interaction capability is restricted for ${remaining} more minutes due to systemic violations.`,
+                    forceReload: true
+                });
+            }
+        }
+
+        next();
+    } catch (e) {
+        console.error('[FIREWALL] Mute check failed:', e);
+        next(); // Fail open to not block users on DB errors
+    }
+};
+
 const triggerAutoModeration = async (uid, ip, actionType) => {
+    // Cooldown check for violations to prevent DB hammering during spam bursts
+    // Use individual lock keys for anonymous vs authenticated
+    const lockKey = uid ? `${uid}_viol` : `anon_${ip}_viol`;
+    const nowMs = Date.now();
+    const lastViol = strikeLocks.get(lockKey);
+    if (lastViol && nowMs - lastViol < 30000) {
+        return;
+    }
+    strikeLocks.set(lockKey, nowMs);
+
     // If there is no UID, they are an anonymous user/bot. Instantly IP Ban them.
     if (!uid) {
         if (ip) {
@@ -122,29 +208,26 @@ const triggerAutoModeration = async (uid, ip, actionType) => {
     }
 
     // Force concurrent spam requests to wait if a strike is currently being written to the database.
-    // This prevents the server from returning a 429 early, which would cause the frontend to reload
-    // before the database write is completed.
     if (activeStrikes.has(uid)) {
-        console.warn(`[ANTI_CHEAT] Concurrent burst delayed for User ${uid}...`);
         await activeStrikes.get(uid).catch(() => { });
         return;
     }
 
-    // Prevent race conditions and burst-strikes progressing tiers (max 1 strike progression per UID per minute)
-    const nowMs = Date.now();
-    const lastStrike = strikeLocks.get(uid);
-    if (lastStrike && nowMs - lastStrike < 60000) {
-        console.warn(`[ANTI_CHEAT] Ignored burst strike for User ${uid} (cooldown active).`);
-        return;
-    }
-    strikeLocks.set(uid, nowMs);
-
     // Encapsulate DB logic in a promise and track it
     const moderationProcess = (async () => {
-
         try {
-            const { db } = require('../config/firebase');
+            const { db, admin } = require('../config/firebase');
             const now = new Date();
+
+            // 0. QUICK CHECK: Is user already muted/banned? If so, exit early to save reads/writes.
+            const userDoc = await db.collection('users').doc(uid).get();
+            if (userDoc.exists) {
+                const ud = userDoc.data();
+                if (ud.tier === 'BANNED' || (ud.restrictions?.muted && new Date(ud.restrictions.mutedUntil) > now)) {
+                    return;
+                }
+            }
+
             const penaltyWindow = new Date(now.getTime() - 100 * 24 * 60 * 60 * 1000).toISOString();
 
             // 1. Log violation
@@ -172,12 +255,15 @@ const triggerAutoModeration = async (uid, ip, actionType) => {
 
             if (strikeCount === 1) {
                 // Strike 1: 1-hour mute
+                const muteExpiry = new Date(now.getTime() + 60 * 60 * 1000).toISOString();
+                pendingMutes.set(uid, muteExpiry); // Instant lock
                 restrictionUpdates['muted'] = true;
-                restrictionUpdates['mutedUntil'] = new Date(now.getTime() + 60 * 60 * 1000).toISOString();
+                restrictionUpdates['mutedUntil'] = muteExpiry;
                 restrictionUpdates['muteReason'] = `[AUTO] Anti-Cheat Strike 1: ${actionType} Spam`;
             } else if (strikeCount === 2) {
                 // Strike 2: 24-hour mute and upload block
                 const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+                pendingMutes.set(uid, expiresAt); // Instant lock
                 restrictionUpdates['muted'] = true;
                 restrictionUpdates['mutedUntil'] = expiresAt;
                 restrictionUpdates['uploadBlocked'] = true;
@@ -185,6 +271,7 @@ const triggerAutoModeration = async (uid, ip, actionType) => {
                 restrictionUpdates['muteReason'] = `[AUTO] Anti-Cheat Strike 2: ${actionType} Spam`;
             } else if (strikeCount === 3) {
                 // Strike 3: 10-day Ban
+                pendingBans.add(uid); // Instant lock
                 const expiresAt = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000).toISOString();
                 rootUpdates['tier'] = 'BANNED';
                 rootUpdates['banReason'] = `[AUTO] Anti-Cheat Strike 3: Repeated systemic abuse (${actionType})`;
@@ -192,6 +279,7 @@ const triggerAutoModeration = async (uid, ip, actionType) => {
                 restrictionUpdates['banExpiry'] = expiresAt;
             } else if (strikeCount === 4) {
                 // Strike 4: 90-day Ban
+                pendingBans.add(uid); // Instant lock
                 const expiresAt = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString();
                 rootUpdates['tier'] = 'BANNED';
                 rootUpdates['banReason'] = `[AUTO] Anti-Cheat Strike 4: Severe systemic abuse (${actionType})`;
@@ -199,6 +287,7 @@ const triggerAutoModeration = async (uid, ip, actionType) => {
                 restrictionUpdates['banExpiry'] = expiresAt;
             } else {
                 // Strike 5+: Permanent Ban
+                pendingBans.add(uid); // Instant lock
                 rootUpdates['tier'] = 'BANNED';
                 rootUpdates['banReason'] = `[AUTO] Anti-Cheat Strike 5: Permanent Grid Isolation (${actionType})`;
                 rootUpdates['bannedAt'] = now.toISOString();
@@ -212,7 +301,6 @@ const triggerAutoModeration = async (uid, ip, actionType) => {
             }
 
             await userRef.set(finalPayload, { merge: true });
-            console.log(`[ANTI_CHEAT] Strike ${strikeCount} applied to User ${uid}. Payload:`, finalPayload);
         } catch (e) {
             console.error('[ANTI_CHEAT] Auto-moderation DB error:', e);
         }
@@ -318,7 +406,6 @@ const triggerProfanityModeration = async (uid, ip, actionType) => {
             }
 
             await userRef.set(finalPayload, { merge: true });
-            console.log(`[PROFANITY_MOD] Strike ${strikeCount} applied to User ${uid}. Payload:`, finalPayload);
         } catch (e) {
             console.error('[PROFANITY_MOD] DB error:', e);
         }
@@ -342,5 +429,6 @@ module.exports = {
     unbanIp,
     getBannedIps,
     triggerAutoModeration,
-    triggerProfanityModeration
+    triggerProfanityModeration,
+    checkMuteMiddleware
 };

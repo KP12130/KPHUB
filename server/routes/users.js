@@ -30,39 +30,6 @@ router.get('/badges/definitions', (req, res) => {
 });
 
 
-// POST /api/users/redeem (Secret Protocol - Moved to top for priority)
-router.post('/redeem', async (req, res) => {
-    try {
-        const { uid, code } = req.body;
-        console.log(`[SYSTEM_AUDIT] Attempting redeem for UID: ${uid} with Code: '${code}'`);
-
-        if (!uid || !code) return res.status(400).json({ error: 'Missing credentials.' });
-
-        // The Secret Protocol (Trimmed for safety)
-        if (String(code).trim() === '12130') {
-            console.log('[SYSTEM_AUDIT] Access GRANTED.');
-
-            await db.collection('users').doc(uid).update({
-                tier: 'PRO',
-                membershipExpires: null, // Lifetime access
-                'stats.reputation': admin.firestore.FieldValue.increment(1000) // Bonus rep
-            });
-
-            return res.json({
-                success: true,
-                message: 'ACCESS_GRANTED: Override code accepted. Welcome to the Elite.',
-                tier: 'PRO'
-            });
-        }
-
-        console.log('[SYSTEM_AUDIT] Access DENIED.');
-        res.status(400).json({ error: 'ACCESS_DENIED: Invalid protocol code.' });
-
-    } catch (error) {
-        console.error('Redeem Error:', error);
-        res.status(500).json({ error: 'System error during override.' });
-    }
-});
 
 const multer = require('multer');
 const { uploadFile, getFileUrl } = require('../utils/storage');
@@ -283,22 +250,61 @@ router.get('/admin/violations', async (req, res) => {
     }
 });
 
+// Simple Memory Cache for Individual Users (TTL 60 seconds)
+const userCache = {
+    store: new Map(),
+    get(uid) {
+        const item = this.store.get(uid);
+        if (!item) return null;
+        if (Date.now() > item.expiry) {
+            this.store.delete(uid);
+            return null;
+        }
+        return item.value;
+    },
+    set(uid, value) {
+        if (this.store.size > 500) this.store.clear(); // max 500 users in memory
+        this.store.set(uid, { value, expiry: Date.now() + 60000 });
+    },
+    clear(uid) {
+        if (uid) this.store.delete(uid);
+        else this.store.clear();
+    }
+};
+
 // GET /api/users/:id
 router.get('/:id', async (req, res) => {
     try {
-        const userRef = db.collection('users').doc(req.params.id);
+        const uid = req.params.id;
+        const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+        // Check cache first
+        const cachedUser = userCache.get(uid);
+        if (cachedUser) {
+            // Asynchronously update IP if it changed, but still return cached data immediately
+            if (cachedUser.lastKnownIp !== clientIp) {
+                db.collection('users').doc(uid).update({ lastKnownIp: clientIp }).catch(console.error);
+                cachedUser.lastKnownIp = clientIp;
+                userCache.set(uid, cachedUser);
+            }
+            return res.json(cachedUser);
+        }
+
+        const userRef = db.collection('users').doc(uid);
         const doc = await userRef.get();
         if (!doc.exists) {
             return res.status(404).json({ error: 'User not found' });
         }
 
         let userData = doc.data();
-        const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
         if (userData.lastKnownIp !== clientIp) {
             await userRef.update({ lastKnownIp: clientIp });
             userData.lastKnownIp = clientIp;
         }
+
+        // Cache the newly fetched data
+        userCache.set(uid, userData);
 
         // --- AUTO-EXPIRE BAN & RESTRICTIONS ---
         const now = new Date();
@@ -431,7 +437,7 @@ router.get('/profile/:username', async (req, res) => {
 // PUT /api/users/:id (Update Profile)
 router.put('/:id', async (req, res) => {
     try {
-        const { uid, displayName, bio, gender, birthdate, username } = req.body;
+        const { uid, displayName, bio, gender, birthdate, username, location, website } = req.body;
 
         // Security check
         if (req.params.id !== uid) {
@@ -446,34 +452,45 @@ router.put('/:id', async (req, res) => {
         const userData = userDoc.data();
 
         let updates = {
-            displayName,
-            bio,
-            gender,
-            birthdate,
+            displayName: displayName || userData.displayName || '',
+            bio: bio || userData.bio || '',
+            location: location || userData.location || '',
+            website: website || userData.website || '',
+            gender: gender || userData.gender || '',
+            birthdate: birthdate || userData.birthdate || null,
             socials: req.body.socials || userData.socials || {},
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         };
 
         // Handle Username Change
-        if (username && username !== userData.username) {
+        const incomingUsername = (username || '').toLowerCase().trim();
+        const existingUsername = (userData.username || '').toLowerCase().trim();
+
+        if (incomingUsername && incomingUsername !== existingUsername) {
             // 1. Check 14-day limit
             const lastChange = userData.lastUsernameChange ? userData.lastUsernameChange.toDate() : null;
             if (lastChange) {
-                const daysSinceChange = (new Date() - lastChange) / (1000 * 60 * 60 * 24);
+                const now = new Date();
+                const daysSinceChange = (now - lastChange) / (1000 * 60 * 60 * 24);
                 if (daysSinceChange < 14) {
+                    const remainingDays = Math.ceil(14 - daysSinceChange);
                     return res.status(429).json({
-                        error: `You can only change your username once every 14 days. Try again in ${Math.ceil(14 - daysSinceChange)} days.`
+                        error: `You can only change your username once every 14 days. Try again in ${remainingDays} day${remainingDays > 1 ? 's' : ''}.`
                     });
                 }
             }
 
             // 2. Check availability
-            const usernameCheck = await db.collection('users').where('username', '==', username).get();
+            const usernameCheck = await db.collection('users').where('username', '==', incomingUsername).get();
             if (!usernameCheck.empty) {
-                return res.status(400).json({ error: 'Username already taken' });
+                // Check if it's taken by someone else
+                const takenByOther = usernameCheck.docs.find(doc => doc.id !== uid);
+                if (takenByOther) {
+                    return res.status(400).json({ error: 'Username already taken' });
+                }
             }
 
-            updates.username = username;
+            updates.username = incomingUsername;
             updates.lastUsernameChange = admin.firestore.FieldValue.serverTimestamp();
         }
 
@@ -763,16 +780,6 @@ router.get('/admin/violations', async (req, res) => {
     } catch (err) {
         console.error('Violations Error:', err);
         res.status(500).json({ error: 'Failed to fetch violations.' });
-    }
-});
-
-// GET /api/users/count - Live member count
-router.get('/count', async (req, res) => {
-    try {
-        const snapshot = await db.collection('users').get();
-        res.json({ count: snapshot.size });
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch member count.' });
     }
 });
 

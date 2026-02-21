@@ -2,13 +2,26 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../config/firebase');
 
+// Simple Memory Cache for Activity Feed (TTL 30 seconds)
+let activityCache = {
+    value: null,
+    expiry: 0
+};
+
 // GET /api/activity - Returns recent rank changes and punishments
 router.get('/', async (req, res) => {
     try {
+        if (activityCache.value && Date.now() < activityCache.expiry) {
+            return res.json(activityCache.value);
+        }
+
         // Get all violations, sort in JS (avoids composite index requirement)
         const snapshot = await db.collection('violations').get();
 
-        if (snapshot.empty) return res.json([]);
+        if (snapshot.empty) {
+            activityCache = { value: [], expiry: Date.now() + 30000 };
+            return res.json([]);
+        }
 
         const violations = snapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() }))
@@ -51,6 +64,7 @@ router.get('/', async (req, res) => {
             expiresAt: v.expiresAt || null
         }));
 
+        activityCache = { value: events, expiry: Date.now() + 30000 };
         res.json(events);
     } catch (err) {
         console.error('[DATABASE_ERROR] Fetch Activity failed:', err);

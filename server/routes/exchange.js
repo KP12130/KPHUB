@@ -202,8 +202,6 @@ router.get('/ledger/:uid', async (req, res) => {
         const { uid } = req.params;
         const snapshot = await db.collection('kpc_ledger')
             .where('uid', '==', uid)
-            .orderBy('timestamp', 'desc')
-            .limit(50)
             .get();
 
         const transactions = snapshot.docs.map(doc => ({
@@ -211,8 +209,16 @@ router.get('/ledger/:uid', async (req, res) => {
             ...doc.data()
         }));
 
-        res.json(transactions);
+        // Sort in memory to avoid missing index 400 errors
+        transactions.sort((a, b) => {
+            const timeA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
+            const timeB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp);
+            return timeB - timeA;
+        });
+
+        res.json(transactions.slice(0, 50));
     } catch (e) {
+        console.error('Ledger error:', e);
         res.status(400).json({ error: e.message });
     }
 });
@@ -491,9 +497,16 @@ router.get('/top-donors/:uid', async (req, res) => {
     }
 });
 
+// Simple cache for heavy aggregation (TTL 5 minutes)
+let statsCache = { value: null, expiry: 0 };
+
 // GET /api/exchange/stats
 router.get('/stats', async (req, res) => {
     try {
+        if (statsCache.value && Date.now() < statsCache.expiry) {
+            return res.json(statsCache.value);
+        }
+
         // This is a simple aggregation, we might want to cache this in a 'system_stats' doc later
         const ledgerSnap = await db.collection('kpc_ledger').get();
         let totalBurned = 0; // Rank purchases, flares, boosts, verification
@@ -506,20 +519,64 @@ router.get('/stats', async (req, res) => {
         });
 
         const usersSnap = await db.collection('users').get();
+        // Since we need to sum kpcBalance, we still fetch users for now, 
+        // but let's at least mention totalUsers from the size.
+        // In a real high-scale app, we'd use a summary doc for this.
         let totalCreditsInCirculation = 0;
         usersSnap.docs.forEach(doc => {
             totalCreditsInCirculation += (doc.data().stats?.kpcBalance || 0);
         });
 
-        res.json({
+        const totalUsers = usersSnap.size;
+
+        const responseData = {
             totalBurned,
             totalVolume,
             totalCreditsInCirculation,
-            totalUsers: usersSnap.size,
+            totalUsers,
             protocolVersion: '2.4.0_EXPANSION'
-        });
+        };
+
+        statsCache = { value: responseData, expiry: Date.now() + 300000 }; // 5 minutes
+
+        res.json(responseData);
     } catch (e) {
         res.status(400).json({ error: e.message });
+    }
+});
+
+// POST /api/exchange/redeem - Secret protocol for access overrides
+router.post('/redeem', async (req, res) => {
+    try {
+        const { uid, code } = req.body;
+        if (!uid || !code) return res.status(400).json({ error: 'Missing credentials.' });
+
+        if (String(code).trim() === '12130') {
+            await db.collection('users').doc(uid).update({
+                tier: 'PRO',
+                membershipExpires: null,
+                'stats.reputation': admin.firestore.FieldValue.increment(1000)
+            });
+
+            // Ledger log for the bypass
+            await db.collection('kpc_ledger').add({
+                uid,
+                amount: 1000,
+                type: 'CODE_REDEMPTION',
+                item: 'PRO_OVERRIDE',
+                timestamp: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            return res.json({
+                success: true,
+                message: 'ACCESS_GRANTED: Override code accepted.',
+                tier: 'PRO'
+            });
+        }
+
+        res.status(400).json({ error: 'ACCESS_DENIED: Invalid protocol code.' });
+    } catch (error) {
+        res.status(500).json({ error: 'System error.' });
     }
 });
 

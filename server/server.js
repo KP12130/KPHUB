@@ -44,7 +44,11 @@ app.use((req, res, next) => {
 app.use(cors({
     origin: [
         'http://localhost:5173',
+        'http://localhost:5174',
+        'http://localhost:5175',
         'http://localhost:3000',
+        /\.web\.app$/,
+        /\.firebaseapp\.com$/,
         /\.vercel\.app$/, // Allow all Vercel deployments
         process.env.FRONTEND_URL || '*'
     ],
@@ -56,6 +60,15 @@ app.use(securityMiddleware); // Custom security logic
 
 // Apply IP Ban Firewall on all routes EARLY
 app.use(ipBanMiddleware);
+app.use((req, res, next) => {
+    // Re-verify against latest bannedIPs just in case middleware was cached
+    const { getBannedIps } = require('./middleware/security');
+    const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if (getBannedIps().includes(clientIp)) {
+        return res.status(403).json({ error: 'ACCESS_DENIED_IP_BAN', message: 'Your IP address has been permanently isolated from the grid.' });
+    }
+    next();
+});
 
 // Rate Limiting
 // Skip entirely for localhost (dev mode hits limits from React StrictMode double-invokes)
@@ -81,15 +94,8 @@ const supportLimiter = rateLimit({
 app.use('/api/support', supportLimiter);
 app.use('/api/', limiter);
 
-// Auth limiter - still apply on localhost for security testing
-const authLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000,
-    max: 200,
-    message: { error: "BRUTE_FORCE_PROTECTION: Access locked for 1 hour." }
-});
-app.use('/api/redeem', authLimiter);
-
 // Request Logger & Emergency Circuit Breaker
+// PLACED AFTER RATE LIMITERS to ensure metrics only count processed traffic.
 let readApiCount = 0;
 let writeApiCount = 0;
 let circuitBreakerTripped = false;
@@ -104,7 +110,6 @@ app.use((req, res, next) => {
         writeApiCount = 0;
         lastBreakerReset = now;
         if (circuitBreakerTripped) {
-            console.log('[CIRCUIT_BREAKER] 🟢 Grid stabilized. Resuming regular API operations.');
             circuitBreakerTripped = false;
         }
     }
@@ -124,7 +129,6 @@ app.use((req, res, next) => {
         writeApiCount++; // Includes POST, PUT, DELETE, PATCH
     }
 
-    console.log(`[REQUEST] ${req.method} ${req.url} (R: ${readApiCount}/m, W: ${writeApiCount}/m)`);
 
     // Trip the breaker if we exceed 500 reads or 100 writes per minute
     if (readApiCount > 500 || writeApiCount > 100) {
@@ -139,6 +143,13 @@ app.use((req, res, next) => {
     next();
 });
 
+// Auth limiter - still apply on localhost for security testing
+const authLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 200,
+    message: { error: "BRUTE_FORCE_PROTECTION: Access locked for 1 hour." }
+});
+
 // Routes
 const projectRoutes = require('./routes/projects');
 const userRoutes = require('./routes/users');
@@ -146,9 +157,7 @@ const leaderboardRoutes = require('./routes/leaderboard');
 const commentsRoutes = require('./routes/comments');
 const notificationsRoutes = require('./routes/notifications');
 const activityRoutes = require('./routes/activities');
-const redeemRoutes = require('./routes/redeem');
 const adRoutes = require('./routes/ads');
-const bountyRoutes = require('./routes/bounties');
 const hackathonRoutes = require('./routes/hackathons');
 const reviewRoutes = require('./routes/reviews');
 const supportRoutes = require('./routes/support');
@@ -158,13 +167,11 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/exchange', exchangeRoutes);
 app.use('/api/support', supportRoutes);
-app.use('/api/redeem', redeemRoutes);
 app.use('/api/ads', adRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/comments', commentsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/activity', activityRoutes);
-app.use('/api/bounties', require('./routes/bounties'));
 app.use('/api/hackathons', require('./routes/hackathons'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/voting', require('./routes/voting'));
@@ -200,41 +207,6 @@ app.post('/api/security/unban-ip', async (req, res) => {
     }
 });
 
-// DIRECT ROUTE INJECTION FOR DEBUGGING
-// POST /api/redeem
-app.post('/api/redeem', async (req, res) => {
-    console.log('[SYSTEM_AUDIT] DIRECT ROUTE HIT: /api/redeem');
-    console.log('[SYSTEM_AUDIT] Body:', req.body);
-
-    try {
-        const { uid, code } = req.body;
-        if (!uid || !code) return res.status(400).json({ error: 'Missing credentials.' });
-
-        if (String(code).trim() === '12130') {
-            console.log('[SYSTEM_AUDIT] Access GRANTED.');
-
-            // We need admin/db here. If not active, we might need to import them or use what's available.
-            // server.js imports { db } from './config/firebase'. We need admin too for FieldValue.
-            const { admin } = require('./config/firebase');
-
-            await db.collection('users').doc(uid).update({
-                tier: 'PRO',
-                membershipExpires: null,
-                'stats.reputation': admin.firestore.FieldValue.increment(1000)
-            });
-
-            return res.json({
-                success: true,
-                message: 'ACCESS_GRANTED: Override code accepted.',
-                tier: 'PRO'
-            });
-        }
-        res.status(400).json({ error: 'ACCESS_DENIED: Invalid protocol code.' });
-    } catch (error) {
-        console.error('Redeem Error:', error);
-        res.status(500).json({ error: 'Server error: ' + error.message });
-    }
-});
 
 app.get('/api', (req, res) => {
     res.send('CodeNeon API is running (Firebase Mode)');

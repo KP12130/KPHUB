@@ -2,30 +2,34 @@ const express = require('express');
 const router = express.Router();
 const { db, admin } = require('../config/firebase');
 const rateLimit = require('express-rate-limit');
-const { triggerAutoModeration, triggerProfanityModeration } = require('../middleware/security');
+const { triggerAutoModeration, triggerProfanityModeration, checkMuteMiddleware } = require('../middleware/security');
 const { filterProfanity, hasProfanity } = require('../utils/profanity');
 
 const antiCheatHandler = (actionType) => async (req, res, next, options) => {
-    const userId = req.body.userId;
+    const userId = req.body?.userId || req.query?.userId || req.params?.uid; // Detection parity
     const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    if (userId) {
-        // Await the moderation logic so the database is guaranteed to be updated BEFORE returning 429.
-        await triggerAutoModeration(userId, ip, actionType).catch(console.error);
-    }
-    res.status(options.statusCode || 429).json(options.message);
+
+    // Await moderation logic regardless of userId (anonymous triggers IP ban)
+    await triggerAutoModeration(userId, ip, actionType).catch(console.error);
+
+    // Merge options.message with forceReload flag
+    const responseBody = typeof options.message === 'string'
+        ? { error: options.message, forceReload: true }
+        : { ...options.message, forceReload: true };
+
+    res.status(options.statusCode || 429).json(responseBody);
 };
 
 // -- ANTI-CHEAT RATE LIMITER --
 const commentLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: 5,
+    max: 10, // Increased from 5
     handler: antiCheatHandler('Comment Spam'),
     message: { error: 'ANTI_CHEAT: Comment velocity exceeded. You have received an automated strike.' }
 });
 
 // GET /api/comments/user/:uid - Get all comments for projects owned by the user
 router.get('/user/:uid', async (req, res) => {
-    console.log(`GET /api/comments/user/${req.params.uid} - HIT`);
     try {
         const { uid } = req.params;
 
@@ -69,11 +73,30 @@ router.get('/user/:uid', async (req, res) => {
     }
 });
 
+// Simple Memory Cache for Comments (TTL 30 seconds)
+const commentsCache = {
+    store: new Map(),
+    get(id) {
+        const item = this.store.get(id);
+        if (item && Date.now() < item.expiry) return item.value;
+        return null;
+    },
+    set(id, value) {
+        if (this.store.size > 500) this.store.clear();
+        this.store.set(id, { value, expiry: Date.now() + 30000 });
+    },
+    clear(id) { this.store.delete(id); }
+};
+
 // GET /api/comments/:projectId - Get all comments for a project
 router.get('/:projectId', async (req, res) => {
     try {
+        const { projectId } = req.params;
+        const cached = commentsCache.get(projectId);
+        if (cached) return res.json(cached);
+
         const snapshot = await db.collection('comments')
-            .where('projectId', '==', req.params.projectId)
+            .where('projectId', '==', projectId)
             .get();
 
         const comments = snapshot.docs.map(doc => ({
@@ -81,6 +104,7 @@ router.get('/:projectId', async (req, res) => {
             ...doc.data()
         }));
 
+        commentsCache.set(projectId, comments);
         res.json(comments);
     } catch (error) {
         console.error('Fetch Comments Error:', error);
@@ -89,7 +113,7 @@ router.get('/:projectId', async (req, res) => {
 });
 
 // POST /api/comments/:projectId - Add a new comment
-router.post('/:projectId', commentLimiter, async (req, res) => {
+router.post('/:projectId', checkMuteMiddleware, commentLimiter, async (req, res) => {
     try {
         const { userId, userName, userAvatar, content } = req.body;
         const { projectId } = req.params;
@@ -100,7 +124,7 @@ router.post('/:projectId', commentLimiter, async (req, res) => {
         if (hasProfanity(content)) {
             const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
             await triggerProfanityModeration(userId, ip, 'Comment');
-            return res.status(403).json({ error: 'PROFANITY_STRIKE: Account restricted.' });
+            return res.status(403).json({ error: 'PROFANITY_STRIKE: Account restricted.', forceReload: true });
         }
 
         const newComment = {
@@ -143,6 +167,7 @@ router.post('/:projectId', commentLimiter, async (req, res) => {
             ]);
         }
 
+        commentsCache.clear(projectId);
         res.status(201).json({ id: docRef.id, ...newComment });
     } catch (error) {
         console.error('Add Comment Error:', error);
@@ -182,6 +207,7 @@ router.delete('/:commentId', async (req, res) => {
             });
         }
 
+        commentsCache.clear(commentData.projectId);
         res.json({ success: true, message: 'Comment deleted' });
     } catch (error) {
         console.error('Delete Comment Error:', error);

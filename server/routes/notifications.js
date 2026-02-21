@@ -8,16 +8,14 @@ router.get('/:userId', async (req, res) => {
         const { userId } = req.params;
         const snapshot = await db.collection('notifications')
             .where('recipientId', '==', userId)
+            .orderBy('createdAt', 'desc')
+            .limit(20)
             .get();
 
         const notifications = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
-        })).sort((a, b) => {
-            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
-            return dateB - dateA;
-        }).slice(0, 20);
+        }));
 
         res.json(notifications);
     } catch (error) {
