@@ -4,6 +4,8 @@ const { sendUserConfirmation, sendVerificationCode, sendAdminResponse } = requir
 const { db, admin } = require('../config/firebase');
 const multer = require('multer');
 const { uploadFile, getFileUrl } = require('../utils/storage');
+const { filterProfanity, hasProfanity } = require('../utils/profanity');
+const { triggerProfanityModeration } = require('../middleware/security');
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -20,6 +22,13 @@ router.post('/submit', async (req, res) => {
 
         if (!subject || !userEmail || !userId) {
             return res.status(400).json({ error: 'Subject, Email and UID required.' });
+        }
+
+        // Penalty Check BEFORE creating ticket
+        if (hasProfanity(subject)) {
+            const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+            await triggerProfanityModeration(userId, ip, 'Support Subject');
+            return res.status(403).json({ error: 'PROFANITY_STRIKE: Account restricted.' });
         }
 
         // Check 2 active ticket limit - Refactored to avoid composite index
@@ -107,11 +116,20 @@ router.post('/chat/:id/message', async (req, res) => {
         if (!text && attachments.length === 0) return res.status(400).json({ error: 'Message payload required.' });
 
         const ticketRef = db.collection('support_tickets').doc(req.params.id);
+        const ticketData = (await ticketRef.get()).data();
+
+        // Async Penalty Check for User Messages
+        if (sender !== 'admin' && hasProfanity(text)) {
+            const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+            await triggerProfanityModeration(ticketData.userId, ip, 'Support Chat');
+            return res.status(403).json({ error: 'PROFANITY_STRIKE: Account restricted.' });
+        }
+
         const messageRef = ticketRef.collection('messages').doc();
 
         const messageData = {
             id: messageRef.id,
-            text,
+            text: filterProfanity(text), // Admins could technically bypass the 403, but still censor it
             sender, // 'user' or 'admin'
             attachments, // Support image/file attachments
             timestamp: new Date().toISOString()

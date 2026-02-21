@@ -58,24 +58,84 @@ app.use(securityMiddleware); // Custom security logic
 app.use(ipBanMiddleware);
 
 // Rate Limiting
+// Skip entirely for localhost (dev mode hits limits from React StrictMode double-invokes)
+const isLocalhost = (req) => {
+    const ip = req.ip || req.socket.remoteAddress || '';
+    return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+};
+
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 500, // Increased from 100 to avoid blocking legit app traffic
+    windowMs: 15 * 60 * 1000,
+    max: 5000, // Very generous for both dev and prod
+    skip: isLocalhost, // Skip entirely for local dev
     message: { error: "TOO_MANY_REQUESTS: Firewall engaged. Try again later." }
 });
+
+const supportLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000,
+    max: 3000,
+    skip: isLocalhost,
+    message: { error: "SUPPORT_THROTTLE: Chat sync delayed." }
+});
+
+app.use('/api/support', supportLimiter);
 app.use('/api/', limiter);
 
-// Targeted Rate Limiting for sensitive routes
+// Auth limiter - still apply on localhost for security testing
 const authLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 hour
-    max: 30, // Increased from 10 to allow more headroom
+    windowMs: 60 * 60 * 1000,
+    max: 200,
     message: { error: "BRUTE_FORCE_PROTECTION: Access locked for 1 hour." }
 });
 app.use('/api/redeem', authLimiter);
 
-// Request Logger
+// Request Logger & Emergency Circuit Breaker
+let readApiCount = 0;
+let writeApiCount = 0;
+let circuitBreakerTripped = false;
+let lastBreakerReset = Date.now();
+
 app.use((req, res, next) => {
-    console.log(`[REQUEST] ${req.method} ${req.url}`);
+    const now = Date.now();
+
+    // Reset counters every 60 seconds
+    if (now - lastBreakerReset > 60000) {
+        readApiCount = 0;
+        writeApiCount = 0;
+        lastBreakerReset = now;
+        if (circuitBreakerTripped) {
+            console.log('[CIRCUIT_BREAKER] 🟢 Grid stabilized. Resuming regular API operations.');
+            circuitBreakerTripped = false;
+        }
+    }
+
+    // If tripped, block everything
+    if (circuitBreakerTripped) {
+        return res.status(503).json({
+            error: 'CIRCUIT_BREAKER_ACTIVE',
+            message: 'Emergency Halt: Excessive Grid traffic detected. API operations suspended to preserve database quota.'
+        });
+    }
+
+    // Categorize request type
+    if (req.method === 'GET') {
+        readApiCount++;
+    } else {
+        writeApiCount++; // Includes POST, PUT, DELETE, PATCH
+    }
+
+    console.log(`[REQUEST] ${req.method} ${req.url} (R: ${readApiCount}/m, W: ${writeApiCount}/m)`);
+
+    // Trip the breaker if we exceed 500 reads or 100 writes per minute
+    if (readApiCount > 500 || writeApiCount > 100) {
+        console.error(`[CIRCUIT_BREAKER] 🔴 EMERGENCY HALT TRIPPED. Reads: ${readApiCount}/min, Writes: ${writeApiCount}/min`);
+        circuitBreakerTripped = true;
+        return res.status(503).json({
+            error: 'CIRCUIT_BREAKER_TRIPPED',
+            message: 'Emergency Halt: Excessive Grid traffic detected. API operations suspended to preserve database quota.'
+        });
+    }
+
     next();
 });
 
@@ -280,12 +340,14 @@ process.on('unhandledRejection', (reason, promise) => {
 app.use((err, req, res, next) => {
     console.error('[FIREWALL_LOG] UNCAUGHT_ERROR:', err.stack);
 
-    // Specific check for Firebase init failure to help deployment
     if (err.message && err.message.includes('Firebase not initialized')) {
-        return res.status(503).json({
-            error: 'SERVICE_UNAVAILABLE',
-            message: 'GRID_DATABASE_OFFLINE: Firebase environment variables (PROJECT_ID, PRIVATE_KEY, etc.) are missing or malformed on Render.'
-        });
+        return res.status(503).json({ error: 'SERVICE_UNAVAILABLE', message: 'GRID_DATABASE_OFFLINE: Firebase env vars missing.' });
+    }
+
+    // Firestore quota exceeded — return graceful empty responses instead of 500
+    if (err.code === 8 || (err.message && err.message.includes('RESOURCE_EXHAUSTED'))) {
+        console.warn('[QUOTA] Firestore daily read quota exceeded. Returning degraded response.');
+        return res.status(503).json({ error: 'QUOTA_EXCEEDED', message: 'Database quota exceeded. Resets at midnight PST.' });
     }
 
     res.status(500).json({

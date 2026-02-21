@@ -2,12 +2,25 @@ const express = require('express');
 const router = express.Router();
 const { db, admin } = require('../config/firebase');
 const rateLimit = require('express-rate-limit');
+const { triggerAutoModeration, triggerProfanityModeration } = require('../middleware/security');
+const { filterProfanity, hasProfanity } = require('../utils/profanity');
+
+const antiCheatHandler = (actionType) => async (req, res, next, options) => {
+    const userId = req.body.userId;
+    const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if (userId) {
+        // Await the moderation logic so the database is guaranteed to be updated BEFORE returning 429.
+        await triggerAutoModeration(userId, ip, actionType).catch(console.error);
+    }
+    res.status(options.statusCode || 429).json(options.message);
+};
 
 // -- ANTI-CHEAT RATE LIMITER --
 const commentLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
     max: 5,
-    message: { error: 'ANTI_CHEAT: Comment velocity exceeded. Take a breath.' }
+    handler: antiCheatHandler('Comment Spam'),
+    message: { error: 'ANTI_CHEAT: Comment velocity exceeded. You have received an automated strike.' }
 });
 
 // GET /api/comments/user/:uid - Get all comments for projects owned by the user
@@ -83,12 +96,19 @@ router.post('/:projectId', commentLimiter, async (req, res) => {
 
         if (!content) return res.status(400).json({ error: 'Comment content is required.' });
 
+        // SWEAR FILTER: Halt comment, apply penalty, and return 403 to trigger frontend reload
+        if (hasProfanity(content)) {
+            const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+            await triggerProfanityModeration(userId, ip, 'Comment');
+            return res.status(403).json({ error: 'PROFANITY_STRIKE: Account restricted.' });
+        }
+
         const newComment = {
             projectId,
             uid: userId,
             userName,
             userAvatar,
-            content,
+            content, // Uncensored, because it passed the filter check above
             createdAt: new Date().toISOString()
         };
 

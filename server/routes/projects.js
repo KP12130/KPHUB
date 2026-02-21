@@ -6,18 +6,32 @@ const { db, admin } = require('../config/firebase');
 const { uploadFile, getFileUrl, getFileBuffer } = require('../utils/storage');
 const { createNotification } = require('./notifications');
 const rateLimit = require('express-rate-limit');
+const { triggerAutoModeration } = require('../middleware/security');
+
+const antiCheatHandler = (actionType) => async (req, res, next, options) => {
+    const userId = req.body.userId;
+    const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if (userId) {
+        // Await the moderation logic so the database is guaranteed to be updated BEFORE returning 429.
+        // This prevents the frontend from force-reloading and fetching a stale user profile.
+        await triggerAutoModeration(userId, ip, actionType).catch(console.error);
+    }
+    res.status(options.statusCode || 429).json(options.message);
+};
 
 // -- ANTI-CHEAT RATE LIMITERS --
 const likeLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
     max: 10,
-    message: { error: 'ANTI_CHEAT: Like velocity exceeded. Try again later.' }
+    handler: antiCheatHandler('Like Spam'),
+    message: { error: 'ANTI_CHEAT: Like velocity exceeded. You have received an automated strike.' }
 });
 
 const viewLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
     max: 30,
-    message: { error: 'ANTI_CHEAT: View velocity exceeded. Try again later.' }
+    handler: antiCheatHandler('View Spam'),
+    message: { error: 'ANTI_CHEAT: View velocity exceeded. You have received an automated strike.' }
 });
 
 // Memory storage for Multer

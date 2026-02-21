@@ -1,44 +1,65 @@
 const express = require('express');
 const router = express.Router();
-const { db, admin } = require('../config/firebase');
+const { db } = require('../config/firebase');
 
-// GET /api/activity - Get latest 10 activities
+// GET /api/activity - Returns recent rank changes and punishments
 router.get('/', async (req, res) => {
     try {
-        const snapshot = await db.collection('activities')
-            .get();
+        // Get all violations, sort in JS (avoids composite index requirement)
+        const snapshot = await db.collection('violations').get();
 
-        const activities = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        })).sort((a, b) => {
-            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
-            return dateB - dateA;
-        }).slice(0, 10);
+        if (snapshot.empty) return res.json([]);
 
-        res.json(activities);
+        const violations = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(v => v.uid) // only entries with a uid
+            .sort((a, b) => {
+                const da = a.appliedAt ? new Date(a.appliedAt) : 0;
+                const db2 = b.appliedAt ? new Date(b.appliedAt) : 0;
+                return db2 - da;
+            })
+            .slice(0, 20);
+
+        // Batch-fetch usernames only for violations that don't have one embedded
+        const uids = [...new Set(
+            violations.filter(v => !v.username).map(v => v.uid)
+        )];
+        const userMap = {};
+
+        await Promise.all(uids.map(async (uid) => {
+            try {
+                const doc = await db.collection('users').doc(uid).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    userMap[uid] = data.username || data.displayName || uid;
+                } else {
+                    userMap[uid] = uid;
+                }
+            } catch (_) {
+                userMap[uid] = uid;
+            }
+        }));
+
+        const events = violations.map(v => ({
+            id: v.id,
+            uid: v.uid,
+            username: v.username || userMap[v.uid] || v.uid || 'Unknown',
+            action: v.action || 'UNKNOWN',
+            reason: v.reason || '',
+            revoked: v.revoked || false,
+            appliedAt: v.appliedAt || null,
+            expiresAt: v.expiresAt || null
+        }));
+
+        res.json(events);
     } catch (err) {
         console.error('[DATABASE_ERROR] Fetch Activity failed:', err);
         res.status(500).json({ error: 'Failed to fetch activity' });
     }
 });
 
-// Helper for logger (Internal)
-const logActivity = async (userId, userName, type, targetId, targetName) => {
-    try {
-        await db.collection('activities').add({
-            userId,
-            userName,
-            type, // 'upload', 'like', 'comment'
-            targetId,
-            targetName,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-    } catch (err) {
-        console.error("Activity Log Error:", err);
-    }
-};
+// Kept for backward compat — no longer writes to activities collection
+const logActivity = async () => { };
 
 module.exports = router;
 module.exports.logActivity = logActivity;

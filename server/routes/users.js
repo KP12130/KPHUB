@@ -3,10 +3,32 @@ const router = express.Router();
 const { db, admin } = require('../config/firebase');
 const { BADGES } = require('../utils/achievements');
 
+// In-memory cache to avoid hammering Firestore with full scans
+let countCache = { value: null, fetchedAt: 0 };
+const COUNT_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// GET /api/users/count - Live member count (must be before /:id wildcard)
+router.get('/count', async (req, res) => {
+    try {
+        const now = Date.now();
+        if (countCache.value !== null && (now - countCache.fetchedAt) < COUNT_TTL_MS) {
+            return res.json({ count: countCache.value, cached: true });
+        }
+        const snapshot = await db.collection('users').get();
+        countCache = { value: snapshot.size, fetchedAt: now };
+        res.json({ count: snapshot.size });
+    } catch (err) {
+        // Return cached value on error rather than failing
+        if (countCache.value !== null) return res.json({ count: countCache.value, cached: true });
+        res.status(500).json({ error: 'Failed to fetch member count.' });
+    }
+});
+
 // GET /api/users/badges/definitions
 router.get('/badges/definitions', (req, res) => {
     res.json(BADGES);
 });
+
 
 // POST /api/users/redeem (Secret Protocol - Moved to top for priority)
 router.post('/redeem', async (req, res) => {
@@ -744,5 +766,16 @@ router.get('/admin/violations', async (req, res) => {
     }
 });
 
+// GET /api/users/count - Live member count
+router.get('/count', async (req, res) => {
+    try {
+        const snapshot = await db.collection('users').get();
+        res.json({ count: snapshot.size });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch member count.' });
+    }
+});
+
 module.exports = router;
+
 
