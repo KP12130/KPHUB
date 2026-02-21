@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
     User, Calendar, Download, Heart, MessageCircle, Share2, ArrowLeft,
     Trash2, Send, Edit, ExternalLink, MessageSquare, X, Shield, Lock,
@@ -122,7 +122,7 @@ const FileTree = ({ files, selectedFile, onSelectFile, isRepoView = false }) => 
 const ProjectDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { currentUser } = useAuth();
+    const { currentUser, refreshUser } = useAuth();
 
     // State
     const [project, setProject] = useState(null);
@@ -136,15 +136,30 @@ const ProjectDetails = () => {
     const [comments, setComments] = useState([]);
     const [updates, setUpdates] = useState([]);
     const [commentInput, setCommentInput] = useState('');
+    const [likeSpamBlocked, setLikeSpamBlocked] = useState(false);
+    const likeClickCount = React.useRef(0);
     const [isDownloading, setIsDownloading] = useState(false);
     const [isFileLoading, setIsFileLoading] = useState(false);
 
     // Fetch Logic
+    // Capture uid on mount only — do NOT put currentUser in deps or the project
+    // will re-fetch every time refreshUser() updates the auth state.
+    const currentUserRef = React.useRef(currentUser);
+    useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
+
+    const location = useLocation();
+
     useEffect(() => {
         const fetchProject = async () => {
             setLoading(true);
+            const uid = currentUserRef.current?.uid;
             try {
-                const res = await axios.get(`${API_BASE}/api/projects/${id}${currentUser ? `?userId=${currentUser.uid}` : ''}`);
+                const res = await axios.get(`${API_BASE}/api/projects/${id}${uid ? `?userId=${uid}` : ''}`);
+
+                // Handle Tab selection from query param
+                const query = new URLSearchParams(location.search);
+                const requestedTab = query.get('tab');
+                if (requestedTab) setActiveTab(requestedTab.toUpperCase());
 
                 // Legacy support
                 if ((!res.data.files || res.data.files.length === 0) && res.data.fileKey) {
@@ -154,7 +169,7 @@ const ProjectDetails = () => {
 
                 setProject(res.data);
                 setLikeCount(res.data.stats?.likes || 0);
-                if (currentUser && res.data.likes?.includes(currentUser.uid)) setLiked(true);
+                if (uid && res.data.likes?.includes(uid)) setLiked(true);
 
                 // Fetch Related
                 const relatedRes = await axios.get(`${API_BASE}/api/projects?category=${res.data.category}&limit=3`);
@@ -178,22 +193,40 @@ const ProjectDetails = () => {
             }
         };
         fetchProject();
-    }, [id, currentUser, navigate]);
+    }, [id, navigate]); // ⚠️ NO currentUser here — refreshUser must not trigger a project reload
 
     // Handlers
     const handleLike = async () => {
         if (!currentUser) return toast.error("Login required to pulse.");
+        if (currentUser.restrictions?.muted) return toast.error("🔇 MUTED — Liking is restricted. Contact support to appeal.", { duration: 4000 });
+
+        // Local spam gate — no DB writes, resets on page refresh
+        likeClickCount.current += 1;
+        if (likeClickCount.current > 10) {
+            if (!likeSpamBlocked) {
+                setLikeSpamBlocked(true);
+                toast.error('🚧 Like limit reached. Slow down.', { duration: 5000 });
+            }
+            return;
+        }
         setLiked(!liked);
         setLikeCount(prev => liked ? prev - 1 : prev + 1);
         try {
             await axios.post(`${API_BASE}/api/projects/${id}/like`, { userId: currentUser.uid });
         } catch (err) {
-            setLiked(!liked); // Revert
+            setLiked(liked); // Revert to original state
             setLikeCount(prev => liked ? prev + 1 : prev - 1);
+            // Sync user state on security blocks so RestrictionBanner can show.
+            if (err.response?.status === 403 || err.response?.status === 429) {
+                toast.error(err.response.data?.message || '🔇 Interaction restricted.', { duration: 4000 });
+                // Delay slightly to let Firestore write complete before reading back
+                setTimeout(() => refreshUser(currentUser.uid), 800);
+            }
         }
     };
 
     const handleDownload = async () => {
+        if (currentUser?.restrictions?.downloadBlocked) return toast.error("⬇️ DOWNLOAD BLOCKED — Downloads are restricted on your account. Contact support to appeal.", { duration: 4000 });
         setIsDownloading(true);
         try {
             const url = `${API_BASE}/api/projects/${id}/download${currentUser ? `?userId=${currentUser.uid}` : ''}`;
@@ -246,6 +279,7 @@ const ProjectDetails = () => {
 
     const handlePostComment = async () => {
         if (!commentInput.trim()) return;
+        if (currentUser?.restrictions?.muted) return toast.error("🔇 MUTED — Commenting is restricted on your account. Contact support to appeal.", { duration: 4000 });
         try {
             const res = await axios.post(`${API_BASE}/api/comments/${id}`, {
                 userId: currentUser.uid,
@@ -257,7 +291,13 @@ const ProjectDetails = () => {
             setCommentInput('');
             toast.success("Signal transmitted.");
         } catch (err) {
-            toast.error("Transmission failed.");
+            // Sync user state on security blocks so RestrictionBanner can show.
+            if (err.response?.status === 403 || err.response?.status === 429) {
+                refreshUser(currentUser.uid);
+                toast.error(err.response.data?.message || '🔇 Interaction restricted.', { duration: 4000 });
+            } else {
+                toast.error("Transmission failed.");
+            }
         }
     };
 

@@ -7,6 +7,7 @@ import CommandPalette from './CommandPalette';
 import GridChat from './GridChat';
 import { useAuth } from '../context/AuthContext';
 import BannedPortal from '../pages/BannedPortal';
+import RestrictionBanner from './RestrictionBanner';
 
 const Layout = ({ children }) => {
     const { currentUser } = useAuth();
@@ -31,6 +32,9 @@ const Layout = ({ children }) => {
 
     return (
         <div className="min-h-screen flex flex-col relative overflow-hidden scanlines noise">
+            {/* Restriction Banner handles its own hiding/showing logic */}
+            {currentUser && <RestrictionBanner currentUser={currentUser} />}
+
             {/* Ambient Background Mesh */}
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-neon-green/5 rounded-full blur-[150px] animate-pulse-slow" />
@@ -68,7 +72,7 @@ const Layout = ({ children }) => {
                 isOpen={isCommandPaletteOpen}
                 onClose={() => setIsCommandPaletteOpen(false)}
             />
-        </div>
+        </div >
     );
 };
 

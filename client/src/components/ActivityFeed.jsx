@@ -1,23 +1,58 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../api';
-import { Activity, Clock, Zap, MessageCircle, Heart } from 'lucide-react';
+import { ShieldAlert, ShieldOff, AlertTriangle, Volume2, VolumeX, Star, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
 import { motion, AnimatePresence } from 'framer-motion';
 import SkeletonLoader from './SkeletonLoader';
 
+const getEventMeta = (action, revoked) => {
+    if (revoked) {
+        return {
+            icon: <ShieldOff className="w-4 h-4 text-green-400" />,
+            label: 'restriction lifted',
+            color: 'text-green-400',
+            bg: 'bg-green-500/10'
+        };
+    }
+    switch (action) {
+        case 'BAN':
+            return { icon: <ShieldAlert className="w-4 h-4 text-red-500" />, label: 'was banned', color: 'text-red-400', bg: 'bg-red-500/10' };
+        case 'MUTE':
+            return { icon: <VolumeX className="w-4 h-4 text-orange-400" />, label: 'was muted', color: 'text-orange-400', bg: 'bg-orange-500/10' };
+        case 'ANTI_CHEAT_STRIKE':
+            return { icon: <AlertTriangle className="w-4 h-4 text-yellow-400" />, label: 'got an anti-cheat strike', color: 'text-yellow-400', bg: 'bg-yellow-500/10' };
+        case 'PROFANITY_STRIKE':
+            return { icon: <Volume2 className="w-4 h-4 text-pink-400" />, label: 'got a profanity strike', color: 'text-pink-400', bg: 'bg-pink-500/10' };
+        case 'TIER_CHANGE':
+            return { icon: <Star className="w-4 h-4 text-neon-blue" />, label: 'received a rank change', color: 'text-neon-blue', bg: 'bg-neon-blue/10' };
+        default:
+            return { icon: <ShieldAlert className="w-4 h-4 text-gray-500" />, label: 'received a moderation action', color: 'text-gray-400', bg: 'bg-gray-800' };
+    }
+};
+
+const timeAgo = (isoStr) => {
+    if (!isoStr) return '';
+    const diff = Date.now() - new Date(isoStr).getTime();
+    const m = Math.floor(diff / 60000);
+    const h = Math.floor(m / 60);
+    const d = Math.floor(h / 24);
+    if (d > 0) return `${d}d ago`;
+    if (h > 0) return `${h}h ago`;
+    if (m > 0) return `${m}m ago`;
+    return 'just now';
+};
+
 const ActivityFeed = () => {
-    const [activities, setActivities] = useState([]);
+    const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const fetchActivity = async () => {
         try {
-
             const res = await axios.get(`${API_BASE}/api/activity`);
-            setActivities(res.data);
+            setEvents(res.data);
         } catch (err) {
-            console.error("Activity fetch failed", err);
+            // silently fail
         } finally {
             setLoading(false);
         }
@@ -25,33 +60,24 @@ const ActivityFeed = () => {
 
     useEffect(() => {
         fetchActivity();
-        const interval = setInterval(fetchActivity, 30000); // Check every 30s for more "liveness"
+        const interval = setInterval(fetchActivity, 30000);
         return () => clearInterval(interval);
     }, []);
-
-    const getIcon = (type) => {
-        switch (type) {
-            case 'upload': return <Zap className="w-4 h-4 text-neon-green fill-neon-green/20" />;
-            case 'comment': return <MessageCircle className="w-4 h-4 text-neon-blue fill-neon-blue/20" />;
-            case 'like': return <Heart className="w-4 h-4 text-red-500 fill-red-500/20" />;
-            default: return <Activity className="w-4 h-4 text-gray-400" />;
-        }
-    };
 
     return (
         <div className="bg-terminal border border-gray-900 rounded-3xl overflow-hidden shadow-2xl">
             <div className="bg-gray-900/50 px-6 py-4 border-b border-gray-800 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="relative">
-                        <div className="absolute inset-0 bg-neon-green/20 blur-sm rounded-full animate-pulse" />
-                        <Clock className="w-4 h-4 text-neon-green relative" />
+                        <div className="absolute inset-0 bg-red-500/20 blur-sm rounded-full animate-pulse" />
+                        <ShieldAlert className="w-4 h-4 text-red-400 relative" />
                     </div>
-                    <span className="text-[10px] font-black tracking-[0.2em] text-white uppercase italic">Live Activity</span>
+                    <span className="text-[10px] font-black tracking-[0.2em] text-white uppercase italic">Grid_Events</span>
                 </div>
                 <div className="flex gap-1">
-                    <div className="w-1 h-1 rounded-full bg-neon-green" />
-                    <div className="w-1 h-1 rounded-full bg-neon-green/30" />
-                    <div className="w-1 h-1 rounded-full bg-neon-green/10" />
+                    <div className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
+                    <div className="w-1 h-1 rounded-full bg-red-500/30" />
+                    <div className="w-1 h-1 rounded-full bg-red-500/10" />
                 </div>
             </div>
 
@@ -61,49 +87,58 @@ const ActivityFeed = () => {
                 ) : (
                     <div className="space-y-1">
                         <AnimatePresence initial={false}>
-                            {activities.length > 0 ? (
-                                activities.map((act, idx) => (
-                                    <motion.div
-                                        key={act.id || idx}
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95 }}
-                                        layout
-                                        className="p-4 rounded-2xl hover:bg-white/5 transition-all group relative border border-transparent hover:border-gray-800"
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            <div className="mt-1 bg-gray-900/50 p-2 rounded-lg group-hover:bg-void transition-colors">
-                                                {getIcon(act.type)}
-                                            </div>
-                                            <div className="flex-grow">
-                                                <div className="text-[11px] leading-relaxed">
-                                                    <Link to={`/u/${act.userName}`} className="text-neon-green hover:text-white font-black uppercase tracking-tighter transition-colors">
-                                                        {act.userName}
-                                                    </Link>
-                                                    <span className="text-gray-500 mx-1.5 lowercase italic font-mono opacity-60">
-                                                        {act.type === 'upload' ? 'deployed a discovery' : act.type === 'like' ? 'liked a project' : 'commented on'}
-                                                    </span>
-                                                    <Link to={`/project/${act.targetId}`} className="text-white hover:text-neon-blue font-bold tracking-tight transition-colors block">
-                                                        {act.targetName}
-                                                    </Link>
+                            {events.length > 0 ? (
+                                events.map((evt, idx) => {
+                                    const meta = getEventMeta(evt.action, evt.revoked);
+                                    return (
+                                        <motion.div
+                                            key={evt.id || idx}
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, scale: 0.95 }}
+                                            layout
+                                            className="p-4 rounded-2xl hover:bg-white/5 transition-all group relative border border-transparent hover:border-gray-800"
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <div className={`mt-0.5 p-2 rounded-lg ${meta.bg} shrink-0`}>
+                                                    {meta.icon}
                                                 </div>
-                                                <div className="flex items-center gap-2 mt-2">
-                                                    <span className="text-[8px] text-gray-700 font-mono uppercase tracking-widest">
-                                                        {act.createdAt ? new Date(act.createdAt._seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
-                                                    </span>
-                                                    <div className="h-[1px] flex-grow bg-gradient-to-r from-gray-900 to-transparent" />
+                                                <div className="flex-grow min-w-0">
+                                                    <div className="text-[11px] leading-relaxed">
+                                                        <Link
+                                                            to={`/u/${evt.username}`}
+                                                            className="text-neon-green hover:text-white font-black uppercase tracking-tighter transition-colors"
+                                                        >
+                                                            {evt.username}
+                                                        </Link>
+                                                        <span className={`mx-1.5 italic font-mono opacity-80 text-[10px] ${meta.color}`}>
+                                                            {meta.label}
+                                                        </span>
+                                                    </div>
+                                                    {evt.reason && (
+                                                        <p className="text-[9px] text-gray-600 font-mono truncate mt-0.5">
+                                                            {evt.reason}
+                                                        </p>
+                                                    )}
+                                                    <div className="flex items-center gap-2 mt-1.5">
+                                                        <Clock className="w-2.5 h-2.5 text-gray-800" />
+                                                        <span className="text-[8px] text-gray-700 font-mono uppercase tracking-widest">
+                                                            {timeAgo(evt.appliedAt)}
+                                                        </span>
+                                                        <div className="h-[1px] flex-grow bg-gradient-to-r from-gray-900 to-transparent" />
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </motion.div>
-                                ))
+                                        </motion.div>
+                                    );
+                                })
                             ) : (
                                 <motion.p
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     className="p-8 text-[10px] text-gray-700 italic font-mono text-center uppercase tracking-[0.2em]"
                                 >
-                                    Scanning for signals...
+                                    Grid is quiet. All clear.
                                 </motion.p>
                             )}
                         </AnimatePresence>

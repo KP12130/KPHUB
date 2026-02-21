@@ -21,9 +21,66 @@ import {
     updateDoc
 } from 'firebase/firestore';
 
-const SupportChatAdmin = () => {
+const AdminThreadItem = React.memo(({ chat, isActive, onClick }) => (
+    <button
+        onClick={onClick}
+        className={`w-full text-left p-4 rounded-xl border transition-all relative overflow-hidden group ${isActive
+            ? 'bg-white/5 border-neon-blue/30'
+            : 'border-white/5 hover:border-white/10'
+            }`}
+    >
+        <div className="flex justify-between items-start gap-2 mb-1">
+            <h4 className={`text-[11px] font-bold truncate ${isActive ? 'text-white' : 'text-gray-400'}`}>
+                {chat.subject}
+            </h4>
+            {!chat.responded && (
+                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+            )}
+        </div>
+        <div className="flex items-center justify-between">
+            <span className="text-[7px] text-gray-500 font-mono truncate max-w-[80px]">
+                {chat.userEmail}
+            </span>
+            <span className="text-[7px] text-gray-600 font-mono italic">
+                {new Date(chat.lastActivity).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+        </div>
+    </button>
+));
+
+const AdminMessageItem = React.memo(({ msg }) => (
+    <div className={`flex ${msg.sender === 'admin' ? 'justify-end' : 'justify-start'}`}>
+        <div className={`max-w-[80%] space-y-1 ${msg.sender === 'admin' ? 'items-end' : 'items-start'} flex flex-col`}>
+            <div className={`px-4 py-3 rounded-2xl text-[11px] leading-relaxed font-mono ${msg.sender === 'admin'
+                ? 'bg-neon-blue text-black font-bold'
+                : 'bg-white/5 border border-white/10 text-white'
+                }`}>
+                {msg.text}
+                {msg.attachments && msg.attachments.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                        {msg.attachments.map((at, i) => (
+                            at.type === 'image' ? (
+                                <img key={i} src={at.url} alt="attachment" className="max-w-full rounded-lg border border-white/10" />
+                            ) : (
+                                <a key={i} href={at.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 bg-black/20 rounded-lg hover:bg-black/40 transition-all text-[10px]">
+                                    <Paperclip className="w-3 h-3 text-neon-blue" />
+                                    <span className="truncate max-w-[150px]">{at.name}</span>
+                                </a>
+                            )
+                        ))}
+                    </div>
+                )}
+            </div>
+            <span className="text-[7px] text-gray-600 font-mono uppercase">
+                {msg.sender === 'admin' ? 'ARCHITECT' : 'CLIENT'} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+        </div>
+    </div>
+));
+
+const SupportChatAdmin = ({ isOpen = true }) => {
     const [chats, setChats] = useState([]);
-    const [activeChat, setActiveChat] = useState(null);
+    const [activeChatId, setActiveChatId] = useState(null);
     const [messages, setMessages] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isMessageLoading, setIsMessageLoading] = useState(false);
@@ -45,38 +102,52 @@ const SupportChatAdmin = () => {
 
     const scrollRef = useRef(null);
 
-    // Fetch chats via REST (admin has no Firebase Auth session)
-    const fetchChats = async () => {
+    const activeChat = React.useMemo(() =>
+        chats.find(c => c.id === activeChatId),
+        [chats, activeChatId]
+    );
+
+    const fetchChats = React.useCallback(async () => {
+        if (!isOpen || document.hidden) return;
         try {
             const res = await axios.get(`${API_BASE}/api/support/tickets`, {
                 params: { status: statusFilter }
             });
             const ticketList = res.data;
             setChats(ticketList);
-            if (activeChat && !ticketList.find(c => c.id === activeChat.id) && statusFilter === 'OPEN') {
-                setActiveChat(null);
+            if (activeChatId && !ticketList.find(c => c.id === activeChatId) && statusFilter === 'OPEN') {
+                setActiveChatId(null);
             }
         } catch (err) {
             console.error("Admin chats fetch error:", err);
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [statusFilter, isOpen, activeChatId]);
 
     useEffect(() => {
+        if (!isOpen) return;
         fetchChats();
-        const interval = setInterval(fetchChats, 5000);
+        const interval = setInterval(fetchChats, 10000);
         return () => clearInterval(interval);
-    }, [statusFilter]);
+    }, [fetchChats, isOpen]);
 
-    // Fetch messages via REST
-    const fetchMessages = async () => {
-        if (!activeChat?.id) return;
+    const playNotificationSound = () => {
         try {
-            const res = await axios.get(`${API_BASE}/api/support/chat/${activeChat.id}/messages`);
+            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+            audio.volume = 0.5;
+            audio.play();
+        } catch (e) {
+            console.warn("Sound play failed", e);
+        }
+    };
+
+    const fetchMessages = React.useCallback(async () => {
+        if (!activeChatId || !isOpen || document.hidden) return;
+        try {
+            const res = await axios.get(`${API_BASE}/api/support/chat/${activeChatId}/messages`);
             const msgs = res.data;
 
-            // Notification Logic
             if (msgs.length > lastMsgCountRef.current && msgs.length > 0) {
                 const latest = msgs[msgs.length - 1];
                 if (latest.sender === 'user' && soundEnabled) {
@@ -90,15 +161,15 @@ const SupportChatAdmin = () => {
         } finally {
             setIsMessageLoading(false);
         }
-    };
+    }, [activeChatId, isOpen, soundEnabled]);
 
     useEffect(() => {
-        if (!activeChat?.id) return;
+        if (!activeChatId || !isOpen) return;
         setIsMessageLoading(true);
         fetchMessages();
-        const interval = setInterval(fetchMessages, 3000);
+        const interval = setInterval(fetchMessages, 5000);
         return () => clearInterval(interval);
-    }, [activeChat?.id]);
+    }, [fetchMessages, activeChatId, isOpen]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -106,21 +177,20 @@ const SupportChatAdmin = () => {
         }
     }, [messages]);
 
-
     const handleSendMessage = async (e) => {
         e.preventDefault();
         if ((!newMessage.trim() && pendingAttachments.length === 0) || isSending) return;
 
         setIsSending(true);
         try {
-            await axios.post(`${API_BASE}/api/support/chat/${activeChat.id}/message`, {
+            await axios.post(`${API_BASE}/api/support/chat/${activeChatId}/message`, {
                 text: newMessage,
                 sender: 'admin',
                 attachments: pendingAttachments
             });
             setNewMessage('');
             setPendingAttachments([]);
-            // Listener handles refresh🦾
+            fetchMessages();
         } catch (err) {
             toast.error("Transmission failed.");
         } finally {
@@ -138,7 +208,7 @@ const SupportChatAdmin = () => {
 
         try {
             const res = await axios.post(`${API_BASE}/api/support/upload`, formData);
-            setPendingAttachments([...pendingAttachments, {
+            setPendingAttachments(prev => [...prev, {
                 name: file.name,
                 url: res.data.url,
                 type: file.type.startsWith('image/') ? 'image' : 'file'
@@ -150,46 +220,34 @@ const SupportChatAdmin = () => {
         }
     };
 
-    const playNotificationSound = () => {
-        try {
-            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-            audio.volume = 0.5;
-            audio.play();
-        } catch (e) {
-            console.warn("Sound play failed", e);
-        }
-    };
-
-    const handleCloseChat = async (chatId) => {
+    const handleCloseChat = React.useCallback(async (chatId) => {
         const reason = window.prompt("REASON FOR TERMINATION (Optional):", "Issue Resolved.");
-        if (reason === null) return; // Cancelled
+        if (reason === null) return;
 
         try {
             await axios.post(`${API_BASE}/api/support/close`, {
                 ticketId: chatId,
                 reason: reason.trim() || 'Session closed by Administrator.'
             });
-            toast.success("SESSION_TERMINATED");
-            setActiveChat(null);
-            // Listener handles refresh🦾
+            toast.success("Session closed.");
+            setActiveChatId(null);
+            fetchChats();
         } catch (err) {
             toast.error("Termination failed.");
         }
-    };
+    }, [fetchChats]);
 
-    if (isLoading) return <div className="text-center py-20 font-mono text-[10px] text-gray-500">ACCESSING_ADMIN_CORE...</div>;
+    if (isLoading) return <div className="text-center py-20 font-mono text-[10px] text-gray-500">Loading admin panel...</div>;
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[700px]">
-            {/* Sidebar: Chat List */}
             <div className="lg:col-span-1 border-r border-white/5 pr-6 space-y-6 flex flex-col">
                 <div className="flex flex-col gap-4">
                     <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2 px-1">
-                        <Activity className="w-4 h-4 text-neon-green" /> Support_Grid
+                        <Activity className="w-4 h-4 text-neon-green" /> Support Grid
                     </h3>
 
                     <div className="flex gap-2 p-1 bg-white/5 rounded-lg">
-                        {/* ... existing buttons ... */}
                         <button
                             onClick={() => setStatusFilter('OPEN')}
                             className={`flex-1 py-1.5 text-[8px] font-black uppercase tracking-widest rounded-md transition-all ${statusFilter === 'OPEN' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}
@@ -205,9 +263,9 @@ const SupportChatAdmin = () => {
                     </div>
 
                     <div className="flex items-center justify-between px-1">
-                        <span className="text-[8px] font-bold text-gray-600 uppercase">Alert_Link</span>
+                        <span className="text-[8px] font-bold text-gray-600 uppercase">Sound Alert</span>
                         <button
-                            onClick={() => setSoundEnabled(!soundEnabled)}
+                            onClick={() => setSoundEnabled(prev => !prev)}
                             className={`p-1 rounded transition-all ${soundEnabled ? 'text-neon-blue' : 'text-gray-700'}`}
                         >
                             {soundEnabled ? <Bell className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
@@ -220,41 +278,20 @@ const SupportChatAdmin = () => {
                         <div className="text-[10px] text-gray-600 font-mono italic text-center py-10">Grid is clear. No active transmissions.</div>
                     ) : (
                         chats.map(chat => (
-                            <button
+                            <AdminThreadItem
                                 key={chat.id}
-                                onClick={() => setActiveChat(chat)}
-                                className={`w-full text-left p-4 rounded-xl border transition-all relative overflow-hidden group ${activeChat?.id === chat.id
-                                    ? 'bg-white/5 border-neon-blue/30'
-                                    : 'border-white/5 hover:border-white/10'
-                                    }`}
-                            >
-                                <div className="flex justify-between items-start gap-2 mb-1">
-                                    <h4 className={`text-[11px] font-bold truncate ${activeChat?.id === chat.id ? 'text-white' : 'text-gray-400'}`}>
-                                        {chat.subject}
-                                    </h4>
-                                    {!chat.responded && (
-                                        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
-                                    )}
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[7px] text-gray-500 font-mono truncate max-w-[80px]">
-                                        {chat.userEmail}
-                                    </span>
-                                    <span className="text-[7px] text-gray-600 font-mono italic">
-                                        {new Date(chat.lastActivity).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                </div>
-                            </button>
+                                chat={chat}
+                                isActive={activeChatId === chat.id}
+                                onClick={() => setActiveChatId(chat.id)}
+                            />
                         ))
                     )}
                 </div>
             </div>
 
-            {/* Chat Window */}
             <div className="lg:col-span-3 flex flex-col h-full overflow-hidden">
                 {activeChat ? (
                     <div className="flex flex-col h-full bg-black/20 rounded-2xl border border-white/5">
-                        {/* Header */}
                         <div className="p-6 border-b border-white/5 flex items-center justify-between">
                             <div>
                                 <h3 className="font-black text-white italic uppercase tracking-widest text-sm">{activeChat.subject}</h3>
@@ -288,7 +325,6 @@ const SupportChatAdmin = () => {
                             </div>
                         </div>
 
-                        {/* Messages */}
                         <div
                             ref={scrollRef}
                             className="flex-grow overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-white/5"
@@ -299,44 +335,13 @@ const SupportChatAdmin = () => {
                                 </div>
                             ) : (
                                 messages.map((msg, idx) => (
-                                    <div
-                                        key={msg.id || idx}
-                                        className={`flex ${msg.sender === 'admin' ? 'justify-end' : 'justify-start'}`}
-                                    >
-                                        <div className={`max-w-[80%] space-y-1 ${msg.sender === 'admin' ? 'items-end' : 'items-start'} flex flex-col`}>
-                                            <div className={`px-4 py-3 rounded-2xl text-[11px] leading-relaxed font-mono ${msg.sender === 'admin'
-                                                ? 'bg-neon-blue text-black font-bold'
-                                                : 'bg-white/5 border border-white/10 text-white'
-                                                }`}>
-                                                {msg.text}
-                                                {msg.attachments && msg.attachments.length > 0 && (
-                                                    <div className="mt-3 space-y-2">
-                                                        {msg.attachments.map((at, i) => (
-                                                            at.type === 'image' ? (
-                                                                <img key={i} src={at.url} alt="attachment" className="max-w-full rounded-lg border border-white/10" />
-                                                            ) : (
-                                                                <a key={i} href={at.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 bg-black/20 rounded-lg hover:bg-black/40 transition-all text-[10px]">
-                                                                    <Paperclip className="w-3 h-3 text-neon-blue" />
-                                                                    <span className="truncate max-w-[150px]">{at.name}</span>
-                                                                </a>
-                                                            )
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <span className="text-[7px] text-gray-600 font-mono uppercase">
-                                                {msg.sender === 'admin' ? 'ARCHITECT' : 'CLIENT'} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
-                                        </div>
-                                    </div>
+                                    <AdminMessageItem key={msg.id || idx} msg={msg} />
                                 ))
                             )}
                         </div>
 
-                        {/* Input */}
                         {activeChat.status === 'OPEN' ? (
                             <div className="p-4 bg-void border-t border-white/5 space-y-3">
-                                {/* Templates */}
                                 <div className="flex flex-wrap gap-2 mb-2">
                                     {templates.map(t => (
                                         <button
@@ -365,7 +370,7 @@ const SupportChatAdmin = () => {
                                         />
                                         <button
                                             type="button"
-                                            onClick={() => fileInputRef.current.click()}
+                                            onClick={() => fileInputRef.current?.click()}
                                             disabled={uploading}
                                             className="p-2 text-gray-500 hover:text-white transition-colors"
                                         >
@@ -380,7 +385,6 @@ const SupportChatAdmin = () => {
                                     </div>
                                 </form>
 
-                                {/* Pending Attachments */}
                                 {pendingAttachments.length > 0 && (
                                     <div className="flex flex-wrap gap-2 mt-1">
                                         {pendingAttachments.map((at, i) => (
@@ -388,7 +392,8 @@ const SupportChatAdmin = () => {
                                                 <Paperclip className="w-3 h-3" />
                                                 <span>{at.name}</span>
                                                 <button
-                                                    onClick={() => setPendingAttachments(pendingAttachments.filter((_, idx) => idx !== i))}
+                                                    type="button"
+                                                    onClick={() => setPendingAttachments(prev => prev.filter((_, idx) => idx !== i))}
                                                     className="text-gray-600 hover:text-red-500"
                                                 >
                                                     <X className="w-3 h-3" />

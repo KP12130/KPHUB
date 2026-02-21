@@ -14,7 +14,6 @@ import EditProject from './pages/EditProject';
 import Support from './pages/Support';
 import Legal from './pages/Legal';
 import NotFound from './pages/NotFound';
-import Missions from './pages/Missions';
 import Hackathons from './pages/Hackathons';
 import CodeReviews from './pages/CodeReviews';
 import Explore from './pages/Explore';
@@ -41,6 +40,36 @@ import { motion, AnimatePresence } from 'framer-motion';
 const App = () => {
   const { currentUser } = useAuth();
 
+  // Global Axios Interceptor for Auto-Moderation & IP Bans
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        const { status, config } = error.response || {};
+
+        // 1. Handle Rate Limiting (429) - NEVER reload here as it worsens the state
+        if (status === 429) {
+          const serverMsg = error.response?.data?.error || error.response?.data?.message;
+          console.error(`[FIREWALL] Throttling active: ${serverMsg || 'Velocity limit exceeded.'}`);
+          return Promise.reject(error);
+        }
+
+        // 2. Handle Security Rejections (403)
+        if (status === 403) {
+          // If we are already on the banned page, don't reload again on background failures
+          if (window.location.pathname === '/banned') return Promise.reject(error);
+
+          console.warn('[SECURITY] Access blocked. Component should handle state sync.');
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, []);
+
   return (
     <ThemeProvider>
       <Router>
@@ -57,7 +86,6 @@ const App = () => {
             <Route path="/support" element={<Support />} />
             <Route path="/legal" element={<Legal />} />
             <Route path="/about" element={<About />} />
-            <Route path="/missions" element={<Missions />} />
             <Route path="/hackathons" element={<Hackathons />} />
             <Route path="/reviews" element={<CodeReviews />} />
             <Route path="/admin" element={<Admin />} />
@@ -89,7 +117,8 @@ const Home = () => {
   const [category, setCategory] = useState('All');
   const categories = ['All', 'Web', 'Game', 'Tool', 'AI', 'Script', 'Module', 'Mobile'];
 
-  const [sortBy, setSortBy] = useState('newest'); // 'newest', 'liked', 'viewed'
+  const [sortBy, setSortBy] = useState('newest');
+
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -161,6 +190,7 @@ const Home = () => {
             transition={{ delay: 0.8 }}
             className="flex flex-col md:flex-row items-center justify-center gap-6 pt-8"
           >
+
             <Link to="/explore" className="group relative px-10 py-5 bg-white text-black font-black uppercase tracking-widest text-sm rounded-xl overflow-hidden shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-105 transition-all">
               <span className="relative z-10 flex items-center gap-3">Enter The Grid <Globe className="w-5 h-5" /></span>
               <div className="absolute inset-0 bg-neon-green translate-y-full group-hover:translate-y-0 transition-transform duration-300" />

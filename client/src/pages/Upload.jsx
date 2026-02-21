@@ -51,6 +51,13 @@ const Upload = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Restriction check
+        if (currentUser?.restrictions?.uploadBlocked) {
+            setError('⬆️ UPLOAD BLOCKED — Uploading is restricted on your account. Contact support to appeal.');
+            return;
+        }
+
         if (files.length === 0) return setError('Please select at least one source file.');
 
         setError('');
@@ -97,7 +104,7 @@ const Upload = () => {
                         <UploadIcon className="w-8 h-8" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-black tracking-tight text-white uppercase italic">System_Deployment_</h1>
+                        <h1 className="text-2xl font-black tracking-tight text-white uppercase italic">System Deployment</h1>
                         <p className="text-gray-500 text-[10px] font-mono tracking-widest uppercase">Initializing grid transmission protocol...</p>
                     </div>
                 </div>
@@ -114,11 +121,11 @@ const Upload = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-gray-500 text-[10px] font-black tracking-widest mb-2 uppercase">System_Identifier</label>
+                                <label className="block text-gray-500 text-[10px] font-black tracking-widest mb-2 uppercase">System Identifier</label>
                                 <input
                                     type="text" required
                                     className="w-full bg-void border border-gray-800 rounded-xl p-4 text-white focus:border-neon-green outline-none transition-all placeholder:text-gray-700"
-                                    placeholder="e.g. CORE_ENGINE_V1"
+                                    placeholder="e.g. My Awesome Project"
                                     value={formData.title}
                                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                 />
@@ -130,11 +137,11 @@ const Upload = () => {
                                     value={formData.category}
                                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                                 >
-                                    <option value="Web">Web_Application</option>
-                                    <option value="Game">Virtual_World</option>
-                                    <option value="Tool">Neural_Tool</option>
-                                    <option value="AI">Synthetic_IA</option>
-                                    <option value="Script">Source_Script</option>
+                                    <option value="Web">Web Application</option>
+                                    <option value="Game">Game / Virtual World</option>
+                                    <option value="Tool">Tool</option>
+                                    <option value="AI">AI / Machine Learning</option>
+                                    <option value="Script">Script</option>
                                 </select>
                             </div>
                         </div>
@@ -142,7 +149,7 @@ const Upload = () => {
                         {/* URLs */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="space-y-4">
-                                <label className="block text-gray-500 text-[10px] font-black tracking-widest uppercase mb-2">Live_Demo_URL</label>
+                                <label className="block text-gray-500 text-[10px] font-black tracking-widest uppercase mb-2">Live Demo URL</label>
                                 <input
                                     type="url"
                                     className="w-full bg-void border border-gray-800 rounded-xl p-4 text-white focus:border-neon-green outline-none transition-all placeholder:text-gray-700 font-mono text-sm"
@@ -152,7 +159,7 @@ const Upload = () => {
                                 />
                             </div>
                             <div className="space-y-4">
-                                <label className="block text-gray-500 text-[10px] font-black tracking-widest uppercase mb-2">Source_Repo_URL</label>
+                                <label className="block text-gray-500 text-[10px] font-black tracking-widest uppercase mb-2">Source Repo URL</label>
                                 <input
                                     type="url"
                                     className="w-full bg-void border border-gray-800 rounded-xl p-4 text-white focus:border-neon-green outline-none transition-all placeholder:text-gray-700 font-mono text-sm"
@@ -164,7 +171,7 @@ const Upload = () => {
                         </div>
 
                         <div className="space-y-4">
-                            <label className="block text-gray-500 text-[10px] font-black tracking-widest uppercase mb-2">Protocol_Description</label>
+                            <label className="block text-gray-500 text-[10px] font-black tracking-widest uppercase mb-2">Description</label>
                             <textarea
                                 required
                                 className="w-full h-[132px] bg-void border border-gray-800 rounded-xl p-4 text-white focus:border-neon-green outline-none resize-none placeholder:text-gray-700"
@@ -178,9 +185,9 @@ const Upload = () => {
                     {/* Source Files Section */}
                     <div className="space-y-4">
                         <div className="flex justify-between items-end">
-                            <label className="block text-gray-500 text-[10px] font-black tracking-widest uppercase">Source_Manifest ({files.length} files)</label>
+                            <label className="block text-gray-500 text-[10px] font-black tracking-widest uppercase">Source Files ({files.length} files)</label>
                             <label className="cursor-pointer text-xs font-black text-neon-green hover:underline">
-                                ADD_FILES_
+                                + Add Files
                                 <input type="file" multiple onChange={handleFileChange} className="hidden" />
                             </label>
                         </div>
@@ -204,7 +211,7 @@ const Upload = () => {
                             ) : (
                                 <div className="h-[120px] flex flex-col items-center justify-center gap-4 text-gray-600 border-2 border-dashed border-gray-800 rounded-xl">
                                     <Folder className="w-8 h-8 opacity-20" />
-                                    <p className="text-[10px] font-mono uppercase tracking-[0.2em]">No_Source_Detected_</p>
+                                    <p className="text-[10px] font-mono uppercase tracking-[0.2em]">No files selected</p>
                                 </div>
                             )}
                         </div>
@@ -213,9 +220,9 @@ const Upload = () => {
                     {/* Screenshot Section */}
                     <div className="space-y-4">
                         <div className="flex justify-between items-end">
-                            <label className="block text-gray-500 text-[10px] font-black tracking-widest uppercase">Visual_Telemetry ({screenshots.length} fragments)</label>
+                            <label className="block text-gray-500 text-[10px] font-black tracking-widest uppercase">Screenshots ({screenshots.length} uploaded)</label>
                             <label className="cursor-pointer text-xs font-black text-neon-blue hover:underline">
-                                ADD_CAPTURE_
+                                + Add Screenshots
                                 <input type="file" multiple accept="image/*" onChange={handleScreenshotChange} className="hidden" />
                             </label>
                         </div>
@@ -233,7 +240,7 @@ const Upload = () => {
                             ))}
                             <label className="aspect-video flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-800 rounded-lg text-gray-700 hover:border-neon-blue hover:text-neon-blue transition-all cursor-pointer">
                                 <ImageIcon className="w-6 h-6" />
-                                <span className="text-[8px] font-black uppercase tracking-widest">Add_Captures</span>
+                                <span className="text-[8px] font-black uppercase tracking-widest">Add Screenshots</span>
                                 <input type="file" multiple accept="image/*" onChange={handleScreenshotChange} className="hidden" />
                             </label>
                         </div>
@@ -245,7 +252,7 @@ const Upload = () => {
                             <div className="flex items-center gap-4">
                                 <Shield className={`w-6 h-6 ${formData.memberOnly ? 'text-neon-blue animate-pulse' : 'text-gray-800'}`} />
                                 <div>
-                                    <h4 className="text-white font-black text-xs uppercase tracking-[0.15em]">Gated_Access_ Protocol</h4>
+                                    <h4 className="text-white font-black text-xs uppercase tracking-[0.15em]">Gated Access Protocol</h4>
                                     <p className="text-[10px] text-gray-500 font-mono mt-1 uppercase text-left">Restrict system to high-reputation citizens.</p>
                                 </div>
                             </div>
@@ -263,7 +270,7 @@ const Upload = () => {
                                 <div className="flex items-center gap-4">
                                     <Lock className={`w-6 h-6 ${formData.isPrivate ? 'text-purple-500 animate-pulse' : 'text-gray-800'}`} />
                                     <div>
-                                        <h4 className="text-white font-black text-xs uppercase tracking-[0.15em]">Private_System_Protocol</h4>
+                                        <h4 className="text-white font-black text-xs uppercase tracking-[0.15em]">Private Project</h4>
                                         <p className="text-[10px] text-gray-400 font-mono mt-1 uppercase text-left">Hide from public grid Discovery.</p>
                                     </div>
                                 </div>
@@ -281,7 +288,7 @@ const Upload = () => {
                     <div className="pt-8 border-t border-gray-900 flex justify-between items-center">
                         <div className="space-y-1">
                             <p className="text-[10px] text-gray-600 font-mono uppercase">Node: {currentUser?.uid?.slice(0, 8)}</p>
-                            <p className="text-[10px] text-gray-600 font-mono uppercase">Status: READY_FOR_UPLINK</p>
+                            <p className="text-[10px] text-gray-600 font-mono uppercase">Status: READY</p>
                         </div>
 
                         <button
@@ -295,7 +302,7 @@ const Upload = () => {
                             {loading ? (
                                 <><Loader className="w-5 h-5 animate-spin" /> EXECUTING...</>
                             ) : (
-                                <><UploadIcon className="w-5 h-5" /> BROADCAST_SYSTEM</>
+                                <><UploadIcon className="w-5 h-5" /> Deploy Project</>
                             )}
                         </button>
                     </div>

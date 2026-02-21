@@ -17,7 +17,8 @@ const GridBroadcast = () => {
             const active = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             // Sort by timestamp desc to show latest
             setBroadcasts(active.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)));
-        });
+        }, () => { /* Silently handle permission errors */ });
+
 
         return () => unsubscribe();
     }, []);

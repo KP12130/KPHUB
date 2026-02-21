@@ -26,9 +26,8 @@ const Footer = () => {
                             Deploy. Pulse. Monetize.
                         </p>
                         <div className="flex gap-4">
-                            <a href="#" className="p-2 bg-gray-900 rounded-lg text-gray-500 hover:text-neon-green transition-all"><Github size={16} /></a>
-                            <a href="#" className="p-2 bg-gray-900 rounded-lg text-gray-500 hover:text-neon-blue transition-all"><Mail size={16} /></a>
-                            <a href="#" className="p-2 bg-gray-900 rounded-lg text-gray-500 hover:text-purple-500 transition-all"><MessageSquare size={16} /></a>
+                            <a href="https://github.com/KP12130" target="_blank" rel="noopener noreferrer" className="p-2 bg-gray-900 rounded-lg text-gray-500 hover:text-neon-green transition-all"><Github size={16} /></a>
+                            <a href="mailto:patrik12130@gmail.com" className="p-2 bg-gray-900 rounded-lg text-gray-500 hover:text-neon-blue transition-all"><Mail size={16} /></a>
                         </div>
                     </div>
 

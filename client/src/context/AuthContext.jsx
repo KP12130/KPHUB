@@ -21,6 +21,22 @@ export const AuthProvider = ({ children }) => {
         setCurrentUser(prev => ({ ...prev, ...data }));
     };
 
+    const refreshDebounceRef = React.useRef(null);
+
+    const refreshUser = async (uid) => {
+        // Debounce: prevent multiple concurrent refreshes for the same user
+        if (refreshDebounceRef.current) return;
+        refreshDebounceRef.current = uid;
+        try {
+            const res = await axios.get(`${API_BASE}/api/users/${uid}`);
+            setCurrentUser(prev => ({ ...prev, ...res.data }));
+        } catch (err) {
+            console.error('refreshUser failed', err);
+        } finally {
+            setTimeout(() => { refreshDebounceRef.current = null; }, 3000); // 3s cooldown
+        }
+    };
+
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
@@ -31,7 +47,6 @@ export const AuthProvider = ({ children }) => {
 
                     // Sanitize avatar URL if it's pointing to localhost in production
                     if (firestoreData.photoURL && firestoreData.photoURL.includes('localhost:5000') && !import.meta.env.DEV) {
-                        // Extract the path part (e.g., /api/users/...)
                         const path = firestoreData.photoURL.split('localhost:5000')[1];
                         firestoreData.photoURL = `${API_BASE}${path}`;
                     }
@@ -50,12 +65,38 @@ export const AuthProvider = ({ children }) => {
         return unsubscribe;
     }, []);
 
+    // 2. AUTO-SYNC RESTRICTIONS
+    // Automatically refresh user data when a mute/restriction expires
+    useEffect(() => {
+        if (!currentUser?.restrictions?.mutedUntil) return;
+
+        const expiry = new Date(currentUser.restrictions.mutedUntil).getTime();
+        const now = Date.now();
+        const delay = expiry - now;
+
+        if (delay > 0) {
+            console.log(`[SYNC] Mute expires in ${Math.ceil(delay / 60000)}m. Scheduling auto-refresh.`);
+            const timer = setTimeout(() => {
+                console.log('[SYNC] Mute period elapsed. Revoking restrictions...');
+                refreshUser(currentUser.uid);
+                // Also trigger a small reload or state update if needed, 
+                // but refreshUser should update currentUser and fix the UI.
+            }, delay + 1000); // Add 1s buffer
+
+            return () => clearTimeout(timer);
+        } else if (currentUser.restrictions.muted) {
+            // If expiry is in the past but we still have 'muted' flag locally, sync once
+            refreshUser(currentUser.uid);
+        }
+    }, [currentUser?.restrictions?.mutedUntil, currentUser?.restrictions?.muted]);
+
     const value = {
         currentUser,
         loginWithGoogle,
         loginWithGithub,
         logout,
-        updateUser // Export this
+        updateUser,
+        refreshUser,
     };
 
     return (

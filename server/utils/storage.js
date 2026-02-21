@@ -1,8 +1,8 @@
 const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const dotenv = require('dotenv');
-
-dotenv.config();
+const path = require('path');
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;

@@ -7,7 +7,7 @@ import { db } from '../firebase';
 import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import {
     LayoutDashboard, Trophy, Code, Upload as UploadIcon, HelpCircle,
-    Bell, BellDot, User, LogOut, Menu, X, Target, Terminal, ShoppingCart, Zap
+    Bell, BellDot, User, LogOut, Menu, X, Terminal, ShoppingCart, Zap
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getReputationTitle } from '../utils/reputation';
@@ -22,6 +22,9 @@ const Navbar = ({ onOpenCommandPalette }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [allFlares, setAllFlares] = useState({});
 
+    // Use a ref to track notification count without triggering dependency loops
+    const notifCountRef = React.useRef(0);
+
     useEffect(() => {
         const fetchFlares = async () => {
             try {
@@ -35,7 +38,7 @@ const Navbar = ({ onOpenCommandPalette }) => {
     }, []);
 
     useEffect(() => {
-        if (!currentUser) return;
+        if (!currentUser || currentUser.tier === 'BANNED') return;
 
         const q = query(
             collection(db, 'notifications'),
@@ -52,19 +55,20 @@ const Navbar = ({ onOpenCommandPalette }) => {
                 return dateB - dateA;
             }).slice(0, 20);
 
-            // Check for new notifications to play sound
-            if (fetched.length > notifications.length) {
-                const newOnes = fetched.filter(f => !notifications.find(o => o.id === f.id));
-                if (newOnes.some(n => !n.read)) {
+            // Check for new notifications to play sound using a stable ref
+            if (fetched.length > notifCountRef.current && notifCountRef.current > 0) {
+                // If there are more fetched than previous (and it's not the initial load)
+                if (fetched.some(n => !n.read)) {
                     playSound('pop');
                 }
             }
 
+            notifCountRef.current = fetched.length;
             setNotifications(fetched);
-        });
+        }, () => { /* Silently handle permission errors */ });
 
         return () => unsubscribe();
-    }, [currentUser, notifications.length]);
+    }, [currentUser?.uid]); // ONLY re-run if UID changes
 
     const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -113,7 +117,6 @@ const Navbar = ({ onOpenCommandPalette }) => {
                         <>
                             <div className="flex bg-black/20 rounded-full px-4 py-2 border border-white/5 backdrop-blur-sm shadow-inner gap-4">
                                 <Link to="/studio" onMouseEnter={() => playSound('hover')} className="text-gray-400 hover:text-neon-green transition-all hover:scale-110" title="Creator Studio"><LayoutDashboard className="w-5 h-5" /></Link>
-                                <Link to="/missions" onMouseEnter={() => playSound('hover')} className="text-gray-400 hover:text-neon-green transition-all hover:scale-110" title="Missions"><Target className="w-5 h-5" /></Link>
                                 <Link to="/hackathons" onMouseEnter={() => playSound('hover')} className="text-gray-400 hover:text-neon-purple transition-all hover:scale-110" title="Hackathons"><Trophy className="w-5 h-5" /></Link>
                                 <Link to="/reviews" onMouseEnter={() => playSound('hover')} className="text-gray-400 hover:text-neon-blue transition-all hover:scale-110" title="Code Reviews"><Code className="w-5 h-5" /></Link>
                                 <Link to="/upload" onMouseEnter={() => playSound('hover')} className="text-gray-400 hover:text-neon-green transition-all hover:scale-110" title="Deploy"><UploadIcon className="w-5 h-5" /></Link>

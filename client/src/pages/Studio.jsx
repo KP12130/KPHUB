@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard, Database, MessageSquare, Settings,
     MoreVertical, Eye, Download, Heart, Trash2, Edit3,
-    Lock, Globe, Shield, CreditCard, TrendingUp, Users,
+    Lock, Globe, Shield, ShieldOff, CreditCard, TrendingUp, Users,
     CheckCircle2, AlertCircle, Plus, Zap, Star, Trophy, Activity,
     DollarSign, BarChart3, PieChart, X, LifeBuoy, Mail, Clock, Send
 } from 'lucide-react';
@@ -18,6 +18,7 @@ import PaymentModal from '../components/PaymentModal';
 import Sentinel from '../components/Sentinel';
 import SupportChat from '../components/SupportChat';
 import SupportChatAdmin from '../components/SupportChatAdmin';
+import ViolationsPanel from '../components/ViolationsPanel';
 
 const GlassCard = ({ children, className = "" }) => (
     <div className={`glass-panel rounded-2xl p-6 ${className}`}>
@@ -26,7 +27,7 @@ const GlassCard = ({ children, className = "" }) => (
 );
 
 const Studio = () => {
-    const { currentUser } = useAuth();
+    const { currentUser, updateUser } = useAuth();
     const [searchParams] = useSearchParams();
     const initialView = searchParams.get('view') || 'DASHBOARD';
     const [view, setView] = useState(initialView);
@@ -41,7 +42,7 @@ const Studio = () => {
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState('');
     const [profileData, setProfileData] = useState({
-        displayName: '', bio: '', website: '', location: '', githubUrl: '', twitterUrl: ''
+        username: '', displayName: '', bio: '', website: '', location: '', githubUrl: '', twitterUrl: ''
     });
     const [quests, setQuests] = useState([
         { id: 1, title: 'DAILY_SYNC', desc: 'Initialize Studio interface for 24h cycle.', reward: 50, completed: false, icon: <Activity className="w-10 h-10" /> },
@@ -80,7 +81,8 @@ const Studio = () => {
                 setUserLevel(Math.floor(Math.sqrt(currentXp / 100)) || 1);
 
                 setProfileData({
-                    displayName: user.name || currentUser.displayName || '',
+                    username: user.username || currentUser.username || '',
+                    displayName: user.displayName || user.name || currentUser.displayName || '',
                     bio: user.bio || '',
                     website: user.website || '',
                     location: user.location || '',
@@ -115,7 +117,7 @@ const Studio = () => {
             }
         };
         fetchStudioData();
-    }, [currentUser?.username, currentUser?.uid]);
+    }, [currentUser?.uid]);
 
     const handleClaimQuest = async (quest) => {
         if (quest.completed) return;
@@ -136,10 +138,30 @@ const Studio = () => {
 
     const handleSaveProfile = async () => {
         try {
-            await axios.put(`${API_BASE}/api/users/${currentUser.uid}`, profileData);
-            toast.success("Profile Matrix Updated.");
+            const updatePayload = {
+                uid: currentUser.uid,
+                ...profileData,
+                socials: {
+                    github: profileData.githubUrl,
+                    twitter: profileData.twitterUrl,
+                    website: profileData.website
+                }
+            };
+            await axios.put(`${API_BASE}/api/users/${currentUser.uid}`, updatePayload);
+
+            // Update AuthContext locally — avoids a full re-fetch cascade
+            updateUser({
+                username: profileData.username,
+                displayName: profileData.displayName,
+                bio: profileData.bio,
+                location: profileData.location,
+                githubUrl: profileData.githubUrl,
+                twitterUrl: profileData.twitterUrl,
+            });
+            toast.success("Profile saved.");
         } catch (err) {
-            toast.error("Update Failed.");
+            console.error(err);
+            toast.error(err.response?.data?.error || "Update Failed.");
         }
     };
 
@@ -156,6 +178,31 @@ const Studio = () => {
 
     const [transactions, setTransactions] = useState([]);
     const [isLedgerLoading, setIsLedgerLoading] = useState(false);
+    const [withdrawAmount, setWithdrawAmount] = useState('');
+    const [isWithdrawing, setIsWithdrawing] = useState(false);
+
+    const handleWithdraw = async (e) => {
+        e.preventDefault();
+        if (currentUser?.restrictions?.cashoutBlocked) {
+            return toast.error("🏦 CASHOUT_BLOCKED — Financial withdrawals are restricted. Contact Support.", { duration: 5000 });
+        }
+        const amt = parseFloat(withdrawAmount);
+        if (isNaN(amt) || amt < 10) return toast.error("Minimum withdrawal is $10.");
+        if (amt > (currentUser.stats?.balance || 0)) return toast.error("Insufficient USD Balance.");
+
+        setIsWithdrawing(true);
+        try {
+            const res = await axios.post(`${API_BASE}/api/users/withdraw`, { uid: currentUser.uid, amount: amt });
+            toast.success(res.data.message);
+            setWithdrawAmount('');
+            // Trigger an auth refresh to sync the new balance
+            if (window.refreshAuthUser) window.refreshAuthUser(currentUser.uid);
+        } catch (err) {
+            toast.error(err.response?.data?.error || "Withdrawal request failed.");
+        } finally {
+            setIsWithdrawing(false);
+        }
+    };
 
     useEffect(() => {
         const fetchLedger = async () => {
@@ -177,7 +224,7 @@ const Studio = () => {
         <div className="min-h-screen flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
                 <div className="w-12 h-12 border-4 border-neon-purple/30 border-t-neon-purple rounded-full animate-spin" />
-                <span className="text-neon-purple font-mono text-xs animate-pulse tracking-widest">LOADING_STUDIO_ENV...</span>
+                <span className="text-neon-purple font-mono text-xs animate-pulse tracking-widest">Loading Studio...</span>
             </div>
         </div>
     );
@@ -239,8 +286,8 @@ const Studio = () => {
                         {/* XP Bar Detail */}
                         <div className="space-y-1">
                             <div className="flex justify-between text-[8px] font-black uppercase text-gray-500 tracking-widest">
-                                <span>Lvl_{userLevel}</span>
-                                <span>NEXT_SYNC: {(userLevel * 100) - (stats.xp % (userLevel * 100))} XP</span>
+                                <span>Lvl {userLevel}</span>
+                                <span>Next: {(userLevel * 100) - (stats.xp % (userLevel * 100))} XP</span>
                             </div>
                             <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                                 <motion.div
@@ -252,22 +299,23 @@ const Studio = () => {
                         </div>
 
                         <div className="space-y-2">
-                            <MenuButton id="DASHBOARD" icon={LayoutDashboard} label="Command_Center" />
-                            <MenuButton id="ANALYTICS" icon={PieChart} label="Data_Analytics" />
+                            <MenuButton id="DASHBOARD" icon={LayoutDashboard} label="Dashboard" />
+                            <MenuButton id="ANALYTICS" icon={PieChart} label="Analytics" />
                             <MenuButton id="MONETIZATION" icon={DollarSign} label="Monetization" />
                             <MenuButton
                                 id="SUPPORT"
                                 icon={LifeBuoy}
-                                label={currentUser.username === 'grid_admin' ? 'Support_Grid' : 'Support_Link'}
+                                label={currentUser.username === 'grid_admin' ? 'Support Grid' : 'Support'}
                             />
-                            <MenuButton id="TRANSACTIONS" icon={CreditCard} label="Financial_Ledger" />
-                            <MenuButton id="SENTINEL" icon={Shield} label="Sentinel_HUD" />
-                            <MenuButton id="SETTINGS" icon={Settings} label="Config_Settings" />
+                            <MenuButton id="TRANSACTIONS" icon={CreditCard} label="Transactions" />
+                            <MenuButton id="SENTINEL" icon={Shield} label="Sentinel" />
+                            <MenuButton id="VIOLATIONS" icon={ShieldOff} label="Violations" />
+                            <MenuButton id="SETTINGS" icon={Settings} label="Settings" />
                         </div>
 
                         <div className="pt-6 border-t border-white/5">
                             <Link to="/upload" className="w-full py-3 bg-white/5 border border-white/10 text-white font-black uppercase tracking-widest rounded-xl hover:bg-white/10 transition-all flex items-center justify-center gap-2 text-xs">
-                                <Plus className="w-4 h-4 text-neon-green" /> New_Project
+                                <Plus className="w-4 h-4 text-neon-green" /> New Project
                             </Link>
                         </div>
                     </GlassCard>
@@ -291,42 +339,42 @@ const Studio = () => {
                                                 <Eye className="w-5 h-5 text-neon-blue" />
                                             </motion.div>
                                             <span className="text-2xl font-black text-white">{stats.views}</span>
-                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Visits_</span>
+                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Views</span>
                                         </GlassCard>
                                         <GlassCard className="flex flex-col items-center justify-center text-center p-4 hover:border-neon-green/30 transition-colors">
                                             <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-green/10 rounded-xl mb-3">
                                                 <Download className="w-5 h-5 text-neon-green" />
                                             </motion.div>
                                             <span className="text-2xl font-black text-white">{stats.downloads}</span>
-                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Syncs_</span>
+                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Downloads</span>
                                         </GlassCard>
                                         <GlassCard className="flex flex-col items-center justify-center text-center p-4 hover:border-neon-purple/30 transition-colors">
                                             <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-purple/10 rounded-xl mb-3">
                                                 <Users className="w-5 h-5 text-neon-purple" />
                                             </motion.div>
                                             <span className="text-2xl font-black text-white">{stats.subs}</span>
-                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Orbitals_</span>
+                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Followers</span>
                                         </GlassCard>
                                         <GlassCard className="flex flex-col items-center justify-center text-center p-4 hover:border-yellow-500/30 transition-colors">
                                             <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-yellow-500/10 rounded-xl mb-3">
                                                 <Trophy className="w-5 h-5 text-yellow-500" />
                                             </motion.div>
                                             <span className="text-2xl font-black text-white">{stats.rep}</span>
-                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Reputation_</span>
+                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Reputation</span>
                                         </GlassCard>
                                         <GlassCard className="flex flex-col items-center justify-center text-center p-4 hover:border-neon-blue/30 transition-colors">
                                             <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-blue/10 rounded-xl mb-3">
                                                 <DollarSign className="w-5 h-5 text-neon-blue" />
                                             </motion.div>
                                             <span className="text-2xl font-black text-white">{currentUser.stats?.kpcBalance?.toLocaleString() || 0}</span>
-                                            <span className="text-[8px] font-mono text-gray-500 uppercase">KPC_Credits_</span>
+                                            <span className="text-[8px] font-mono text-gray-500 uppercase">KPC Credits</span>
                                         </GlassCard>
                                         <GlassCard className="flex flex-col items-center justify-center text-center p-4 hover:border-neon-green/30 transition-colors">
                                             <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-green/10 rounded-xl mb-3">
                                                 <TrendingUp className="w-5 h-5 text-neon-green" />
                                             </motion.div>
                                             <span className="text-2xl font-black text-white">${stats.adRevenue.toFixed(2)}</span>
-                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Ad_Protocol_</span>
+                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Ad Revenue</span>
                                         </GlassCard>
                                     </div>
 
@@ -375,7 +423,7 @@ const Studio = () => {
                                             <div className="glass-panel p-8 rounded-xl text-center">
                                                 <p className="text-gray-500 font-mono text-sm mb-4">No active protocols deployed.</p>
                                                 <Link to="/upload" className="inline-block px-6 py-2 bg-white/5 hover:bg-neon-green hover:text-black text-white border border-white/10 rounded-lg transition-all uppercase text-xs font-bold tracking-widest">
-                                                    Deploy_First_System
+                                                    Deploy First Project
                                                 </Link>
                                             </div>
                                         )}
@@ -409,12 +457,31 @@ const Studio = () => {
 
                             {view === 'TRANSACTIONS' && (
                                 <div className="space-y-6">
-                                    <div className="flex items-center justify-between">
-                                        <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter flex items-center gap-3">
-                                            <CreditCard className="w-8 h-8 text-neon-blue" />
-                                            Financial_Ledger
-                                        </h2>
-                                        <div className="text-xs font-mono text-gray-500">REALTIME_TRANSACTION_FEED</div>
+                                    <div className="flex items-center justify-between flex-wrap gap-4">
+                                        <div>
+                                            <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter flex items-center gap-3">
+                                                <CreditCard className="w-8 h-8 text-neon-blue" />
+                                                Financial Ledger
+                                            </h2>
+                                            <div className="text-xs font-mono text-gray-500">Transaction History</div>
+                                        </div>
+                                        <form onSubmit={handleWithdraw} className="flex items-center gap-2 bg-black/40 p-2 rounded-xl border border-white/5">
+                                            <input
+                                                type="number"
+                                                min="10"
+                                                placeholder="Amount (Min 10)"
+                                                value={withdrawAmount}
+                                                onChange={(e) => setWithdrawAmount(e.target.value)}
+                                                className="bg-transparent border-none text-white font-mono text-sm w-36 focus:ring-0 px-2 outline-none"
+                                            />
+                                            <button
+                                                type="submit"
+                                                disabled={isWithdrawing}
+                                                className="px-4 py-2 bg-white/10 hover:bg-neon-blue hover:text-black text-neon-blue font-black uppercase text-xs tracking-widest rounded-lg transition-colors disabled:opacity-50"
+                                            >
+                                                {isWithdrawing ? 'Processing...' : 'Withdraw'}
+                                            </button>
+                                        </form>
                                     </div>
 
                                     <GlassCard className="p-0 overflow-hidden">
@@ -495,7 +562,7 @@ const Studio = () => {
                                             onClick={() => { setIsPaymentOpen(true); setSelectedPlan('ELITE'); }}
                                             className="px-8 py-4 bg-neon-purple text-white font-black uppercase tracking-widest rounded-xl hover:scale-105 transition-transform shadow-[0_0_20px_rgba(168,85,247,0.4)]"
                                         >
-                                            Upgrade_System
+                                            Upgrade Plan
                                         </button>
                                     </GlassCard>
 
@@ -523,6 +590,30 @@ const Studio = () => {
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <label className="text-[10px] font-bold text-gray-500 uppercase">Username / ID</label>
+                                                {currentUser?.lastUsernameChange && (
+                                                    (() => {
+                                                        const lastChange = currentUser.lastUsernameChange;
+                                                        const lastDate = lastChange._seconds ? new Date(lastChange._seconds * 1000) : new Date(lastChange);
+                                                        const days = Math.ceil(14 - (new Date() - lastDate) / (1000 * 60 * 60 * 24));
+                                                        return days > 0 ? (
+                                                            <span className="text-[9px] font-bold text-neon-blue uppercase animate-pulse">Cooldown: {days}d left</span>
+                                                        ) : null;
+                                                    })()
+                                                )}
+                                            </div>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 font-mono text-xs">@</span>
+                                                <input
+                                                    type="text"
+                                                    value={profileData.username}
+                                                    onChange={(e) => setProfileData({ ...profileData, username: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
+                                                    className="w-full bg-black/30 border border-white/10 rounded-xl p-3 pl-7 text-white focus:border-neon-green outline-none transition-colors font-mono"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
                                             <label className="text-[10px] font-bold text-gray-500 uppercase">Display Name</label>
                                             <input
                                                 type="text"
@@ -531,6 +622,8 @@ const Studio = () => {
                                                 className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-white focus:border-neon-green outline-none transition-colors"
                                             />
                                         </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-bold text-gray-500 uppercase">Location</label>
                                             <input
@@ -538,6 +631,16 @@ const Studio = () => {
                                                 value={profileData.location}
                                                 onChange={(e) => setProfileData({ ...profileData, location: e.target.value })}
                                                 className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-white focus:border-neon-green outline-none transition-colors"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase">Website</label>
+                                            <input
+                                                type="text"
+                                                value={profileData.website}
+                                                onChange={(e) => setProfileData({ ...profileData, website: e.target.value })}
+                                                className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-white focus:border-neon-green outline-none transition-colors"
+                                                placeholder="https://..."
                                             />
                                         </div>
                                     </div>
@@ -580,7 +683,7 @@ const Studio = () => {
                                             onClick={handleSaveProfile}
                                             className="px-8 py-3 bg-neon-green text-black font-black uppercase tracking-widest rounded-xl hover:bg-white transition-colors shadow-[0_0_20px_rgba(57,255,20,0.3)]"
                                         >
-                                            Save_Changes
+                                            Save Changes
                                         </button>
                                     </div>
                                 </GlassCard>
@@ -596,7 +699,7 @@ const Studio = () => {
                                         <div>
                                             <h2 className="text-4xl font-black text-white tracking-tighter italic uppercase flex items-center gap-4">
                                                 <Shield className="w-10 h-10 text-neon-blue" />
-                                                Sentinel_Protocol
+                                                Sentinel Protocol
                                             </h2>
                                             <p className="text-gray-500 font-mono text-sm mt-2">Security automation & perimeter defense intelligence.</p>
                                         </div>
@@ -615,6 +718,24 @@ const Studio = () => {
                                     ) : (
                                         <SupportChat currentUser={currentUser} />
                                     )}
+                                </motion.div>
+                            )}
+                            {view === 'VIOLATIONS' && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="space-y-6"
+                                >
+                                    <div>
+                                        <h2 className="text-4xl font-black text-white tracking-tighter italic uppercase flex items-center gap-4">
+                                            <ShieldOff className="w-10 h-10 text-red-500" />
+                                            Violation_Log
+                                        </h2>
+                                        <p className="text-gray-500 font-mono text-sm mt-2">Your account restriction history and active enforcement status.</p>
+                                    </div>
+                                    <GlassCard>
+                                        <ViolationsPanel currentUser={currentUser} />
+                                    </GlassCard>
                                 </motion.div>
                             )}
                         </motion.div>

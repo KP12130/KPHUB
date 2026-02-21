@@ -12,7 +12,7 @@ const Support = () => {
             {/* Header */}
             <header className="mb-20 text-center">
                 <h1 className="text-6xl md:text-8xl font-black text-white italic tracking-tighter uppercase mb-4">
-                    Assistance <span className="text-neon-blue">Hub_</span>
+                    Assistance <span className="text-neon-blue">Hub</span>
                 </h1>
                 <p className="text-gray-500 font-mono text-xs tracking-[0.3em] uppercase">Knowledge synchronization and glitch mitigation protocol.</p>
             </header>
@@ -29,7 +29,7 @@ const Support = () => {
                 </div>
 
                 <div className="space-y-4">
-                    <h2 className="text-4xl font-black text-white italic uppercase tracking-tight">Encountering_a_Glitch?</h2>
+                    <h2 className="text-4xl font-black text-white italic uppercase tracking-tight">Encountering a Glitch?</h2>
                     <p className="text-gray-500 font-mono text-xs leading-relaxed uppercase max-w-md mx-auto">
                         Our technical support has migrated to the Studio Environment for real-time synchronization. Create a dedicated transmission thread to resolve your issue.
                     </p>
@@ -41,14 +41,14 @@ const Support = () => {
                             to="/studio?view=SUPPORT"
                             className="inline-flex items-center gap-3 px-10 py-5 bg-white text-black font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl hover:bg-neon-blue transition-all active:scale-95 shadow-[0_0_30px_rgba(255,255,255,0.1)] hover:shadow-[0_0_50px_rgba(0,212,255,0.2)]"
                         >
-                            <Send className="w-4 h-4" /> Open_Support_Link
+                            <Send className="w-4 h-4" /> Open Support
                         </Link>
                     ) : (
                         <Link
                             to="/login"
                             className="inline-flex items-center gap-3 px-10 py-5 bg-void border border-gray-800 text-white font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl hover:border-white transition-all active:scale-95"
                         >
-                            <Lock className="w-4 h-4" /> Authenticate_To_Proceed
+                            <Lock className="w-4 h-4" /> Login to Continue
                         </Link>
                     )}
                 </div>

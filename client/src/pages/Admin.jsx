@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
     Shield, Lock, Terminal, Activity, LifeBuoy, Mail,
     Clock, CheckCircle2, Send, ArrowLeft, LogOut, Loader2,
-    AlertCircle, Check, ExternalLink, Users, Slash
+    AlertCircle, Check, ExternalLink, Users, Slash, Globe, Trophy, Plus,
+    Calendar, DollarSign, Gift, Star, X
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE } from '../api';
 import { toast } from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 import SupportChatAdmin from '../components/SupportChatAdmin';
+import ModerationPanel from '../components/ModerationPanel';
+import SecurityPanel from '../components/SecurityPanel';
 
 // CREDENTIALS
 const ADMIN_USER = "grid_admin";
@@ -33,19 +38,28 @@ const Admin = () => {
 
     useEffect(() => {
         const session = localStorage.getItem('admin_session');
-        if (session === 'ACTIVE') setIsAuthenticated(true);
+        const token = sessionStorage.getItem('admin_token');
+        if (session === 'ACTIVE') {
+            setIsAuthenticated(true);
+            if (token) setLoginData(prev => ({ ...prev, pass: token }));
+        }
     }, []);
 
     useEffect(() => {
         if (isAuthenticated) fetchTickets();
     }, [isAuthenticated]);
 
-    const [activeTab, setActiveTab] = useState('SUPPORT'); // SUPPORT, VERIFICATION, USER_MANAGEMENT
+    const [activeTab, setActiveTab] = useState('SUPPORT'); // SUPPORT, VERIFICATION, USER_MANAGEMENT, NEXUS_MANAGER
+    const [hackathons, setHackathons] = useState([]);
+    const [isNexusLoading, setIsNexusLoading] = useState(false);
+    const [newHack, setNewHack] = useState({ title: '', description: '', reward: '', entryFee: 0, durationDays: 7, image: '' });
+    const [selectedHackId, setSelectedHackId] = useState(null);
     const [pendingVerifications, setPendingVerifications] = useState([]);
     const [isVerifying, setIsVerifying] = useState(false);
 
     useEffect(() => {
         if (isAuthenticated && activeTab === 'VERIFICATION') fetchPendingVerifications();
+        if (isAuthenticated && activeTab === 'NEXUS_MANAGER') fetchHackathons();
     }, [isAuthenticated, activeTab]);
 
     const handleLogin = (e) => {
@@ -53,6 +67,7 @@ const Admin = () => {
         if (loginData.user === ADMIN_USER && loginData.pass === ADMIN_PASS) {
             setIsAuthenticated(true);
             localStorage.setItem('admin_session', 'ACTIVE');
+            sessionStorage.setItem('admin_token', loginData.pass);
             toast.success("SYSTEM_AUTHENTICATED: Welcome, Architect.");
         } else {
             toast.error("INVALID_PROTOCOL: Access Denied.");
@@ -62,6 +77,8 @@ const Admin = () => {
     const handleLogout = () => {
         setIsAuthenticated(false);
         localStorage.removeItem('admin_session');
+        sessionStorage.removeItem('admin_token');
+        setLoginData({ user: '', pass: '' });
         toast.success("SESSION_TERMINATED");
     };
 
@@ -154,6 +171,56 @@ const Admin = () => {
         }
     };
 
+    const fetchHackathons = async () => {
+        setIsNexusLoading(true);
+        try {
+            const res = await axios.get(`${API_BASE}/api/hackathons`);
+            setHackathons(res.data);
+        } catch (err) {
+            toast.error("Nexus sync failure.");
+        } finally {
+            setIsNexusLoading(false);
+        }
+    };
+
+    const handleCreateHack = async (e) => {
+        e.preventDefault();
+        try {
+            await axios.post(`${API_BASE}/api/hackathons/admin/create`, { ...newHack, adminToken: loginData.pass });
+            toast.success("EVENT_AUTHORIZED: Nexus updated.");
+            setNewHack({ title: '', description: '', reward: '', entryFee: 0, durationDays: 7, image: '' });
+            fetchHackathons();
+        } catch (err) {
+            toast.error("Deployment failed.");
+        }
+    };
+
+    const handlePayout = async (hackathonId, winnerId, amount) => {
+        if (!window.confirm(`CONFIRM_PAYOUT: Transfer ${amount} KPC to ${winnerId}?`)) return;
+        try {
+            await axios.post(`${API_BASE}/api/hackathons/admin/payout`, {
+                hackathonId, winnerId, amount, adminToken: loginData.pass
+            });
+            toast.success("REWARD_TRANSMITTED");
+            fetchHackathons();
+        } catch (err) {
+            toast.error(err.response?.data?.error || "Transaction failure.");
+        }
+    };
+
+    const handleEndEvent = async (id) => {
+        if (!window.confirm("FORCE_TERMINATION: End this event immediately?")) return;
+        try {
+            await axios.post(`${API_BASE}/api/hackathons/admin/end`, {
+                hackathonId: id, adminToken: loginData.pass
+            });
+            toast.success("EVENT_TERMINATED");
+            fetchHackathons();
+        } catch (err) {
+            toast.error("Termination failed.");
+        }
+    };
+
     if (!isAuthenticated) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-void p-4">
@@ -237,6 +304,18 @@ const Admin = () => {
                 >
                     User_Management
                 </button>
+                <button
+                    onClick={() => setActiveTab('NEXUS_MANAGER')}
+                    className={`px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${activeTab === 'NEXUS_MANAGER' ? 'bg-purple-500 text-black shadow-[0_0_20px_rgba(168,85,247,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
+                >
+                    Nexus_Manager
+                </button>
+                <button
+                    onClick={() => setActiveTab('SECURITY_IP')}
+                    className={`px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${activeTab === 'SECURITY_IP' ? 'bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
+                >
+                    Security_&_IPs
+                </button>
             </div>
 
             {activeTab === 'SUPPORT' && (
@@ -298,51 +377,121 @@ const Admin = () => {
             )}
 
             {activeTab === 'USER_MANAGEMENT' && (
-                <div className="space-y-8 max-w-2xl">
-                    <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic flex items-center gap-3">
-                        <Slash className="text-red-500" /> Revoke_Access_Protocol
-                    </h2>
+                <ModerationPanel />
+            )}
 
-                    <div className="glass-panel p-8 rounded-[2.5rem] border border-red-500/20 bg-red-950/20">
-                        <p className="text-gray-400 font-mono text-xs mb-8">
-                            Specify a user identity to permanently sever their connection to the main grid. They will be isolated to the Banned Portal.
-                        </p>
+            {activeTab === 'SECURITY_IP' && (
+                <SecurityPanel />
+            )}
 
-                        <form onSubmit={handleBanUser} className="space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-2">
-                                    <Users className="w-3 h-3 text-red-500" /> Identifier (Email, UID, or @username)
-                                </label>
-                                <input
-                                    type="text"
-                                    value={banIdentifier}
-                                    onChange={(e) => setBanIdentifier(e.target.value)}
-                                    placeholder="e.g., user@domain.com, @neo_coder, abc123def456"
-                                    className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white font-mono placeholder:text-gray-700 outline-none focus:border-red-500 transition-colors"
-                                />
+            {activeTab === 'NEXUS_MANAGER' && (
+                <div className="space-y-12">
+                    <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* Creation Form */}
+                        <GlassCard className="lg:col-span-1 border border-white/5">
+                            <h2 className="text-xl font-black text-white uppercase italic mb-6 flex items-center gap-2">
+                                <Plus className="text-purple-500" /> Deploy_Event
+                            </h2>
+                            <form onSubmit={handleCreateHack} className="space-y-4">
+                                <div className="space-y-1">
+                                    <label className="text-[8px] font-bold text-gray-600 uppercase">Event_Title</label>
+                                    <input type="text" value={newHack.title} onChange={e => setNewHack({ ...newHack, title: e.target.value })} className="admin-input w-full" placeholder="e.g. NEON_CITY_BUILDER" required />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[8px] font-bold text-gray-600 uppercase">Description</label>
+                                    <textarea value={newHack.description} onChange={e => setNewHack({ ...newHack, description: e.target.value })} className="admin-input w-full h-24" placeholder="Event briefing..." required />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <label className="text-[8px] font-bold text-gray-600 uppercase">Entry_Fee (KPC)</label>
+                                        <input type="number" value={newHack.entryFee} onChange={e => setNewHack({ ...newHack, entryFee: e.target.value })} className="admin-input w-full" placeholder="0" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[8px] font-bold text-gray-600 uppercase">Duration (Days)</label>
+                                        <input type="number" value={newHack.durationDays} onChange={e => setNewHack({ ...newHack, durationDays: e.target.value })} className="admin-input w-full" placeholder="7" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[8px] font-bold text-gray-600 uppercase">Reward_Label</label>
+                                    <input type="text" value={newHack.reward} onChange={e => setNewHack({ ...newHack, reward: e.target.value })} className="admin-input w-full" placeholder="e.g. 50,000 KPC + Badge" required />
+                                </div>
+                                <button className="w-full py-4 bg-purple-600 text-white font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-white hover:text-black transition-all shadow-lg">
+                                    Authorize_Deployment
+                                </button>
+                            </form>
+                        </GlassCard>
+
+                        {/* Active Events List */}
+                        <div className="lg:col-span-2 space-y-6">
+                            <h2 className="text-xl font-black text-white uppercase italic flex items-center gap-2">
+                                <Trophy className="text-neon-green" /> Managed_Nexus_Events
+                            </h2>
+                            <div className="space-y-4">
+                                {hackathons.map(h => (
+                                    <GlassCard key={h.id} className={`border transition-all ${selectedHackId === h.id ? 'border-purple-500 bg-purple-500/5' : 'border-white/5 hover:border-white/10'}`}>
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h3 className="font-black text-white uppercase tracking-widest flex items-center gap-2">
+                                                    {h.title}
+                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${h.status === 'ACTIVE' ? 'bg-neon-green/10 text-neon-green' : 'bg-gray-800 text-gray-500'}`}>
+                                                        {h.status}
+                                                    </span>
+                                                </h3>
+                                                <p className="text-[10px] text-gray-500 font-mono mt-1">{h.submissions?.length || 0} Submissions | {h.participants?.length || 0} Participants</p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                {h.status === 'ACTIVE' && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleEndEvent(h.id); }}
+                                                        className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all"
+                                                        title="End Event"
+                                                    >
+                                                        <Clock className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => setSelectedHackId(selectedHackId === h.id ? null : h.id)}
+                                                    className="p-2 hover:bg-white/5 rounded-lg text-gray-500 hover:text-white transition-colors"
+                                                >
+                                                    {selectedHackId === h.id ? <X /> : <Star />}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {selectedHackId === h.id && (
+                                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="mt-8 pt-8 border-t border-white/5 space-y-4">
+                                                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Incoming_Submissions</p>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {h.submissions?.length > 0 ? h.submissions.map((s, idx) => (
+                                                        <div key={idx} className="bg-void p-4 rounded-xl border border-gray-900 flex flex-col justify-between">
+                                                            <div>
+                                                                <h4 className="text-white font-bold text-xs truncate">{s.projectTitle}</h4>
+                                                                <p className="text-[10px] text-gray-600 font-mono italic">Creator: {s.userId}</p>
+                                                            </div>
+                                                            <div className="mt-4 flex gap-2">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const amt = window.prompt("REWARD_AMOUNT (KPC):", "10000");
+                                                                        if (amt) handlePayout(h.id, s.userId, amt);
+                                                                    }}
+                                                                    className="flex-1 py-2 bg-neon-green/10 text-neon-green text-[9px] font-black uppercase tracking-tighter rounded-lg hover:bg-neon-green hover:text-black transition-all"
+                                                                >
+                                                                    Grant_Reward
+                                                                </button>
+                                                                <Link to={`/project/${s.projectId}?tab=CODE`} className="p-2 border border-white/10 rounded-lg text-gray-500 hover:text-white" title="Launch Explorer"><ExternalLink className="w-3 h-3" /></Link>
+                                                            </div>
+                                                        </div>
+                                                    )) : (
+                                                        <div className="col-span-full py-10 text-center text-[10px] text-gray-700 font-mono uppercase">Silence on the grid.</div>
+                                                    )}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </GlassCard>
+                                ))}
                             </div>
-
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-2">
-                                    <AlertCircle className="w-3 h-3 text-red-500" /> Ban Reason (Optional)
-                                </label>
-                                <input
-                                    type="text"
-                                    value={banReason}
-                                    onChange={(e) => setBanReason(e.target.value)}
-                                    placeholder="Internal reason for audit logs"
-                                    className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white font-mono placeholder:text-gray-700 outline-none focus:border-red-500 transition-colors"
-                                />
-                            </div>
-
-                            <button
-                                disabled={isBanning || !banIdentifier.trim()}
-                                className="w-full h-14 bg-red-500/10 border border-red-500/30 text-red-500 font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl flex items-center justify-center gap-2 hover:bg-red-500 hover:text-white transition-all disabled:opacity-50"
-                            >
-                                {isBanning ? 'Executing Protocol...' : 'Sever_Connection'}
-                            </button>
-                        </form>
-                    </div>
+                        </div>
+                    </section>
                 </div>
             )}
         </div>

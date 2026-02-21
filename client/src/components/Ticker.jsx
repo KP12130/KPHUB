@@ -6,43 +6,55 @@ import { API_BASE } from '../api';
 
 const Ticker = () => {
     const [activities, setActivities] = useState([
-        "SYSTEM_IDLE: Grid standing by...",
+        "SYSTEM: Grid standing by...",
         "DECRYPTING: Sector 7 protocols...",
-        "MAINFRAME_ONLINE: Welcome to KPHUB"
+        "MAINFRAME ONLINE: Welcome to KPHUB"
     ]);
+    const [memberCount, setMemberCount] = useState(null);
 
     useEffect(() => {
-        const fetchGlobalActivity = async () => {
+        let isMounted = true;
+
+        const syncData = async () => {
             try {
-                // Fetch recent projects and use them as activity
+                // Fetch recent projects and member count in parallel
+                const [projRes, countRes] = await Promise.all([
+                    axios.get(`${API_BASE}/api/projects?limit=5`),
+                    axios.get(`${API_BASE}/api/users/count`)
+                ]);
 
-                const res = await axios.get(`${API_BASE}/api/projects?limit=5`);
-                const recent = res.data.map(p => `NEW_TRANSMISSION: ${p.author.username} deployed "${p.title}"`);
+                if (!isMounted) return;
 
-                // Fetch some random pulses
+                const recent = projRes.data.map(p => `NEW UPLOAD: ${p.author.username} deployed "${p.title}"`);
+
                 const mocks = [
-                    "GRID_PULSE: Reputation influx detected in Neo-Tokyo",
-                    "SECURITY_ALERT: ELITE tier usage rising...",
-                    "MARKET_WATCH: Node modules trending high",
-                    "SYNC_SUCCESS: Binary integrity 99.9%"
+                    "GRID PULSE: Reputation influx detected in Neo-Tokyo",
+                    "SECURITY ALERT: ELITE tier usage rising...",
+                    "MARKET WATCH: Node modules trending high",
+                    "SYNC SUCCESS: Binary integrity 99.9%"
                 ];
 
                 setActivities([...recent, ...mocks].sort(() => Math.random() - 0.5));
+                setMemberCount(countRes.data.count);
+
             } catch (err) {
-                console.error("Ticker sync failed", err);
+                console.error("Ticker sync failed", err.message);
             }
         };
 
-        fetchGlobalActivity();
-        const interval = setInterval(fetchGlobalActivity, 60000); // Sync every minute
-        return () => clearInterval(interval);
+        syncData();
+        const interval = setInterval(syncData, 180000); // 3 minutes
+        return () => {
+            isMounted = false;
+            clearInterval(interval);
+        };
     }, []);
 
     return (
         <div className="w-full bg-void border-b border-neon-green/10 flex items-center h-8 overflow-hidden z-40">
             <div className="flex items-center gap-2 px-4 bg-neon-green/5 h-full border-r border-neon-green/20">
                 <Radio className="w-3 h-3 text-neon-green animate-pulse" />
-                <span className="text-[10px] font-black text-neon-green uppercase tracking-widest whitespace-nowrap">Global_Feed</span>
+                <span className="text-[10px] font-black text-neon-green uppercase tracking-widest whitespace-nowrap">Global Feed</span>
             </div>
 
             <div className="flex-grow relative flex items-center overflow-hidden">
@@ -75,7 +87,7 @@ const Ticker = () => {
                     <Activity className="w-2.5 h-2.5" /> 1.2 GB/s
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] text-neon-green font-mono">
-                    <Users className="w-2.5 h-2.5" /> 2.4k
+                    <Users className="w-2.5 h-2.5" /> {memberCount !== null ? memberCount.toLocaleString() : '---'} Members
                 </div>
             </div>
         </div>

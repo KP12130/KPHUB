@@ -86,8 +86,8 @@ const Login = () => {
                     </button>
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-gray-800 text-center">
-                    <p className="text-xs text-gray-600 font-mono">
+                <div className="mt-8 pt-6 border-t border-gray-800 text-center flex flex-col items-center">
+                    <p className="text-xs text-gray-600 font-mono mb-2">
                         SYSTEM STATUS: <span className="text-neon-green">SECURE</span>
                     </p>
                 </div>
