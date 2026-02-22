@@ -15,7 +15,6 @@ import Support from './pages/Support';
 import Legal from './pages/Legal';
 import NotFound from './pages/NotFound';
 import Hackathons from './pages/Hackathons';
-import CodeReviews from './pages/CodeReviews';
 import Explore from './pages/Explore';
 import Admin from './pages/Admin';
 import About from './pages/About';
@@ -87,7 +86,6 @@ const App = () => {
             <Route path="/legal" element={<Legal />} />
             <Route path="/about" element={<About />} />
             <Route path="/hackathons" element={<Hackathons />} />
-            <Route path="/reviews" element={<CodeReviews />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/exchange" element={<NexusExchange />} />
             <Route path="/forge" element={<PulseForge />} />

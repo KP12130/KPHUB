@@ -159,7 +159,6 @@ const notificationsRoutes = require('./routes/notifications');
 const activityRoutes = require('./routes/activities');
 const adRoutes = require('./routes/ads');
 const hackathonRoutes = require('./routes/hackathons');
-const reviewRoutes = require('./routes/reviews');
 const supportRoutes = require('./routes/support');
 const exchangeRoutes = require('./routes/exchange');
 
@@ -173,7 +172,6 @@ app.use('/api/comments', commentsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/hackathons', require('./routes/hackathons'));
-app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/voting', require('./routes/voting'));
 
 // Static File Hosting (Frontend)

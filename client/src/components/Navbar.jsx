@@ -118,7 +118,6 @@ const Navbar = ({ onOpenCommandPalette }) => {
                             <div className="flex bg-black/20 rounded-full px-4 py-2 border border-white/5 backdrop-blur-sm shadow-inner gap-4">
                                 <Link to="/studio" onMouseEnter={() => playSound('hover')} className="text-gray-400 hover:text-neon-green transition-all hover:scale-110" title="Creator Studio"><LayoutDashboard className="w-5 h-5" /></Link>
                                 <Link to="/hackathons" onMouseEnter={() => playSound('hover')} className="text-gray-400 hover:text-neon-purple transition-all hover:scale-110" title="Hackathons"><Trophy className="w-5 h-5" /></Link>
-                                <Link to="/reviews" onMouseEnter={() => playSound('hover')} className="text-gray-400 hover:text-neon-blue transition-all hover:scale-110" title="Code Reviews"><Code className="w-5 h-5" /></Link>
                                 <Link to="/upload" onMouseEnter={() => playSound('hover')} className="text-gray-400 hover:text-neon-green transition-all hover:scale-110" title="Deploy"><UploadIcon className="w-5 h-5" /></Link>
                                 <Link to="/support" onMouseEnter={() => playSound('hover')} className="text-gray-400 hover:text-white transition-all hover:scale-110" title="Support"><HelpCircle className="w-5 h-5" /></Link>
                             </div>

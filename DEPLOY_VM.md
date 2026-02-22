@@ -1,72 +1,57 @@
-# VM Evolution: Codex_Spark Initialization Guide
+# VM GRID: KPHUB Operational Manual
 
-Gratulálok a géphez! Az External IP-d: `34.89.247.143`. 
-Kattints az **SSH** gombra a GCP konzolon, és futtasd le az alábbi parancsokat sorban.
+Ez a fájl tartalmazza a **kphub.dev** szerverének éles beállításait (PM2 + Nginx).
 
 ---
 
-## 1. Rendszer frissítése és alapok
+## 1. Szerver Futattása (PM2)
+A Docker helyett közvetlenül a gép erőforrásait használjuk a maximális sebességért.
+
+**Szerver indítása / Újraindítása:**
 ```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y git curl build-essential
+cd ~/KPHUB/server
+pm2 start server.js --name codex-spark --update-env
 ```
 
-## 2. Node.js & Docker telepítése
-A szerver és a konténerezés alapjai.
+**Logok ellenőrzése:**
 ```bash
-# Node.js 18
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# Docker
-sudo apt install -y docker.io
-sudo systemctl start docker
-sudo systemctl enable docker
-sudo usermod -aG docker $USER
-# (Indítsd újra az SSH-t ezután, hogy a docker jogok érvényesüljenek!)
-```
-
-## 3. Nginx (Webszerver) telepítése
-Ez fogja kezelni a forgalmat és a jövőben az SSL-t.
-```bash
-sudo apt install -y nginx
+pm2 logs codex-spark
 ```
 
 ---
 
-## 4. Tűzfal kinyitása (GCP Konzolon!)
-Ahhoz, hogy lásd az oldalt, a Google-nek engednie kell a forgalmat.
-1. Menj a **VPC network > Firewall** menübe.
-2. **Create Firewall Rule**:
-   - Name: `allow-http-https`
-   - Targets: `All instances in the network`
-   - Source IP ranges: `0.0.0.0/0`
-   - Protocols/Ports: Jelöld be a `tcp:80`, `tcp:443` és `tcp:5000` portokat.
+## 2. Nginx Reverse Proxy (A hálózat lelke)
+Az Nginx irányítja a `https://kphub.dev` forgalmát a belső `5000`-es portra.
 
----
+**Config fájl helye:** `/etc/nginx/sites-available/default`
 
-## 5. Projekt klónozása és indítása
-```bash
-git clone <REPOD_URLA>
-cd codex_spark/server
-
-# Környezeti változók beállítása (Másold be a .env tartalmát)
-nano .env
-
-# Docker image építése és futtatása
-docker build -t codex-api .
-docker run -d -p 5000:8080 --name spark-api --restart always --env-file .env codex-api
-```
-
-## 6. Frontend élesítés
-A saját gépeden (helyben) a `client` mappában:
-```bash
-npm run build
-firebase deploy --only hosting
+**Kritikus beállítás a Redirect hurok ellen:**
+```nginx
+location /api {
+    proxy_pass http://localhost:5000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https; # Fixálja a HTTPS detektálást
+}
 ```
 
 ---
 
-## Ellenőrzés
-Ha minden kész, látogasd meg a `http://34.89.247.143:5000/api/health` oldalt! 
-Ha azt látod, hogy `status: ONLINE`, akkor a géped él és lélegzik! 🤖🌌
+## 3. AdSense Integráció
+A hirdetések aktiválásához cseréld le a `REPLACE_WITH_YOUR_ID` szövegeket az igazi Publisher ID-dra:
+
+1.  `client/index.html`
+2.  `client/src/components/AdUnit.jsx`
+
+---
+
+## 4. Hasznos Parancsok
+Létrehoztunk pár rövidítést (aliast) az SSH-ban:
+- `restart`: Frissíti a kódot a Git-ről, buildeli a frontendet és újraindítja a szervert.
+- `pm2 logs`: Megmutatja, ha valami hiba történik élesben.
+
+**Éles API elérhetősége:** `https://kphub.dev/api/health`
+
+---
+**STATUS: THE GRID IS RIGID.** 🌌🛡️🦾
