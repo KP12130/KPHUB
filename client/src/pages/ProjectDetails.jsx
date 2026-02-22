@@ -20,7 +20,6 @@ import Devlog from '../components/Devlog';
 import ShowcaseEmbed from '../components/ShowcaseEmbed';
 import AdUnit from '../components/AdUnit';
 import DonationModal from '../components/DonationModal';
-import { getReputationTitle } from '../utils/reputation';
 
 // --- Reusable Glass Components ---
 const GlassCard = ({ children, className = "" }) => (
@@ -386,9 +385,6 @@ const ProjectDetails = () => {
                                 />
                                 <div>
                                     <p className="text-white font-bold leading-none">{project.author?.username}</p>
-                                    <p className={`text-[10px] font-mono uppercase ${getReputationTitle(project.author?.stats?.reputation || 0).color}`}>
-                                        {getReputationTitle(project.author?.stats?.reputation || 0).title}
-                                    </p>
                                 </div>
                             </div>
                         </motion.div>

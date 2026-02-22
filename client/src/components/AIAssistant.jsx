@@ -38,7 +38,7 @@ const AIAssistant = ({ project }) => {
                 3. Run the development environment with "npm run dev". 
                 The architect has specified this as a ${project?.category || 'uncategorized'} system.`;
             } else if (query.includes('who') || query.includes('author')) {
-                response = `This system was engineered by @${project?.author?.username || 'Redacted'}. They are a ${project?.author?.tier || 'GHOST'} tier citizen with a reputation of ${project?.author?.stats?.reputation || 0} points.`;
+                response = `This system was engineered by @${project?.author?.username || 'Redacted'}. They are a ${project?.author?.tier || 'GHOST'} tier citizen.`;
             } else if (query.includes('private') || query.includes('security')) {
                 response = project?.isPrivate
                     ? "Warning: This system is under Private Protocol. Access is strictly logged."

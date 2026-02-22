@@ -31,7 +31,6 @@ import Layout from './components/Layout'; // Import Layout
 import CookieConsent from './components/CookieConsent';
 import AchievementHub from './components/AchievementHub';
 import { LogOut, Upload as UploadIcon, Trophy, User, Code, Terminal, Bell, BellDot, LayoutDashboard, ChevronDown, HelpCircle, Menu, X, Globe, Target } from 'lucide-react';
-import { getReputationTitle } from './utils/reputation';
 import axios from 'axios';
 import { API_BASE } from './api';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -178,7 +177,7 @@ const Home = () => {
             </h1>
             <p className="text-xl md:text-3xl text-gray-400 font-light max-w-3xl mx-auto leading-relaxed">
               The decentralized nexus for <span className="text-white font-bold text-glow-sm">collaborative innovation</span>.
-              Deploy protocols, earn reputation, and shape the future of the grid.
+              Deploy protocols, earn KPC, and shape the future of the grid.
             </p>
           </motion.div>
 

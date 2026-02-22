@@ -34,7 +34,7 @@ const Studio = () => {
     const [projects, setProjects] = useState([]);
     const [isStudioLoading, setIsStudioLoading] = useState(true);
     const [stats, setStats] = useState({
-        views: 0, downloads: 0, subs: 0, revenue: 0, adRevenue: 0, rep: 0, xp: 0
+        views: 0, downloads: 0, subs: 0, revenue: 0, adRevenue: 0
     });
     const [userTier, setUserTier] = useState('GHOST');
     const [userLevel, setUserLevel] = useState(1);
@@ -72,13 +72,10 @@ const Studio = () => {
                     subs: user.followers?.length || 0,
                     revenue: user.stats?.balance || 0,
                     adRevenue: user.stats?.adRevenue || 0,
-                    rep: user.stats?.reputation || 0,
-                    xp: currentXp,
                     history: []
                 });
 
                 setUserTier(user.tier || 'GHOST');
-                setUserLevel(Math.floor(Math.sqrt(currentXp / 100)) || 1);
 
                 setProfileData({
                     username: user.username || currentUser.username || '',
@@ -126,9 +123,8 @@ const Studio = () => {
                 uid: currentUser.uid, questId: quest.id
             });
             if (res.data.success) {
-                setStats(prev => ({ ...prev, rep: res.data.newReputation }));
                 setQuests(prev => prev.map(q => q.id === quest.id ? { ...q, completed: true } : q));
-                toast.success(`COMPLETED: ${quest.title} (+${quest.reward} REP)`);
+                toast.success(`COMPLETED: ${quest.title} (+${quest.reward} KPC)`);
                 confetti({ particleCount: 50, spread: 50, origin: { y: 0.8 } });
             }
         } catch (err) {
@@ -251,21 +247,11 @@ const Studio = () => {
                 {/* SIDEBAR */}
                 <div className="lg:col-span-1 space-y-6">
                     <GlassCard className="space-y-6 sticky top-24 overflow-hidden">
-                        {/* XP Border line */}
-                        <div className="absolute top-0 left-0 right-0 h-1 bg-white/5">
-                            <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${(stats.xp % (userLevel * 100)) / (userLevel * 100) * 100}%` }}
-                                className="h-full bg-neon-green"
-                            />
-                        </div>
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-white/5" />
 
                         <div className="flex items-center gap-4">
                             <div className="relative">
                                 <img src={currentUser.photoURL} className="w-14 h-14 rounded-full border-2 border-neon-green/30" />
-                                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-terminal border border-neon-green/30 rounded-lg flex items-center justify-center text-[10px] font-black text-neon-green">
-                                    {userLevel}
-                                </div>
                             </div>
                             <div>
                                 <h2 className="font-black text-white leading-none text-lg flex items-center gap-2">
@@ -278,25 +264,10 @@ const Studio = () => {
                                     <span className={`text-[8px] font-mono uppercase px-2 py-0.5 rounded bg-gray-900 text-gray-400`}>
                                         {userTier}
                                     </span>
-                                    <span className="text-[8px] font-mono text-neon-green uppercase tracking-widest">{stats.xp.toLocaleString()} XP</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* XP Bar Detail */}
-                        <div className="space-y-1">
-                            <div className="flex justify-between text-[8px] font-black uppercase text-gray-500 tracking-widest">
-                                <span>Lvl {userLevel}</span>
-                                <span>Next: {(userLevel * 100) - (stats.xp % (userLevel * 100))} XP</span>
-                            </div>
-                            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                                <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${(stats.xp % (userLevel * 100)) / (userLevel * 100) * 100}%` }}
-                                    className="h-full bg-neon-green shadow-[0_0_10px_#39FF14]"
-                                />
-                            </div>
-                        </div>
 
                         <div className="space-y-2">
                             <MenuButton id="DASHBOARD" icon={LayoutDashboard} label="Dashboard" />
@@ -357,10 +328,10 @@ const Studio = () => {
                                         </GlassCard>
                                         <GlassCard className="flex flex-col items-center justify-center text-center p-4 hover:border-yellow-500/30 transition-colors">
                                             <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-yellow-500/10 rounded-xl mb-3">
-                                                <Trophy className="w-5 h-5 text-yellow-500" />
+                                                <Heart className="w-5 h-5 text-yellow-500" />
                                             </motion.div>
-                                            <span className="text-2xl font-black text-white">{stats.rep}</span>
-                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Reputation</span>
+                                            <span className="text-2xl font-black text-white">{currentUser.stats?.likesReceived || 0}</span>
+                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Pulses Received</span>
                                         </GlassCard>
                                         <GlassCard className="flex flex-col items-center justify-center text-center p-4 hover:border-neon-blue/30 transition-colors">
                                             <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-blue/10 rounded-xl mb-3">

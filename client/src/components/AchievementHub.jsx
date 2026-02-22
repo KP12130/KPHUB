@@ -5,14 +5,14 @@ import confetti from 'canvas-confetti';
 import { toast } from 'react-hot-toast';
 
 const MILESTONES = [
-    { id: 'rep_100', threshold: 100, title: 'GRID_INITIATE', icon: <Target className="w-5 h-5 text-neon-blue" />, color: 'neon-blue' },
-    { id: 'rep_500', threshold: 500, title: 'PULSE_ARCHITECT', icon: <Zap className="w-5 h-5 text-yellow-500" />, color: 'yellow-500' },
-    { id: 'rep_1000', threshold: 1000, title: 'SYSTEM_LEGEND', icon: <Trophy className="w-5 h-5 text-neon-green" />, color: 'neon-green' },
-    { id: 'rep_5000', threshold: 5000, title: 'GRID_OVERLORD', icon: <Star className="w-5 h-5 text-neon-purple" />, color: 'neon-purple' }
+    { id: 'wealth_10k', threshold: 10000, title: 'GRID_INITIATE', icon: <Target className="w-5 h-5 text-neon-blue" />, color: 'neon-blue' },
+    { id: 'wealth_50k', threshold: 50000, title: 'PULSE_ARCHITECT', icon: <Zap className="w-5 h-5 text-yellow-500" />, color: 'yellow-500' },
+    { id: 'wealth_100k', threshold: 100000, title: 'SYSTEM_LEGEND', icon: <Trophy className="w-5 h-5 text-neon-green" />, color: 'neon-green' },
+    { id: 'wealth_500k', threshold: 500000, title: 'GRID_OVERLORD', icon: <Star className="w-5 h-5 text-neon-purple" />, color: 'neon-purple' }
 ];
 
 const AchievementHub = ({ currentUser }) => {
-    const userReputation = currentUser?.stats?.reputation || 0;
+    const userWealth = currentUser?.stats?.kpcBalance || 0;
     const [lastUnlocked, setLastUnlocked] = useState(null);
 
     useEffect(() => {
@@ -22,7 +22,7 @@ const AchievementHub = ({ currentUser }) => {
             const unlocked = JSON.parse(localStorage.getItem(unlockedKey) || '[]');
 
             const newMilestone = MILESTONES.find(m =>
-                userReputation >= m.threshold && !unlocked.includes(m.id)
+                userWealth >= m.threshold && !unlocked.includes(m.id)
             );
 
             if (newMilestone) {
@@ -33,7 +33,7 @@ const AchievementHub = ({ currentUser }) => {
         };
 
         checkMilestones();
-    }, [userReputation]);
+    }, [userWealth]);
 
     const triggerAchievement = (milestone) => {
         setLastUnlocked(milestone);
@@ -52,7 +52,7 @@ const AchievementHub = ({ currentUser }) => {
                 <div className="flex-1">
                     <p className="text-[10px] font-black text-neon-green uppercase tracking-[0.2em]">Achievement_Unlocked</p>
                     <p className="text-sm font-black text-white italic tracking-tighter uppercase">{milestone.title}</p>
-                    <p className="text-[9px] text-gray-500 font-mono uppercase">Reputation threshold {milestone.threshold} reached in the grid.</p>
+                    <p className="text-[9px] text-gray-500 font-mono uppercase">Wealth threshold {milestone.threshold.toLocaleString()} KPC reached in the grid.</p>
                 </div>
             </div>
         ), { duration: 5000 });

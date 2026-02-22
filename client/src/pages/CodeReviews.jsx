@@ -56,7 +56,7 @@ const CodeReviews = () => {
                 content: reviewContent,
                 rating: 'comment'
             });
-            toast.success("AUDIT_SUBMITTED: Reputation +15", { icon: '🛡️' });
+            toast.success("AUDIT_SUBMITTED: Pulse recorded.", { icon: '🛡️' });
             setSelectedReview(null);
             setReviewContent('');
             fetchReviews();
@@ -98,7 +98,7 @@ const CodeReviews = () => {
                 </h1>
                 <p className="text-gray-400 font-mono text-sm max-w-2xl mx-auto">
                     Peer Analysis. Security Audits. Optimization. <br />
-                    <span className="text-neon-blue">Review</span> code to earn reputation and secure the grid.
+                    <span className="text-neon-blue">Review</span> code to secure the grid and build your record.
                 </p>
             </div>
 

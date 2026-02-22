@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../config/firebase');
 
-// GET /api/leaderboard?sort=reputation
+// GET /api/leaderboard
 router.get('/', async (req, res) => {
     try {
         const { sort } = req.query;
@@ -13,10 +13,7 @@ router.get('/', async (req, res) => {
             id: doc.id,
             ...doc.data()
         })).sort((a, b) => {
-            if (sort === 'wealth') {
-                return (b.stats?.kpcBalance || 0) - (a.stats?.kpcBalance || 0);
-            }
-            return (b.stats?.reputation || 0) - (a.stats?.reputation || 0);
+            return (b.stats?.kpcBalance || 0) - (a.stats?.kpcBalance || 0);
         })
             .slice(0, 10);
 

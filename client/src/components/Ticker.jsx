@@ -28,7 +28,7 @@ const Ticker = () => {
                 const recent = projRes.data.map(p => `NEW UPLOAD: ${p.author.username} deployed "${p.title}"`);
 
                 const mocks = [
-                    "GRID PULSE: Reputation influx detected in Neo-Tokyo",
+                    "GRID PULSE: High volume market activity in Neo-Tokyo",
                     "SECURITY ALERT: ELITE tier usage rising...",
                     "MARKET WATCH: Node modules trending high",
                     "SYNC SUCCESS: Binary integrity 99.9%"

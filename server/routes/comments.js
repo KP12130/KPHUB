@@ -161,8 +161,7 @@ router.post('/:projectId', checkMuteMiddleware, commentLimiter, async (req, res)
                 ),
                 logActivity(userId, userName, 'comment', projectId, projectData.title),
                 db.collection('users').doc(userId).update({
-                    'stats.commentsMade': admin.firestore.FieldValue.increment(1),
-                    'stats.reputation': admin.firestore.FieldValue.increment(2)
+                    'stats.commentsMade': admin.firestore.FieldValue.increment(1)
                 })
             ]);
         }

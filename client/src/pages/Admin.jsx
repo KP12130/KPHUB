@@ -340,8 +340,8 @@ const Admin = () => {
                                     </div>
                                     <div className="grid grid-cols-2 gap-4 mb-6 text-[10px] font-mono">
                                         <div className="bg-white/5 p-2 rounded-lg">
-                                            <p className="text-gray-500 uppercase">REP_INDEX</p>
-                                            <p className="text-neon-green font-bold">{user.stats?.reputation || 0}</p>
+                                            <p className="text-gray-500 uppercase">KPC_BALANCE</p>
+                                            <p className="text-neon-green font-bold">{user.stats?.kpcBalance || 0}</p>
                                         </div>
                                         <div className="bg-white/5 p-2 rounded-lg">
                                             <p className="text-gray-500 uppercase">SYS_UPLOADS</p>

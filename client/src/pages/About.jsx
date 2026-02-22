@@ -25,7 +25,7 @@ const About = () => {
                 {[
                     { icon: Target, title: 'Our_Objective', desc: 'To create an immutable and accessible global directory for software engineers to broadcast their inventions.', color: 'text-neon-blue' },
                     { icon: Globe, title: 'Global_Nexus', desc: 'A decentralized ecosystem where geography is irrelevant and code is the universal language of progress.', color: 'text-neon-green' },
-                    { icon: Users, title: 'The_Citizens', desc: 'Empowering thousands of architects to collaborate on high-pulse protocols and earn reputation through proof of work.', color: 'text-purple-500' }
+                    { icon: Users, title: 'The_Citizens', desc: 'Empowering thousands of architects to collaborate on high-pulse protocols and earn KPC through proof of work.', color: 'text-purple-500' }
                 ].map((item, idx) => (
                     <motion.div
                         key={idx}

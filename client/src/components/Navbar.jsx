@@ -10,7 +10,6 @@ import {
     Bell, BellDot, User, LogOut, Menu, X, Terminal, ShoppingCart, Zap
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getReputationTitle } from '../utils/reputation';
 import useSound from '../hooks/useSound';
 
 const Navbar = ({ onOpenCommandPalette }) => {
@@ -187,20 +186,9 @@ const Navbar = ({ onOpenCommandPalette }) => {
                             </div>
 
                             <div className="flex bg-black/20 rounded-full px-4 py-2 border border-white/5 backdrop-blur-sm shadow-inner gap-4 items-center">
-                                <div className="flex items-center gap-1.5 border-r border-white/10 pr-3">
-                                    <Zap className="w-3.5 h-3.5 text-neon-green" />
-                                    <span className="text-[10px] font-black text-white">{currentUser.stats?.kpcBalance?.toLocaleString() || 0}</span>
-                                    <span className="text-[8px] font-mono text-neon-green uppercase tracking-tighter">KPC</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-5 h-5 bg-terminal border border-neon-blue/30 rounded flex items-center justify-center text-[8px] font-black text-neon-blue">
-                                        {Math.floor(Math.sqrt((currentUser.stats?.xp || 0) / 100)) || 1}
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-black text-white leading-none">REP: {currentUser.stats?.reputation || 0}</span>
-                                        <span className={`text-[8px] font-mono text-neon-blue uppercase tracking-widest ${getReputationTitle(currentUser.stats?.reputation || 0).color}`}>{getReputationTitle(currentUser.stats?.reputation || 0).title}</span>
-                                    </div>
-                                </div>
+                                <Zap className="w-3.5 h-3.5 text-neon-green" />
+                                <span className="text-[10px] font-black text-white">{currentUser.stats?.kpcBalance?.toLocaleString() || 0}</span>
+                                <span className="text-[8px] font-mono text-neon-green uppercase tracking-tighter">KPC</span>
                             </div>
 
                             <div className="flex items-center gap-3 pl-4 border-l border-glass-border">
@@ -211,9 +199,6 @@ const Navbar = ({ onOpenCommandPalette }) => {
                                                 {currentUser.displayName}
                                             </span>
                                             {currentUser.stats?.verified && <Trophy className="w-3 h-3 text-neon-blue" />}
-                                        </p>
-                                        <p className={`text-[8px] font-mono leading-none mt-1 uppercase tracking-widest ${getReputationTitle(currentUser.stats?.reputation || 0).color}`}>
-                                            {getReputationTitle(currentUser.stats?.reputation || 0).title}
                                         </p>
                                     </div>
                                     {currentUser.photoURL ? (
@@ -262,9 +247,6 @@ const Navbar = ({ onOpenCommandPalette }) => {
                                             <img src={currentUser.photoURL} alt="P" className="w-14 h-14 rounded-full border border-neon-green shadow-[0_0_15px_rgba(57,255,20,0.2)]" />
                                             <div>
                                                 <p className="text-2xl font-black text-white italic tracking-tighter uppercase">{currentUser.displayName}</p>
-                                                <p className={`text-[10px] font-mono tracking-[0.3em] uppercase ${getReputationTitle(currentUser.stats?.reputation || 0).color}`}>
-                                                    {getReputationTitle(currentUser.stats?.reputation || 0).title}
-                                                </p>
                                             </div>
                                         </div>
                                     </div>

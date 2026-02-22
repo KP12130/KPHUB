@@ -102,10 +102,8 @@ router.post('/', async (req, res) => {
                 views: 0,
                 downloads: 0,
                 commentsMade: 0,
-                reputation: 0,
                 balance: 0, // Monetization balance (USD)
                 kpcBalance: 0, // Virtual currency balance
-                xp: 0, // Experience points
                 verified: false, // Professional verification status
                 supporters: 0
             },
@@ -358,13 +356,11 @@ router.get('/:id', async (req, res) => {
 
             await userRef.update({
                 'stats.kpcBalance': admin.firestore.FieldValue.increment(reward),
-                'stats.xp': admin.firestore.FieldValue.increment(reward),
                 'streakCount': newStreak,
                 'lastLoginPulse': admin.firestore.FieldValue.serverTimestamp()
             });
 
             userData.stats.kpcBalance = (userData.stats.kpcBalance || 0) + reward;
-            userData.stats.xp = (userData.stats.xp || 0) + reward;
             userData.streakCount = newStreak;
             userData.dailyPulseReward = reward;
 
@@ -582,8 +578,7 @@ router.post('/follow/:id', async (req, res) => {
         });
         batch.update(targetRef, {
             followers: admin.firestore.FieldValue.arrayUnion(followerId),
-            'stats.followersCount': admin.firestore.FieldValue.increment(1),
-            'stats.reputation': admin.firestore.FieldValue.increment(5)
+            'stats.followersCount': admin.firestore.FieldValue.increment(1)
         });
 
         const { createNotification } = require('./notifications');
@@ -625,8 +620,7 @@ router.post('/unfollow/:id', async (req, res) => {
         });
         batch.update(targetRef, {
             followers: admin.firestore.FieldValue.arrayRemove(followerId),
-            'stats.followersCount': admin.firestore.FieldValue.increment(-1),
-            'stats.reputation': admin.firestore.FieldValue.increment(-5)
+            'stats.followersCount': admin.firestore.FieldValue.increment(-1)
         });
 
         await batch.commit();
@@ -666,15 +660,14 @@ router.post('/donate/:id', async (req, res) => {
         const batch = db.batch();
         batch.update(targetRef, {
             'stats.balance': admin.firestore.FieldValue.increment(amount),
-            'stats.reputation': admin.firestore.FieldValue.increment(Math.ceil(amount / 2)),
             supporters: admin.firestore.FieldValue.arrayUnion(donorId)
         });
         batch.update(donorRef, {
-            'stats.reputation': admin.firestore.FieldValue.increment(10) // Donation reward
+            // Donation reward placeholder
         });
 
         await batch.commit();
-        res.json({ success: true, message: 'Donation received! Reputation increased.' });
+        res.json({ success: true, message: 'Donation received! System synced.' });
     } catch (error) {
         res.status(500).json({ error: 'Donation failed' });
     }
@@ -769,16 +762,13 @@ router.post('/quests/complete', async (req, res) => {
 
         await userRef.update({
             completedQuests: admin.firestore.FieldValue.arrayUnion(questId),
-            'stats.reputation': admin.firestore.FieldValue.increment(reward),
-            'stats.kpcBalance': admin.firestore.FieldValue.increment(reward * 10), // 10x Rep = KPC payout
-            'stats.xp': admin.firestore.FieldValue.increment(reward * 10) // XP matches KPC payout
+            'stats.kpcBalance': admin.firestore.FieldValue.increment(reward * 10)
         });
 
         res.json({
             success: true,
             message: 'Quest Complete',
-            reward,
-            newReputation: (userData.stats?.reputation || 0) + reward
+            reward
         });
 
     } catch (error) {

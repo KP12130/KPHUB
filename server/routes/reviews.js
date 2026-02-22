@@ -115,13 +115,8 @@ router.post('/:id/comment', async (req, res) => {
             reviews: admin.firestore.FieldValue.arrayUnion(newComment)
         });
 
-        // Award reputation to reviewer (if not author)
-        if (userId !== reviewDoc.data().authorId) {
-            const reviewerRef = db.collection('users').doc(userId);
-            await reviewerRef.update({
-                'stats.reputation': admin.firestore.FieldValue.increment(15)
-            });
-        }
+        // For now, reviewers earn KPC from the contract (placeholder)
+        // No reputation incremented.
 
         res.json({ success: true, message: "Review submitted." });
 
@@ -162,12 +157,12 @@ router.post('/:id/close', async (req, res) => {
 router.get('/leaderboard', async (req, res) => {
     try {
         // In a real app, we would aggregate this efficiently.
-        // For now, let's fetch users with high reputation or specific audit stats if we had them.
+        // For now, let's fetch users with high KPC balance or specific audit stats.
         // Since we don't track "auditScore" explicitly in a separate collection, we'll assume 
         // high rep users are auditors or we just return a mock list for the visual "Polish"
         // provided we don't have time to re-architect the DB for this specific feature right now.
 
-        // However, we CAN fetch users and sort by reputation as a proxy, 
+        // However, we CAN fetch users and sort by KPC balance as a proxy, 
         // or properly, we should have incremented an 'auditScore' on the user doc when they review.
 
         const snapshot = await db.collection('users')
@@ -179,13 +174,13 @@ router.get('/leaderboard', async (req, res) => {
                 uid: doc.id,
                 name: data.name || data.username,
                 photoURL: data.photoURL,
-                reputation: data.stats?.reputation || 0,
-                auditScore: Math.floor((data.stats?.reputation || 0) / 10) // Mock audit score from rep
+                kpcBalance: data.stats?.kpcBalance || 0,
+                auditScore: Math.floor((data.stats?.kpcBalance || 0) / 1000) // Mock audit score from wealth
             };
         });
 
         // Sort in memory
-        auditors.sort((a, b) => b.reputation - a.reputation);
+        auditors.sort((a, b) => b.kpcBalance - a.kpcBalance);
 
         res.json(auditors.slice(0, 5));
     } catch (error) {

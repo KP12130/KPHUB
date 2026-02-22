@@ -254,17 +254,15 @@ router.post('/donate/:id', async (req, res) => {
 
             const updatedTotalDonated = (donorData.stats?.totalDonated || 0) + amount;
 
-            // Donor: Deduct balance, reward reputation, update total donated
+            // Donor: Deduct balance, update total donated
             transaction.update(donorRef, {
                 'stats.kpcBalance': admin.firestore.FieldValue.increment(-amount),
-                'stats.reputation': admin.firestore.FieldValue.increment(10),
                 'stats.totalDonated': admin.firestore.FieldValue.increment(amount)
             });
 
-            // Recipient: Add balance, add reputation, track supporter
+            // Recipient: Add balance, track supporter
             transaction.update(recipientRef, {
                 'stats.kpcBalance': admin.firestore.FieldValue.increment(amount),
-                'stats.reputation': admin.firestore.FieldValue.increment(Math.ceil(amount / 100)),
                 'supporters': admin.firestore.FieldValue.arrayUnion(donorId)
             });
 
@@ -554,8 +552,7 @@ router.post('/redeem', async (req, res) => {
         if (String(code).trim() === '12130') {
             await db.collection('users').doc(uid).update({
                 tier: 'PRO',
-                membershipExpires: null,
-                'stats.reputation': admin.firestore.FieldValue.increment(1000)
+                membershipExpires: null
             });
 
             // Ledger log for the bypass

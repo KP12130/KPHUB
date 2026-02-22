@@ -130,8 +130,7 @@ router.post('/', upload.fields([
         const { logActivity } = require('./activities');
         await Promise.all([
             db.collection('users').doc(authorId).update({
-                'stats.uploads': admin.firestore.FieldValue.increment(1),
-                'stats.reputation': admin.firestore.FieldValue.increment(15)
+                'stats.uploads': admin.firestore.FieldValue.increment(1)
             }),
             logActivity(authorId, authorName, 'upload', projectId, title)
         ]);
@@ -259,14 +258,13 @@ router.post('/:id/like', checkMuteMiddleware, likeLimiter, async (req, res) => {
                 'stats.likes': admin.firestore.FieldValue.increment(-1)
             });
 
-            // SAFELY UPDATE AUTHOR REPUTATION
+            // SAFELY UPDATE AUTHOR STATS
             try {
                 const authorRef = db.collection('users').doc(authorId);
                 const authorDoc = await authorRef.get();
                 if (authorDoc.exists) {
                     await authorRef.update({
-                        'stats.likesReceived': admin.firestore.FieldValue.increment(-1),
-                        'stats.reputation': admin.firestore.FieldValue.increment(-5)
+                        'stats.likesReceived': admin.firestore.FieldValue.increment(-1)
                     });
                 }
             } catch (e) { console.warn("Author stats update skipped (User not found)."); }
@@ -286,8 +284,7 @@ router.post('/:id/like', checkMuteMiddleware, likeLimiter, async (req, res) => {
                 const authorDoc = await authorRef.get();
                 if (authorDoc.exists) {
                     await authorRef.update({
-                        'stats.likesReceived': admin.firestore.FieldValue.increment(1),
-                        'stats.reputation': admin.firestore.FieldValue.increment(5)
+                        'stats.likesReceived': admin.firestore.FieldValue.increment(1)
                     });
                     // Move notification logic here to ensure author exists?
                     // Actually keeping it separate below is fine, but maybe check existence there too.
@@ -528,8 +525,7 @@ router.delete('/:id', async (req, res) => {
 
         await docRef.delete();
         await db.collection('users').doc(userId).update({
-            'stats.uploads': admin.firestore.FieldValue.increment(-1),
-            'stats.reputation': admin.firestore.FieldValue.increment(-10)
+            'stats.uploads': admin.firestore.FieldValue.increment(-1)
         });
 
         res.json({ success: true });

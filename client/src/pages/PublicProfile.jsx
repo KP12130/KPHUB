@@ -7,7 +7,6 @@ import { motion } from 'framer-motion';
 import { User, Calendar, Award, Code, Trophy, ArrowLeft, Github, Twitter, Globe, ExternalLink, Gift, Heart, Shield } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import ProjectCard from '../components/ProjectCard';
-import { getReputationTitle } from '../utils/reputation';
 import { ActivityCalendar as GitHubCalendar } from 'react-activity-calendar';
 
 const PublicProfile = () => {
@@ -68,8 +67,7 @@ const PublicProfile = () => {
                         ...prev.user,
                         stats: {
                             ...prev.user.stats,
-                            followersCount: (prev.user.stats?.followersCount || 1) - 1,
-                            reputation: (prev.user.stats?.reputation || 5) - 5
+                            followersCount: (prev.user.stats?.followersCount || 1) - 1
                         }
                     }
                 }));
@@ -85,8 +83,7 @@ const PublicProfile = () => {
                         ...prev.user,
                         stats: {
                             ...prev.user.stats,
-                            followersCount: (prev.user.stats?.followersCount || 0) + 1,
-                            reputation: (prev.user.stats?.reputation || 0) + 5
+                            followersCount: (prev.user.stats?.followersCount || 0) + 1
                         }
                     }
                 }));
@@ -158,9 +155,6 @@ const PublicProfile = () => {
                                 <User className="w-12 h-12 text-gray-700" />
                             </div>
                         )}
-                        <div className="absolute -bottom-2 -right-2 bg-terminal border border-neon-green/30 text-neon-green px-2 py-0.5 rounded font-black text-[10px] tracking-widest uppercase">
-                            Level {Math.floor(Math.sqrt((user.stats?.xp || 0) / 100)) || 1}
-                        </div>
                     </div>
 
                     {/* Info */}
@@ -182,9 +176,6 @@ const PublicProfile = () => {
                         </h1>
                         <div className="flex items-center gap-2 mb-4">
                             <p className="text-neon-green font-mono text-sm">@{user.username}</p>
-                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 bg-white/5 rounded border border-white/10 ${getReputationTitle(user.stats?.reputation || 0).color}`}>
-                                {getReputationTitle(user.stats?.reputation || 0).title}
-                            </span>
                         </div>
 
                         <div className="flex flex-wrap justify-center md:justify-start gap-4 mb-6">
@@ -213,25 +204,8 @@ const PublicProfile = () => {
                             {user.bio || "No biography available for this citizen of the grid."}
                         </p>
 
-                        <div className="max-w-xs mb-8">
-                            <div className="flex justify-between text-[8px] font-black uppercase text-gray-500 tracking-widest mb-1 font-mono">
-                                <span>Sync_Progress</span>
-                                <span>{user.stats?.xp || 0} XP</span>
-                            </div>
-                            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-                                <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${((user.stats?.xp || 0) % ((Math.floor(Math.sqrt((user.stats?.xp || 0) / 100)) || 1) * 100)) / ((Math.floor(Math.sqrt((user.stats?.xp || 0) / 100)) || 1) * 100) * 100}%` }}
-                                    className="h-full bg-neon-green shadow-[0_0_10px_#39FF14]"
-                                />
-                            </div>
-                        </div>
 
                         <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                            <div className="flex items-center gap-2 bg-void px-4 py-2 rounded-lg border border-gray-800">
-                                <Trophy className="w-4 h-4 text-yellow-400" />
-                                <span className="text-white font-mono text-xs">{user.stats?.reputation || 0} REP</span>
-                            </div>
                             <div className="flex items-center gap-6 bg-void px-4 py-2 rounded-lg border border-gray-800">
                                 <div className="flex flex-col items-center">
                                     <span className="text-white font-black text-xs">{user.stats?.followersCount || user.followers?.length || 0}</span>

@@ -253,7 +253,7 @@ const Upload = () => {
                                 <Shield className={`w-6 h-6 ${formData.memberOnly ? 'text-neon-blue animate-pulse' : 'text-gray-800'}`} />
                                 <div>
                                     <h4 className="text-white font-black text-xs uppercase tracking-[0.15em]">Gated Access Protocol</h4>
-                                    <p className="text-[10px] text-gray-500 font-mono mt-1 uppercase text-left">Restrict system to high-reputation citizens.</p>
+                                    <p className="text-[10px] text-gray-500 font-mono mt-1 uppercase text-left">Restrict system to ELITE tier citizens.</p>
                                 </div>
                             </div>
                             <button

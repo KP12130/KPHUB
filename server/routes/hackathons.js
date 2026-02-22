@@ -148,8 +148,7 @@ router.post('/admin/payout', async (req, res) => {
 
             // Credit User
             transaction.update(userRef, {
-                'stats.kpcBalance': admin.firestore.FieldValue.increment(amt),
-                'stats.reputation': admin.firestore.FieldValue.increment(100) // Bonus rep for winning
+                'stats.kpcBalance': admin.firestore.FieldValue.increment(amt)
             });
 
             // Log Reward
