@@ -2,10 +2,12 @@ import React from 'react';
 import { ExternalLink, Heart, MessageSquare, Eye, Lock, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import useSound from '../hooks/useSound';
 
 const ProjectCard = ({ project, loading, index = 0 }) => {
     const { playSound } = useSound();
+    const { currentUser } = useAuth();
     if (loading || !project) {
         return (
             <div className="bg-void border border-gray-900 rounded-3xl overflow-hidden animate-pulse flex flex-col h-[350px] relative">
@@ -92,7 +94,7 @@ const ProjectCard = ({ project, loading, index = 0 }) => {
                         <div className="pt-4 flex items-center justify-between border-t border-white/10 group-hover:border-neon-green/30 transition-colors">
                             <div className="flex gap-4">
                                 <div className="flex items-center gap-1.5 text-gray-500 group-hover:text-white transition-colors">
-                                    <Heart className={`w-4 h-4 ${project.likes?.length > 0 ? 'text-red-500 fill-red-500' : ''}`} />
+                                    <Heart className={`w-4 h-4 ${(currentUser && project.likes?.includes(currentUser.uid)) ? 'text-red-500 fill-red-500' : ''}`} />
                                     <span className="text-xs font-mono">{project.stats?.likes || 0}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5 text-gray-500 group-hover:text-white transition-colors">

@@ -299,9 +299,10 @@ router.post('/:id/like', checkMuteMiddleware, likeLimiter, async (req, res) => {
             });
 
             const { logActivity } = require('./activities');
+            const likerName = req.body.userName || "Someone";
             await Promise.all([
-                createNotification(authorId, userId, "Someone", 'like', doc.id, project.title),
-                logActivity(userId, "A user", 'like', doc.id, project.title)
+                createNotification(authorId, userId, likerName, 'like', doc.id, project.title),
+                logActivity(userId, likerName, 'like', doc.id, project.title)
             ]);
         }
 

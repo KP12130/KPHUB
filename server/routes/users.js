@@ -559,7 +559,7 @@ router.post('/:id/avatar', upload.single('avatar'), async (req, res) => {
 // POST /api/users/follow/:id
 router.post('/follow/:id', async (req, res) => {
     try {
-        const { followerId } = req.body;
+        const { followerId, followerName } = req.body;
         const targetId = req.params.id;
 
         if (followerId === targetId) {
@@ -569,17 +569,33 @@ router.post('/follow/:id', async (req, res) => {
         const followerRef = db.collection('users').doc(followerId);
         const targetRef = db.collection('users').doc(targetId);
 
-        // Atomic update using batch
+        const [followerDoc, targetDoc] = await Promise.all([followerRef.get(), targetRef.get()]);
+        if (!followerDoc.exists || !targetDoc.exists) return res.status(404).json({ error: 'User(s) not found' });
+
+        const following = followerDoc.data().following || [];
+        if (following.includes(targetId)) return res.json({ success: true, message: 'Already following' });
+
         const batch = db.batch();
         batch.update(followerRef, {
-            following: admin.firestore.FieldValue.arrayUnion(targetId)
+            following: admin.firestore.FieldValue.arrayUnion(targetId),
+            'stats.followingCount': admin.firestore.FieldValue.increment(1)
         });
         batch.update(targetRef, {
             followers: admin.firestore.FieldValue.arrayUnion(followerId),
+            'stats.followersCount': admin.firestore.FieldValue.increment(1),
             'stats.reputation': admin.firestore.FieldValue.increment(5)
         });
 
+        const { createNotification } = require('./notifications');
+        const { logActivity } = require('./activities');
+
         await batch.commit();
+
+        await Promise.all([
+            createNotification(targetId, followerId, followerName || "Someone", 'follow', null, "Started following you"),
+            logActivity(followerId, followerName || "A user", 'follow', targetId, targetDoc.data().username)
+        ]);
+
         res.json({ success: true, message: 'Followed successfully' });
     } catch (error) {
         console.error('Follow Error:', error);
@@ -596,12 +612,21 @@ router.post('/unfollow/:id', async (req, res) => {
         const followerRef = db.collection('users').doc(followerId);
         const targetRef = db.collection('users').doc(targetId);
 
+        const [followerDoc, targetDoc] = await Promise.all([followerRef.get(), targetRef.get()]);
+        if (!followerDoc.exists || !targetDoc.exists) return res.status(404).json({ error: 'User(s) not found' });
+
+        const following = followerDoc.data().following || [];
+        if (!following.includes(targetId)) return res.json({ success: true, message: 'Not following' });
+
         const batch = db.batch();
         batch.update(followerRef, {
-            following: admin.firestore.FieldValue.arrayRemove(targetId)
+            following: admin.firestore.FieldValue.arrayRemove(targetId),
+            'stats.followingCount': admin.firestore.FieldValue.increment(-1)
         });
         batch.update(targetRef, {
-            followers: admin.firestore.FieldValue.arrayRemove(followerId)
+            followers: admin.firestore.FieldValue.arrayRemove(followerId),
+            'stats.followersCount': admin.firestore.FieldValue.increment(-1),
+            'stats.reputation': admin.firestore.FieldValue.increment(-5)
         });
 
         await batch.commit();

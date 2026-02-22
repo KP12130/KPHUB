@@ -57,17 +57,43 @@ const PublicProfile = () => {
     }, [username, currentUser]);
 
     const handleFollowToggle = async () => {
-        if (!currentUser) return alert("Please login to follow creators!");
+        if (!currentUser) return toast.error("Please login to follow creators!");
         try {
             if (isFollowing) {
                 await axios.post(`${API_BASE}/api/users/unfollow/${profile.user.uid}`, { followerId: currentUser.uid });
                 setIsFollowing(false);
+                setProfile(prev => ({
+                    ...prev,
+                    user: {
+                        ...prev.user,
+                        stats: {
+                            ...prev.user.stats,
+                            followersCount: (prev.user.stats?.followersCount || 1) - 1,
+                            reputation: (prev.user.stats?.reputation || 5) - 5
+                        }
+                    }
+                }));
             } else {
-                await axios.post(`${API_BASE}/api/users/follow/${profile.user.uid}`, { followerId: currentUser.uid });
+                await axios.post(`${API_BASE}/api/users/follow/${profile.user.uid}`, {
+                    followerId: currentUser.uid,
+                    followerName: currentUser.displayName || currentUser.username
+                });
                 setIsFollowing(true);
+                setProfile(prev => ({
+                    ...prev,
+                    user: {
+                        ...prev.user,
+                        stats: {
+                            ...prev.user.stats,
+                            followersCount: (prev.user.stats?.followersCount || 0) + 1,
+                            reputation: (prev.user.stats?.reputation || 0) + 5
+                        }
+                    }
+                }));
             }
         } catch (err) {
             console.error("Follow toggle failed", err);
+            toast.error("Handshake failed. Protocol interference.");
         }
     };
 
@@ -205,6 +231,17 @@ const PublicProfile = () => {
                             <div className="flex items-center gap-2 bg-void px-4 py-2 rounded-lg border border-gray-800">
                                 <Trophy className="w-4 h-4 text-yellow-400" />
                                 <span className="text-white font-mono text-xs">{user.stats?.reputation || 0} REP</span>
+                            </div>
+                            <div className="flex items-center gap-6 bg-void px-4 py-2 rounded-lg border border-gray-800">
+                                <div className="flex flex-col items-center">
+                                    <span className="text-white font-black text-xs">{user.stats?.followersCount || user.followers?.length || 0}</span>
+                                    <span className="text-[8px] text-gray-500 uppercase font-mono">Followers</span>
+                                </div>
+                                <div className="h-4 w-[1px] bg-gray-800" />
+                                <div className="flex flex-col items-center">
+                                    <span className="text-white font-black text-xs">{user.stats?.followingCount || user.following?.length || 0}</span>
+                                    <span className="text-[8px] text-gray-500 uppercase font-mono">Following</span>
+                                </div>
                             </div>
                             <div className="flex items-center gap-2 bg-void px-4 py-2 rounded-lg border border-gray-800">
                                 <Award className="w-4 h-4 text-neon-blue" />
