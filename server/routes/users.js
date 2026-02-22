@@ -341,32 +341,11 @@ router.get('/:id', async (req, res) => {
         }
         // ----------------------------------------
 
-        // --- DAILY PULSE REWARD LOGIC ---
-        const nowPulse = new Date();
-        const lastPulse = userData.lastLoginPulse ? (userData.lastLoginPulse.toDate ? userData.lastLoginPulse.toDate() : new Date(userData.lastLoginPulse)) : null;
-        const isNewDay = !lastPulse || (nowPulse.setHours(0, 0, 0, 0) > new Date(lastPulse).setHours(0, 0, 0, 0));
-
+        // --- DAILY_PULSE LOGIC (REMOVED) ---
+        // Login tracked via lastLoginPulse
         if (isNewDay) {
-            const oneDayMs = 24 * 60 * 60 * 1000;
-            const diffDays = lastPulse ? Math.floor((nowPulse - lastPulse) / oneDayMs) : 0;
-
-            let newStreak = (userData.streakCount || 0) + 1;
-            if (diffDays > 1) newStreak = 1;
-
-            const reward = Math.min(100 + (newStreak - 1) * 50, 500);
-
             await userRef.update({
-                'stats.kpcBalance': admin.firestore.FieldValue.increment(reward),
-                'streakCount': newStreak,
                 'lastLoginPulse': admin.firestore.FieldValue.serverTimestamp()
-            });
-
-            userData.stats.kpcBalance = (userData.stats.kpcBalance || 0) + reward;
-            userData.streakCount = newStreak;
-            userData.dailyPulseReward = reward;
-
-            await db.collection('kpc_ledger').add({
-                uid: req.params.id, amount: reward, type: 'DAILY_PULSE', streak: newStreak, timestamp: admin.firestore.FieldValue.serverTimestamp()
             });
         }
         // --------------------------------

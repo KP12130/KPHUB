@@ -165,11 +165,18 @@ const hackathonRoutes = require('./routes/hackathons');
 const supportRoutes = require('./routes/support');
 const exchangeRoutesExport = require('./routes/exchange');
 const exchangeRoutes = exchangeRoutesExport.router;
+const { processRenewals } = require('./utils/renewal_service');
 exchangeRoutesExport.setClearUserCache(clearUserCache);
 
 app.use('/api/projects', projectRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/exchange', exchangeRoutes);
+
+// Start Rank Renewal Background Service (Every 12 hours)
+const RENEWAL_INTERVAL = 12 * 60 * 60 * 1000;
+setInterval(processRenewals, RENEWAL_INTERVAL);
+// Initial run after short delay
+setTimeout(processRenewals, 30000);
 app.use('/api/support', supportRoutes);
 app.use('/api/ads', adRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);

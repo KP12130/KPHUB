@@ -227,6 +227,19 @@ const Studio = () => {
         }
     };
 
+    const handleToggleRenewal = async (autoRenew) => {
+        try {
+            const res = await axios.post(`${API_BASE}/api/exchange/toggle-renewal`, {
+                uid: currentUser.uid,
+                autoRenew
+            });
+            toast.success(res.data.message);
+            updateUser({ autoRenew });
+        } catch (err) {
+            toast.error('Failed to update renewal preference.');
+        }
+    };
+
     useEffect(() => {
         const fetchLedger = async () => {
             if (view !== 'TRANSACTIONS' || !currentUser) return;
@@ -299,7 +312,7 @@ const Studio = () => {
                         <div className="space-y-2">
                             <MenuButton id="DASHBOARD" icon={LayoutDashboard} label="Dashboard" />
                             <MenuButton id="ANALYTICS" icon={PieChart} label="Analytics" />
-                            <MenuButton id="MONETIZATION" icon={DollarSign} label="Monetization" />
+                            <MenuButton id="MONETIZATION" icon={Database} label="Ranks" />
                             <MenuButton
                                 id="SUPPORT"
                                 icon={LifeBuoy}
@@ -427,28 +440,26 @@ const Studio = () => {
                                         )}
                                     </div>
 
-                                    <div className="space-y-4">
-                                        <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
-                                            <Activity className="w-5 h-5 text-yellow-500" /> Daily Objectives
-                                        </h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {quests.map(quest => (
-                                                <GlassCard key={quest.id} className={`flex items-center gap-4 relative overflow-hidden ${quest.completed ? 'opacity-50' : ''}`}>
-                                                    <div className={`p-3 rounded-xl ${quest.completed ? 'bg-neon-green text-black' : 'bg-white/5 text-gray-400'}`}>
-                                                        {quest.completed ? <CheckCircle2 className="w-5 h-5" /> : quest.icon}
-                                                    </div>
-                                                    <div className="flex-grow">
-                                                        <h4 className={`font-bold text-sm ${quest.completed ? 'text-neon-green line-through' : 'text-white'}`}>{quest.title}</h4>
-                                                        <p className="text-[10px] text-gray-500">{quest.desc}</p>
-                                                    </div>
-                                                    {!quest.completed && (
-                                                        <button onClick={() => handleClaimQuest(quest)} className="absolute right-4 px-3 py-1 bg-white/10 hover:bg-neon-green hover:text-black text-white text-[9px] font-black uppercase tracking-widest rounded transition-colors">
-                                                            Claim
-                                                        </button>
-                                                    )}
-                                                </GlassCard>
-                                            ))}
-                                        </div>
+                                    <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
+                                        <Activity className="w-5 h-5 text-yellow-500" /> Daily AdActives
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {quests.map(quest => (
+                                            <GlassCard key={quest.id} className={`flex items-center gap-4 relative overflow-hidden ${quest.completed ? 'opacity-50' : ''}`}>
+                                                <div className={`p-3 rounded-xl ${quest.completed ? 'bg-neon-green text-black' : 'bg-white/5 text-gray-400'}`}>
+                                                    {quest.completed ? <CheckCircle2 className="w-5 h-5" /> : quest.icon}
+                                                </div>
+                                                <div className="flex-grow">
+                                                    <h4 className={`font-bold text-sm ${quest.completed ? 'text-neon-green line-through' : 'text-white'}`}>{quest.title}</h4>
+                                                    <p className="text-[10px] text-gray-500">{quest.desc}</p>
+                                                </div>
+                                                {!quest.completed && (
+                                                    <button onClick={() => handleClaimQuest(quest)} className="absolute right-4 px-3 py-1 bg-white/10 hover:bg-neon-green hover:text-black text-white text-[9px] font-black uppercase tracking-widest rounded transition-colors">
+                                                        Claim
+                                                    </button>
+                                                )}
+                                            </GlassCard>
+                                        ))}
                                     </div>
                                 </div>
                             )}
@@ -564,12 +575,35 @@ const Studio = () => {
                                             const canAfford = (currentUser?.stats?.kpcBalance || 0) >= rank.kpcPrice;
                                             const isPurchasing = purchasing === id;
 
+                                            // Downgrade Protection UI
+                                            const currentRankWeight = rankDefs[userTier]?.weight || 0;
+                                            const isLowerTier = rank.weight < currentRankWeight;
+
                                             return (
                                                 <div key={id} className={`glass-panel p-6 rounded-2xl border transition-all flex flex-col ${isOwned ? 'border-neon-green shadow-[0_0_20px_rgba(57,255,20,0.1)] bg-neon-green/5' : 'border-white/5 hover:border-white/10'}`}>
-                                                    <div className="flex justify-between items-start mb-4">
+                                                    <div className="flex justify-between items-start mb-2">
                                                         <h3 className="text-xl font-black text-white uppercase tracking-tighter">{id}</h3>
                                                         {isOwned && <span className="text-[8px] font-black text-neon-green border border-neon-green/30 px-2 py-0.5 rounded uppercase">Active</span>}
                                                     </div>
+
+                                                    {isOwned && currentUser.membershipExpires && (
+                                                        <div className="mb-4 space-y-2">
+                                                            <div className="flex justify-between items-center text-[8px] font-mono text-gray-500 uppercase">
+                                                                <span>Next Renewal</span>
+                                                                <span className="text-white">{new Date(currentUser.membershipExpires).toLocaleDateString()}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="text-[8px] font-mono text-gray-500 uppercase">Auto-Renew</span>
+                                                                <button
+                                                                    onClick={() => handleToggleRenewal(!currentUser.autoRenew)}
+                                                                    className={`px-2 py-1 rounded text-[7px] font-black uppercase transition-all ${currentUser.autoRenew ? 'bg-neon-green text-black' : 'bg-red-500/20 text-red-500 border border-red-500/30'}`}
+                                                                >
+                                                                    {currentUser.autoRenew ? 'ENABLED' : 'DISABLED'}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
                                                     <ul className="space-y-3 flex-grow mb-8">
                                                         <li className="flex items-start gap-2 text-[10px] text-gray-400 font-mono uppercase">
                                                             <CheckCircle2 className="w-3 h-3 text-neon-green shrink-0 mt-0.5" />
@@ -587,15 +621,17 @@ const Studio = () => {
                                                     </ul>
                                                     <button
                                                         onClick={() => handleRankPurchase(id)}
-                                                        disabled={isOwned || !canAfford || !!purchasing}
+                                                        disabled={isOwned || isLowerTier || !canAfford || !!purchasing}
                                                         className={`w-full py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all flex items-center justify-center gap-2 ${isOwned
                                                             ? 'bg-neon-green/20 text-neon-green border border-neon-green/30 cursor-default'
-                                                            : canAfford
-                                                                ? 'bg-white text-black hover:bg-neon-green shadow-xl cursor-pointer'
-                                                                : 'bg-gray-900 text-gray-600 border border-white/5 cursor-not-allowed'
+                                                            : isLowerTier
+                                                                ? 'bg-gray-900 text-gray-700 border border-white/5 cursor-not-allowed opacity-50'
+                                                                : canAfford
+                                                                    ? 'bg-white text-black hover:bg-neon-green shadow-xl cursor-pointer'
+                                                                    : 'bg-gray-900 text-gray-600 border border-white/5 cursor-not-allowed'
                                                             }`}
                                                     >
-                                                        {isPurchasing ? <Activity className="w-4 h-4 animate-spin" /> : isOwned ? 'CURRENT_TIER' : `${rank.kpcPrice} KPC`}
+                                                        {isPurchasing ? <Activity className="w-4 h-4 animate-spin" /> : isOwned ? 'CURRENT_PROTOCOL' : isLowerTier ? 'LOWER_CLEARANCE_LOCKED' : `${rank.kpcPrice} KPC / MONTH`}
                                                     </button>
                                                 </div>
                                             );
@@ -764,24 +800,26 @@ const Studio = () => {
             </motion.div>
 
             {/* Payment Modal */}
-            {isPaymentOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                    <div className="relative">
-                        <button onClick={() => setIsPaymentOpen(false)} className="absolute -top-12 right-0 text-white hover:text-red-500"><X className="w-8 h-8" /></button>
-                        <PaymentModal
-                            plan={selectedPlan}
-                            onClose={() => setIsPaymentOpen(false)}
-                            onSuccess={() => {
-                                setIsPaymentOpen(false);
-                                setUserTier(selectedPlan);
-                                toast.success("UPGRADE SUCCESSFUL: Welcome to the elite.");
-                                confetti();
-                            }}
-                        />
+            {
+                isPaymentOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                        <div className="relative">
+                            <button onClick={() => setIsPaymentOpen(false)} className="absolute -top-12 right-0 text-white hover:text-red-500"><X className="w-8 h-8" /></button>
+                            <PaymentModal
+                                plan={selectedPlan}
+                                onClose={() => setIsPaymentOpen(false)}
+                                onSuccess={() => {
+                                    setIsPaymentOpen(false);
+                                    setUserTier(selectedPlan);
+                                    toast.success("UPGRADE SUCCESSFUL: Welcome to the elite.");
+                                    confetti();
+                                }}
+                            />
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

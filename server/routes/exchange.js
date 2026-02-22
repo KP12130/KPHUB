@@ -9,9 +9,9 @@ const setClearUserCache = (fn) => { clearUserCache = fn; };
  * KPC MEMBERSHIP TIERS
  */
 const RANKS = {
-    'PRO': { kpcPrice: 5000, label: 'Pro Architect', description: 'Unlock advanced grid visualizers and priority upload streaming.', roles: ['PRO_ARCHITECT'] },
-    'ELITE': { kpcPrice: 15000, label: 'Elite Operator', description: 'Full access to experimental protocols and custom avatar flares.', roles: ['PRO_ARCHITECT', 'ELITE_OPERATOR'] },
-    'LEGEND': { kpcPrice: 50000, label: 'Grid Legend', description: 'Permanent footprint in the global leaderboard and exclusive badge metadata.', roles: ['PRO_ARCHITECT', 'ELITE_OPERATOR', 'GRID_LEGEND'] }
+    'PRO': { kpcPrice: 5000, label: 'Pro Architect', description: 'Unlock advanced grid visualizers and priority upload streaming.', roles: ['PRO_ARCHITECT'], weight: 1, periodDays: 30 },
+    'ELITE': { kpcPrice: 15000, label: 'Elite Operator', description: 'Full access to experimental protocols and custom avatar flares.', roles: ['PRO_ARCHITECT', 'ELITE_OPERATOR'], weight: 2, periodDays: 30 },
+    'LEGEND': { kpcPrice: 50000, label: 'Grid Legend', description: 'Permanent footprint in the global leaderboard and exclusive badge metadata.', roles: ['PRO_ARCHITECT', 'ELITE_OPERATOR', 'GRID_LEGEND'], weight: 3, periodDays: 30 }
 };
 
 const KPC_BUNDLES = {
@@ -168,16 +168,27 @@ router.post('/purchase', async (req, res) => {
 
             const userData = userDoc.data();
             const currentBalance = userData.stats?.kpcBalance || 0;
+            const currentRank = RANKS[userData.tier] || { weight: 0 };
+
+            // Downgrade Protection
+            if (rank.weight < currentRank.weight) {
+                throw new Error('DOWNGRADE_PROTECTION_ACTIVE: Cannot purchase a lower tier rank.');
+            }
 
             if (currentBalance < rank.kpcPrice) {
                 throw new Error('INSUFFICIENT_KPC_CREDITS');
             }
+
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + rank.periodDays);
 
             // Deduct balance and upgrade tier/roles
             transaction.update(userRef, {
                 'stats.kpcBalance': admin.firestore.FieldValue.increment(-rank.kpcPrice),
                 'tier': rankId,
                 'roles': admin.firestore.FieldValue.arrayUnion(...(rank.roles || [])),
+                'membershipExpires': expiryDate.toISOString(),
+                'autoRenew': true, // Default to true as per request
                 'updatedAt': admin.firestore.FieldValue.serverTimestamp()
             });
 
@@ -548,6 +559,24 @@ router.get('/stats', async (req, res) => {
         res.json(responseData);
     } catch (e) {
         res.status(400).json({ error: e.message });
+    }
+});
+
+// POST /api/exchange/toggle-renewal
+router.post('/toggle-renewal', async (req, res) => {
+    try {
+        const { uid, autoRenew } = req.body;
+        if (!uid) return res.status(400).json({ error: 'Missing logic credentials.' });
+
+        const userRef = db.collection('users').doc(uid);
+        await userRef.update({
+            autoRenew: !!autoRenew,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        res.json({ success: true, autoRenew: !!autoRenew, message: `RENEWAL_STATUS: ${!!autoRenew ? 'ENABLED' : 'DISABLED'}` });
+    } catch (e) {
+        res.status(500).json({ error: 'System error syncing renewal state.' });
     }
 });
 
