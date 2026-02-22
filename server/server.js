@@ -104,7 +104,7 @@ let lastBreakerReset = Date.now();
 app.use((req, res, next) => {
     const now = Date.now();
 
-    // Reset counters every 60 seconds
+    // RESET logic remains same...
     if (now - lastBreakerReset > 60000) {
         readApiCount = 0;
         writeApiCount = 0;
@@ -114,7 +114,13 @@ app.use((req, res, next) => {
         }
     }
 
-    // If tripped, block everything
+    // ONLY monitor and block /api/ routes. Skip static assets/HTML.
+    if (!req.path.startsWith('/api/')) return next();
+
+    // Exempt Health Check from blocking AND counting
+    if (req.path === '/api/health') return next();
+
+    // If tripped, block API
     if (circuitBreakerTripped) {
         return res.status(503).json({
             error: 'CIRCUIT_BREAKER_ACTIVE',
@@ -126,13 +132,10 @@ app.use((req, res, next) => {
     if (req.method === 'GET') {
         readApiCount++;
     } else {
-        writeApiCount++; // Includes POST, PUT, DELETE, PATCH
+        writeApiCount++;
     }
 
-    // Exempt Health Check from Circuit Breaker
-    if (req.path === '/api/health') return next();
-
-    // Trip the breaker if we exceed 2000 reads or 500 writes per minute
+    // Trip the breaker if we exceed limits
     if (readApiCount > 2000 || writeApiCount > 500) {
         console.error(`[CIRCUIT_BREAKER] 🔴 EMERGENCY HALT TRIPPED. Reads: ${readApiCount}/min, Writes: ${writeApiCount}/min`);
         circuitBreakerTripped = true;
