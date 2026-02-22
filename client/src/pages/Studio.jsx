@@ -586,11 +586,15 @@ const Studio = () => {
                                                         {isOwned && <span className="text-[8px] font-black text-neon-green border border-neon-green/30 px-2 py-0.5 rounded uppercase">Active</span>}
                                                     </div>
 
-                                                    {isOwned && currentUser.membershipExpires && (
+                                                    {isOwned && (
                                                         <div className="mb-4 space-y-2">
                                                             <div className="flex justify-between items-center text-[8px] font-mono text-gray-500 uppercase">
                                                                 <span>Next Renewal</span>
-                                                                <span className="text-white">{new Date(currentUser.membershipExpires).toLocaleDateString()}</span>
+                                                                <span className="text-white">
+                                                                    {currentUser.membershipExpires
+                                                                        ? new Date(currentUser.membershipExpires).toLocaleDateString()
+                                                                        : 'LEGACY / PENDING'}
+                                                                </span>
                                                             </div>
                                                             <div className="flex justify-between items-center">
                                                                 <span className="text-[8px] font-mono text-gray-500 uppercase">Auto-Renew</span>
