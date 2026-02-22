@@ -130,8 +130,8 @@ app.use((req, res, next) => {
     }
 
 
-    // Trip the breaker if we exceed 500 reads or 100 writes per minute
-    if (readApiCount > 500 || writeApiCount > 100) {
+    // Trip the breaker if we exceed 2000 reads or 500 writes per minute
+    if (readApiCount > 2000 || writeApiCount > 500) {
         console.error(`[CIRCUIT_BREAKER] 🔴 EMERGENCY HALT TRIPPED. Reads: ${readApiCount}/min, Writes: ${writeApiCount}/min`);
         circuitBreakerTripped = true;
         return res.status(503).json({
