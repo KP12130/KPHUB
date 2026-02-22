@@ -108,6 +108,7 @@ router.post('/', async (req, res) => {
                 supporters: 0
             },
             tier: 'GHOST', // Default tier
+            roles: ['CITIZEN'],
             membershipExpires: null
         };
 

@@ -6,7 +6,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { API_BASE } from '../api';
 
 import { motion } from 'framer-motion';
-import { User, Calendar, Save, ArrowLeft, AtSign, FileText, Github, Twitter, Globe } from 'lucide-react';
+import { User, Calendar, Save, ArrowLeft, AtSign, FileText, Github, Twitter, Globe, Shield, Zap, Trophy, Crown, Loader } from 'lucide-react';
 
 const Profile = () => {
     const { currentUser, updateUser } = useAuth();
@@ -33,6 +33,8 @@ const Profile = () => {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [rankDefs, setRankDefs] = useState({});
+    const [purchasing, setPurchasing] = useState(null);
 
     useEffect(() => {
         if (!currentUser) {
@@ -56,9 +58,12 @@ const Profile = () => {
                 // Fetch badge definitions
                 const badgesRes = await axios.get(`${API_BASE}/api/users/badges/definitions`);
                 setBadgeDefs(badgesRes.data);
+                // Fetch rank definitions
+                const ranksRes = await axios.get(`${API_BASE}/api/exchange/ranks`);
+                setRankDefs(ranksRes.data);
             } catch (err) {
                 console.error(err);
-                setError('Failed to load profile.');
+                setError('Failed to load profile details.');
             } finally {
                 setLoading(false);
             }
@@ -66,6 +71,28 @@ const Profile = () => {
 
         fetchProfile();
     }, [currentUser, navigate]);
+
+    const handleRankPurchase = async (rankId) => {
+        const rank = rankDefs[rankId];
+        if (!window.confirm(`Initialize ${rankId} Protocol? This will deduct ${rank.kpcPrice} KPC from your balance.`)) return;
+
+        setPurchasing(rankId);
+        setError('');
+        try {
+            const res = await axios.post(`${API_BASE}/api/exchange/purchase`, {
+                uid: currentUser.uid,
+                rankId
+            });
+            setSuccess(res.data.message);
+            // Refresh user data
+            const userRes = await axios.get(`${API_BASE}/api/users/${currentUser.uid}`);
+            updateUser(userRes.data);
+        } catch (err) {
+            setError(err.response?.data?.error || 'Purchase failed.');
+        } finally {
+            setPurchasing(null);
+        }
+    };
 
     const [avatarFile, setAvatarFile] = useState(null);
     const [avatarPreview, setAvatarPreview] = useState(null);
@@ -332,6 +359,68 @@ const Profile = () => {
                             </div>
                         </div>
                     </div>
+                    {/* Rank Advancement */}
+                    <div className="space-y-4 pt-8 border-t border-gray-900">
+                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                            <Shield className="w-4 h-4 text-neon-blue" /> Tier_Advancement
+                        </h3>
+                        <p className="text-[10px] text-gray-600 font-mono uppercase">Upgrade your clearance level and gain new roles.</p>
+
+                        <div className="grid grid-cols-1 gap-4">
+                            {Object.entries(rankDefs).map(([id, rank]) => {
+                                const isOwned = currentUser?.tier === id;
+                                const canAfford = (currentUser?.stats?.kpcBalance || 0) >= rank.kpcPrice;
+                                const isPurchasing = purchasing === id;
+
+                                return (
+                                    <div
+                                        key={id}
+                                        className={`p-4 rounded-xl border transition-all ${isOwned
+                                            ? 'border-neon-green bg-neon-green/5'
+                                            : 'border-gray-800 bg-void/50 hover:border-gray-700'
+                                            } flex items-center justify-between gap-4`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className={`p-3 rounded-lg ${isOwned ? 'bg-neon-green/20 text-neon-green' : 'bg-gray-900 text-gray-500'}`}>
+                                                {id === 'PRO' && <Zap className="w-6 h-6" />}
+                                                {id === 'ELITE' && <Trophy className="w-6 h-6" />}
+                                                {id === 'LEGEND' && <Crown className="w-6 h-6" />}
+                                            </div>
+                                            <div>
+                                                <h4 className="text-white font-black text-sm uppercase tracking-tighter">{rank.label}</h4>
+                                                <p className="text-[10px] text-gray-500 max-w-[200px]">{rank.description}</p>
+                                                <div className="flex flex-wrap gap-1 mt-2">
+                                                    {rank.roles?.map(role => (
+                                                        <span key={role} className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[8px] text-neon-blue font-mono font-bold">
+                                                            {role}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            {isOwned ? (
+                                                <span className="text-[10px] font-black text-neon-green uppercase tracking-widest bg-neon-green/10 px-3 py-1 rounded-full border border-neon-green/30">Active</span>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRankPurchase(id)}
+                                                    disabled={!canAfford || purchasing}
+                                                    className={`px-4 py-2 rounded-lg font-black text-xs uppercase tracking-widest transition-all ${canAfford
+                                                        ? 'bg-white text-black hover:bg-neon-green shadow-xl'
+                                                        : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                                                        } flex items-center gap-2`}
+                                                >
+                                                    {isPurchasing ? <Loader className="w-4 h-4 animate-spin" /> : `${rank.kpcPrice} KPC`}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
                     {/* Theme Customization */}
                     <div className="space-y-4 pt-4 border-t border-gray-900">
                         <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">

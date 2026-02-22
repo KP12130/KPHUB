@@ -6,9 +6,9 @@ const { db, admin } = require('../config/firebase');
  * KPC MEMBERSHIP TIERS
  */
 const RANKS = {
-    'PRO': { kpcPrice: 5000, label: 'Pro Architect', description: 'Unlock advanced grid visualizers and priority upload streaming.' },
-    'ELITE': { kpcPrice: 15000, label: 'Elite Operator', description: 'Full access to experimental protocols and custom avatar flares.' },
-    'LEGEND': { kpcPrice: 50000, label: 'Grid Legend', description: 'Permanent footprint in the global leaderboard and exclusive badge metadata.' }
+    'PRO': { kpcPrice: 5000, label: 'Pro Architect', description: 'Unlock advanced grid visualizers and priority upload streaming.', roles: ['PRO_ARCHITECT'] },
+    'ELITE': { kpcPrice: 15000, label: 'Elite Operator', description: 'Full access to experimental protocols and custom avatar flares.', roles: ['PRO_ARCHITECT', 'ELITE_OPERATOR'] },
+    'LEGEND': { kpcPrice: 50000, label: 'Grid Legend', description: 'Permanent footprint in the global leaderboard and exclusive badge metadata.', roles: ['PRO_ARCHITECT', 'ELITE_OPERATOR', 'GRID_LEGEND'] }
 };
 
 const KPC_BUNDLES = {
@@ -170,10 +170,11 @@ router.post('/purchase', async (req, res) => {
                 throw new Error('INSUFFICIENT_KPC_CREDITS');
             }
 
-            // Deduct balance and upgrade tier
+            // Deduct balance and upgrade tier/roles
             transaction.update(userRef, {
                 'stats.kpcBalance': admin.firestore.FieldValue.increment(-rank.kpcPrice),
                 'tier': rankId,
+                'roles': admin.firestore.FieldValue.arrayUnion(...(rank.roles || [])),
                 'updatedAt': admin.firestore.FieldValue.serverTimestamp()
             });
 
@@ -444,9 +445,10 @@ router.post('/gift-rank', async (req, res) => {
                 });
             }
 
-            // Recipient: Upgrade tier
+            // Recipient: Upgrade tier and roles
             transaction.update(recipientRef, {
                 'tier': rankId,
+                'roles': admin.firestore.FieldValue.arrayUnion(...(rank.roles || [])),
                 'updatedAt': admin.firestore.FieldValue.serverTimestamp()
             });
 

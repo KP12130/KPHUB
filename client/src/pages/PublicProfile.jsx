@@ -176,6 +176,13 @@ const PublicProfile = () => {
                         </h1>
                         <div className="flex items-center gap-2 mb-4">
                             <p className="text-neon-green font-mono text-sm">@{user.username}</p>
+                            <div className="flex gap-1">
+                                {user.roles?.map(role => (
+                                    <span key={role} className="px-1.5 py-0.5 bg-neon-blue/10 border border-neon-blue/30 rounded text-[8px] text-neon-blue font-mono font-bold uppercase">
+                                        {role}
+                                    </span>
+                                ))}
+                            </div>
                         </div>
 
                         <div className="flex flex-wrap justify-center md:justify-start gap-4 mb-6">
