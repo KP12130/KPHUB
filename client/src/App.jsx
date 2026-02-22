@@ -38,40 +38,82 @@ import { motion, AnimatePresence } from 'framer-motion';
 const App = () => {
   const { currentUser } = useAuth();
 
-  // Global Axios Interceptor for Auto-Moderation & IP Bans
+  // 2. Global Connection Monitor (Heartbeat) - AUTOMATIC RELOAD PROTOCOL
+  const [isServerDown, setIsServerDown] = useState(false);
+
+  useEffect(() => {
+    let checkInterval;
+
+    const monitorConnectivity = async () => {
+      try {
+        await axios.get(`${API_BASE}/api/health`, { timeout: 3000 });
+        if (isServerDown) {
+          console.log("[GRID_MONITOR] Connection restored. Synchronizing state...");
+          window.location.reload(); // Hard reload once server is back
+        }
+      } catch (err) {
+        // If it's a timeout or network error (no response), server is likely restarting
+        if (!err.response) {
+          console.error("[GRID_MONITOR] Critical connectivity loss detected.");
+          setIsServerDown(true);
+        }
+      }
+    };
+
+    // Poll every 5 seconds if down, 15 seconds if up
+    const intervalTime = isServerDown ? 5000 : 15000;
+    checkInterval = setInterval(monitorConnectivity, intervalTime);
+
+    return () => clearInterval(checkInterval);
+  }, [isServerDown]);
+
+  // 3. Global Axios Interceptor for Auto-Moderation & IP Bans
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
       (error) => {
-        const { status, config } = error.response || {};
+        const { status } = error.response || {};
 
-        // 1. Handle Rate Limiting (429) - NEVER reload here as it worsens the state
+        // Handle Server Down (502, 503, 504) or Network Error (no status)
+        if (!status || status >= 502) {
+          setIsServerDown(true);
+        }
+
         if (status === 429) {
-          const serverMsg = error.response?.data?.error || error.response?.data?.message;
-          console.error(`[FIREWALL] Throttling active: ${serverMsg || 'Velocity limit exceeded.'}`);
+          console.error(`[FIREWALL] Throttling active.`);
           return Promise.reject(error);
         }
 
-        // 2. Handle Security Rejections (403)
         if (status === 403) {
-          // If we are already on the banned page, don't reload again on background failures
           if (window.location.pathname === '/banned') return Promise.reject(error);
-
-          console.warn('[SECURITY] Access blocked. Component should handle state sync.');
+          console.warn('[SECURITY] Access blocked.');
         }
         return Promise.reject(error);
       }
     );
 
-    return () => {
-      axios.interceptors.response.eject(interceptor);
-    };
+    return () => axios.interceptors.response.eject(interceptor);
   }, []);
 
   return (
     <ThemeProvider>
       <Router>
         <Layout>
+          <AnimatePresence>
+            {isServerDown && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="fixed inset-0 z-[10000] bg-void/90 backdrop-blur-xl flex items-center justify-center p-6 text-center"
+              >
+                <div className="space-y-6">
+                  <div className="w-16 h-16 border-4 border-neon-blue/30 border-t-neon-blue rounded-full animate-spin mx-auto" />
+                  <h2 className="text-3xl font-black text-white italic uppercase tracking-tighter">Servers are updating</h2>
+                  <p className="text-gray-500 font-mono text-[10px] uppercase tracking-widest">Connection lost. Re-establishing secure link to grid...</p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />

@@ -440,27 +440,6 @@ const Studio = () => {
                                         )}
                                     </div>
 
-                                    <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
-                                        <Activity className="w-5 h-5 text-yellow-500" /> Daily AdActives
-                                    </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {quests.map(quest => (
-                                            <GlassCard key={quest.id} className={`flex items-center gap-4 relative overflow-hidden ${quest.completed ? 'opacity-50' : ''}`}>
-                                                <div className={`p-3 rounded-xl ${quest.completed ? 'bg-neon-green text-black' : 'bg-white/5 text-gray-400'}`}>
-                                                    {quest.completed ? <CheckCircle2 className="w-5 h-5" /> : quest.icon}
-                                                </div>
-                                                <div className="flex-grow">
-                                                    <h4 className={`font-bold text-sm ${quest.completed ? 'text-neon-green line-through' : 'text-white'}`}>{quest.title}</h4>
-                                                    <p className="text-[10px] text-gray-500">{quest.desc}</p>
-                                                </div>
-                                                {!quest.completed && (
-                                                    <button onClick={() => handleClaimQuest(quest)} className="absolute right-4 px-3 py-1 bg-white/10 hover:bg-neon-green hover:text-black text-white text-[9px] font-black uppercase tracking-widest rounded transition-colors">
-                                                        Claim
-                                                    </button>
-                                                )}
-                                            </GlassCard>
-                                        ))}
-                                    </div>
                                 </div>
                             )}
 
