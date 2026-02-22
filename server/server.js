@@ -163,16 +163,12 @@ const activityRoutes = require('./routes/activities');
 const adRoutes = require('./routes/ads');
 const hackathonRoutes = require('./routes/hackathons');
 const supportRoutes = require('./routes/support');
-const exchangeRoutes = require('./routes/exchange');
-
-app.use('/api/projects', projectRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/users', userRoutes);
-
 const exchangeRoutesExport = require('./routes/exchange');
 const exchangeRoutes = exchangeRoutesExport.router;
 exchangeRoutesExport.setClearUserCache(clearUserCache);
 
+app.use('/api/projects', projectRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/exchange', exchangeRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/ads', adRoutes);

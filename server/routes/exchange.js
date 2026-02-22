@@ -464,16 +464,15 @@ router.post('/gift-rank', async (req, res) => {
             });
 
         });
-    });
 
-// Invalidate cache for both parties
-clearUserCache(donorId);
-clearUserCache(targetId);
+        // Invalidate cache for both parties
+        clearUserCache(donorId);
+        clearUserCache(targetId);
 
-res.json({ success: true, message: `Gift Protocol Successful. ${rankId} granted to ${targetId}.` });
+        res.json({ success: true, message: `Gift Protocol Successful. ${rankId} granted to ${targetId}.` });
     } catch (e) {
-    res.status(400).json({ error: e.message });
-}
+        res.status(400).json({ error: e.message });
+    }
 });
 
 // GET /api/exchange/top-donors/:uid
