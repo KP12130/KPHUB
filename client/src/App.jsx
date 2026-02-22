@@ -40,32 +40,36 @@ const App = () => {
 
   // 2. Global Connection Monitor (Heartbeat) - AUTOMATIC RELOAD PROTOCOL
   const [isServerDown, setIsServerDown] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let checkInterval;
 
     const monitorConnectivity = async () => {
       try {
-        const response = await fetch(`${API_BASE}/api/health`);
-        if (response.ok && isServerDown) {
-          console.log("[GRID_MONITOR] Connection restored. Synchronizing state...");
-          window.location.reload();
-        } else if (!response.ok && response.status >= 502) {
+        const response = await fetch(`${API_BASE}/api/health`, { cache: 'no-store' });
+        if (response.ok) {
+          setRetryCount(0);
+          if (isServerDown) {
+            console.warn("[GRID_MONITOR] Connection restored. Reloading...");
+            window.location.reload();
+          }
+        } else if (response.status >= 502) {
           setIsServerDown(true);
         }
       } catch (err) {
-        console.error("[GRID_MONITOR] Connection failed.");
-        setIsServerDown(true);
+        setRetryCount(prev => prev + 1);
+        if (retryCount >= 2) setIsServerDown(true);
       }
     };
 
     // Initial check and start polling
     monitorConnectivity();
-    const intervalTime = isServerDown ? 5000 : 20000;
+    const intervalTime = isServerDown ? 5000 : 30000;
     checkInterval = setInterval(monitorConnectivity, intervalTime);
 
     return () => clearInterval(checkInterval);
-  }, [isServerDown]);
+  }, [isServerDown, retryCount]);
 
   // 3. Global Axios Interceptor for Auto-Moderation & IP Bans
   useEffect(() => {

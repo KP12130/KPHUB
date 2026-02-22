@@ -101,6 +101,10 @@ let writeApiCount = 0;
 let circuitBreakerTripped = false;
 let lastBreakerReset = Date.now();
 
+// Static File Hosting (Frontend) - MOVED ABOVE CIRCUIT BREAKER TO ENSURE UI LOADS
+const distPath = path.join(__dirname, '../client/dist');
+app.use(express.static(distPath));
+
 app.use((req, res, next) => {
     const now = Date.now();
 
@@ -191,9 +195,6 @@ app.use('/api/activity', activityRoutes);
 app.use('/api/hackathons', require('./routes/hackathons'));
 app.use('/api/voting', require('./routes/voting'));
 
-// Static File Hosting (Frontend)
-const distPath = path.join(__dirname, '../client/dist');
-app.use(express.static(distPath));
 
 // --- SECURITY & IP BAN MANAGEMENT ROUTES ---
 app.get('/api/security/banned-ips', (req, res) => {
