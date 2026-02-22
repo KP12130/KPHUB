@@ -46,22 +46,22 @@ const App = () => {
 
     const monitorConnectivity = async () => {
       try {
-        await axios.get(`${API_BASE}/api/health`, { timeout: 3000 });
-        if (isServerDown) {
+        const response = await fetch(`${API_BASE}/api/health`);
+        if (response.ok && isServerDown) {
           console.log("[GRID_MONITOR] Connection restored. Synchronizing state...");
-          window.location.reload(); // Hard reload once server is back
-        }
-      } catch (err) {
-        // If it's a timeout or network error (no response), server is likely restarting
-        if (!err.response) {
-          console.error("[GRID_MONITOR] Critical connectivity loss detected.");
+          window.location.reload();
+        } else if (!response.ok && response.status >= 502) {
           setIsServerDown(true);
         }
+      } catch (err) {
+        console.error("[GRID_MONITOR] Connection failed.");
+        setIsServerDown(true);
       }
     };
 
-    // Poll every 5 seconds if down, 15 seconds if up
-    const intervalTime = isServerDown ? 5000 : 15000;
+    // Initial check and start polling
+    monitorConnectivity();
+    const intervalTime = isServerDown ? 5000 : 20000;
     checkInterval = setInterval(monitorConnectivity, intervalTime);
 
     return () => clearInterval(checkInterval);

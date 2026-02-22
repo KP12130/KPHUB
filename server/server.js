@@ -129,6 +129,8 @@ app.use((req, res, next) => {
         writeApiCount++; // Includes POST, PUT, DELETE, PATCH
     }
 
+    // Exempt Health Check from Circuit Breaker
+    if (req.path === '/api/health') return next();
 
     // Trip the breaker if we exceed 2000 reads or 500 writes per minute
     if (readApiCount > 2000 || writeApiCount > 500) {
