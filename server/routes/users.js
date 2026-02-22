@@ -343,6 +343,10 @@ router.get('/:id', async (req, res) => {
 
         // --- DAILY_PULSE LOGIC (REMOVED) ---
         // Login tracked via lastLoginPulse
+        const nowPulse = new Date();
+        const lastPulse = userData.lastLoginPulse ? (userData.lastLoginPulse.toDate ? userData.lastLoginPulse.toDate() : new Date(userData.lastLoginPulse)) : null;
+        const isNewDay = !lastPulse || (nowPulse.setHours(0, 0, 0, 0) > new Date(lastPulse).setHours(0, 0, 0, 0));
+
         if (isNewDay) {
             await userRef.update({
                 'lastLoginPulse': admin.firestore.FieldValue.serverTimestamp()
