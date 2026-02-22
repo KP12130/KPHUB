@@ -38,38 +38,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 const App = () => {
   const { currentUser } = useAuth();
 
-  // 2. Global Connection Monitor (Heartbeat) - AUTOMATIC RELOAD PROTOCOL
-  const [isServerDown, setIsServerDown] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
-
+  // 2. Global Connection Monitor (Heartbeat) - REDIRECT PROTOCOL
   useEffect(() => {
-    let checkInterval;
-
     const monitorConnectivity = async () => {
       try {
         const response = await fetch(`${API_BASE}/api/health`, { cache: 'no-store' });
-        if (response.ok) {
-          setRetryCount(0);
-          if (isServerDown) {
-            console.warn("[GRID_MONITOR] Connection restored. Reloading...");
-            window.location.reload();
-          }
-        } else if (response.status >= 502) {
-          setIsServerDown(true);
+        if (!response.ok && response.status >= 502) {
+          window.location.href = '/maintenance.html';
         }
       } catch (err) {
-        setRetryCount(prev => prev + 1);
-        if (retryCount >= 2) setIsServerDown(true);
+        // Network error (server down)
+        window.location.href = '/maintenance.html';
       }
     };
 
-    // Initial check and start polling
-    monitorConnectivity();
-    const intervalTime = isServerDown ? 5000 : 30000;
-    checkInterval = setInterval(monitorConnectivity, intervalTime);
-
+    const checkInterval = setInterval(monitorConnectivity, 30000); // Check every 30s when on main app
     return () => clearInterval(checkInterval);
-  }, [isServerDown, retryCount]);
+  }, []);
 
   // 3. Global Axios Interceptor for Auto-Moderation & IP Bans
   useEffect(() => {
@@ -80,7 +65,7 @@ const App = () => {
 
         // Handle Server Down (502, 503, 504) or Network Error (no status)
         if (!status || status >= 502) {
-          setIsServerDown(true);
+          window.location.href = '/maintenance.html';
         }
 
         if (status === 429) {
@@ -103,21 +88,6 @@ const App = () => {
     <ThemeProvider>
       <Router>
         <Layout>
-          <AnimatePresence>
-            {isServerDown && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="fixed inset-0 z-[10000] bg-void/90 backdrop-blur-xl flex items-center justify-center p-6 text-center"
-              >
-                <div className="space-y-6">
-                  <div className="w-16 h-16 border-4 border-neon-blue/30 border-t-neon-blue rounded-full animate-spin mx-auto" />
-                  <h2 className="text-3xl font-black text-white italic uppercase tracking-tighter">Servers are updating</h2>
-                  <p className="text-gray-500 font-mono text-[10px] uppercase tracking-widest">Connection lost. Re-establishing secure link to grid...</p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
