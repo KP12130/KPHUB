@@ -152,7 +152,10 @@ const authLimiter = rateLimit({
 
 // Routes
 const projectRoutes = require('./routes/projects');
-const userRoutes = require('./routes/users');
+const userRoutesExport = require('./routes/users');
+const userRoutes = userRoutesExport.router;
+const clearUserCache = userRoutesExport.clearUserCache;
+
 const leaderboardRoutes = require('./routes/leaderboard');
 const commentsRoutes = require('./routes/comments');
 const notificationsRoutes = require('./routes/notifications');
@@ -164,6 +167,12 @@ const exchangeRoutes = require('./routes/exchange');
 
 app.use('/api/projects', projectRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/users', userRoutes);
+
+const exchangeRoutesExport = require('./routes/exchange');
+const exchangeRoutes = exchangeRoutesExport.router;
+exchangeRoutesExport.setClearUserCache(clearUserCache);
+
 app.use('/api/exchange', exchangeRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/ads', adRoutes);

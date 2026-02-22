@@ -799,6 +799,9 @@ router.get('/admin/violations', async (req, res) => {
     }
 });
 
-module.exports = router;
+module.exports = {
+    router,
+    clearUserCache: (uid) => userCache.clear(uid)
+};
 
 

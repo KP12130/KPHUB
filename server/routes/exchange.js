@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { db, admin } = require('../config/firebase');
 
+let clearUserCache = () => { }; // Placeholder
+const setClearUserCache = (fn) => { clearUserCache = fn; };
+
 /**
  * KPC MEMBERSHIP TIERS
  */
@@ -188,6 +191,9 @@ router.post('/purchase', async (req, res) => {
                 timestamp: admin.firestore.FieldValue.serverTimestamp()
             });
         });
+
+        // Invalidate cache immediately
+        clearUserCache(uid);
 
         res.json({ success: true, message: `Rank UPGRADED to ${rankId}. KPC deducted.`, tier: rankId });
 
@@ -457,16 +463,17 @@ router.post('/gift-rank', async (req, res) => {
                 uid: donorId, amount: -rank.kpcPrice, type: 'GIFT_RANK_OUT', recipientId: targetId, recipientName: recipientData.username, rankId, timestamp: admin.firestore.FieldValue.serverTimestamp()
             });
 
-            // Ledger: Log recipient addition (informational)
-            transaction.set(db.collection('kpc_ledger').doc(), {
-                uid: targetId, amount: 0, type: 'GIFT_RANK_IN', donorId: donorId, donorName: donorData.username, rankId, timestamp: admin.firestore.FieldValue.serverTimestamp()
-            });
         });
+    });
 
-        res.json({ success: true, message: `Gift Protocol Successful. ${rankId} granted to ${targetId}.` });
+// Invalidate cache for both parties
+clearUserCache(donorId);
+clearUserCache(targetId);
+
+res.json({ success: true, message: `Gift Protocol Successful. ${rankId} granted to ${targetId}.` });
     } catch (e) {
-        res.status(400).json({ error: e.message });
-    }
+    res.status(400).json({ error: e.message });
+}
 });
 
 // GET /api/exchange/top-donors/:uid
@@ -579,4 +586,7 @@ router.post('/redeem', async (req, res) => {
     }
 });
 
-module.exports = router;
+module.exports = {
+    router,
+    setClearUserCache
+};
