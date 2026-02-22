@@ -44,6 +44,8 @@ const Studio = () => {
     const [profileData, setProfileData] = useState({
         username: '', displayName: '', bio: '', website: '', location: '', githubUrl: '', twitterUrl: ''
     });
+    const [rankDefs, setRankDefs] = useState({});
+    const [purchasing, setPurchasing] = useState(null);
     const [quests, setQuests] = useState([
         { id: 1, title: 'DAILY_SYNC', desc: 'Initialize Studio interface for 24h cycle.', reward: 50, completed: false, icon: <Activity className="w-10 h-10" /> },
         { id: 2, title: 'SYSTEM_EXPANSION', desc: 'Deploy a new transmission to the grid.', reward: 200, completed: false, icon: <Plus className="w-10 h-10" /> },
@@ -56,14 +58,16 @@ const Studio = () => {
             if (!currentUser || !currentUser.username) return;
 
             try {
-                const [profileRes, flaresRes] = await Promise.all([
+                const [profileRes, flaresRes, ranksRes] = await Promise.all([
                     axios.get(`${API_BASE}/api/users/profile/${currentUser.username}?viewerId=${currentUser.uid}`),
-                    axios.get(`${API_BASE}/api/exchange/flares`)
+                    axios.get(`${API_BASE}/api/exchange/flares`),
+                    axios.get(`${API_BASE}/api/exchange/ranks`)
                 ]);
 
                 const { user, projects } = profileRes.data;
                 setProjects(projects);
                 setAllFlares(flaresRes.data);
+                setRankDefs(ranksRes.data);
 
                 const currentXp = user.stats?.xp || 0;
                 setStats({
@@ -197,6 +201,29 @@ const Studio = () => {
             toast.error(err.response?.data?.error || "Withdrawal request failed.");
         } finally {
             setIsWithdrawing(false);
+        }
+    };
+
+    const handleRankPurchase = async (rankId) => {
+        const rank = rankDefs[rankId];
+        if (!window.confirm(`Initialize ${rankId} Protocol? This will deduct ${rank.kpcPrice} KPC from your balance.`)) return;
+
+        setPurchasing(rankId);
+        try {
+            const res = await axios.post(`${API_BASE}/api/exchange/purchase`, {
+                uid: currentUser.uid,
+                rankId
+            });
+            toast.success(res.data.message);
+            confetti();
+            // Refresh user data
+            const userRes = await axios.get(`${API_BASE}/api/users/${currentUser.uid}`);
+            updateUser(userRes.data);
+            setUserTier(userRes.data.tier);
+        } catch (err) {
+            toast.error(err.response?.data?.error || 'Purchase failed.');
+        } finally {
+            setPurchasing(null);
         }
     };
 
@@ -523,34 +550,56 @@ const Studio = () => {
 
                             {view === 'MONETIZATION' && (
                                 <div className="space-y-8">
-                                    <GlassCard className="flex flex-col md:flex-row items-center justify-between gap-6 p-8 relative overflow-hidden">
+                                    <GlassCard className="flex flex-col md:flex-row items-center justify-between gap-6 p-8 relative overflow-hidden border-neon-purple/20">
                                         <div className="absolute top-0 right-0 w-64 h-64 bg-neon-purple/10 blur-[100px] rounded-full pointer-events-none" />
                                         <div>
-                                            <h2 className="text-3xl font-black text-white mb-2">Current Tier: <span className="text-neon-purple">{userTier}</span></h2>
-                                            <p className="text-gray-400 text-sm max-w-md">Upgrade to unlock advanced analytics, priority indexing, and custom profile styling.</p>
+                                            <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tighter">Clearance_Level: <span className="text-neon-purple">{userTier}</span></h2>
+                                            <p className="text-gray-400 text-sm max-w-md font-mono uppercase text-[10px]">Upgrade your technical tier to unlock advanced analytics and elite grid roles.</p>
                                         </div>
-                                        <button
-                                            onClick={() => { setIsPaymentOpen(true); setSelectedPlan('ELITE'); }}
-                                            className="px-8 py-4 bg-neon-purple text-white font-black uppercase tracking-widest rounded-xl hover:scale-105 transition-transform shadow-[0_0_20px_rgba(168,85,247,0.4)]"
-                                        >
-                                            Upgrade Plan
-                                        </button>
                                     </GlassCard>
 
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        {['GHOST', 'ELITE', 'ARCHITECT'].map((tier, i) => (
-                                            <div key={tier} className={`glass-panel p-6 rounded-2xl border ${tier === userTier ? 'border-neon-green shadow-[0_0_15px_rgba(57,255,20,0.2)]' : 'border-white/5'} flex flex-col`}>
-                                                <h3 className="text-xl font-black text-white mb-4">{tier}</h3>
-                                                <ul className="space-y-3 flex-grow mb-6">
-                                                    <li className="flex items-center gap-2 text-xs text-gray-300"><CheckCircle2 className="w-3 h-3 text-neon-green" /> Basic Uploads</li>
-                                                    {i > 0 && <li className="flex items-center gap-2 text-xs text-gray-300"><CheckCircle2 className="w-3 h-3 text-neon-green" /> Priority Indexing</li>}
-                                                    {i > 1 && <li className="flex items-center gap-2 text-xs text-gray-300"><CheckCircle2 className="w-3 h-3 text-neon-green" /> API Access</li>}
-                                                </ul>
-                                                <button disabled={tier === userTier} className="w-full py-3 bg-white/5 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold uppercase text-xs rounded-lg transition-colors">
-                                                    {tier === userTier ? 'Active' : 'Select'}
-                                                </button>
-                                            </div>
-                                        ))}
+                                        {Object.entries(rankDefs).map(([id, rank]) => {
+                                            const isOwned = userTier === id;
+                                            const canAfford = (currentUser?.stats?.kpcBalance || 0) >= rank.kpcPrice;
+                                            const isPurchasing = purchasing === id;
+
+                                            return (
+                                                <div key={id} className={`glass-panel p-6 rounded-2xl border transition-all flex flex-col ${isOwned ? 'border-neon-green shadow-[0_0_20px_rgba(57,255,20,0.1)] bg-neon-green/5' : 'border-white/5 hover:border-white/10'}`}>
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <h3 className="text-xl font-black text-white uppercase tracking-tighter">{id}</h3>
+                                                        {isOwned && <span className="text-[8px] font-black text-neon-green border border-neon-green/30 px-2 py-0.5 rounded uppercase">Active</span>}
+                                                    </div>
+                                                    <ul className="space-y-3 flex-grow mb-8">
+                                                        <li className="flex items-start gap-2 text-[10px] text-gray-400 font-mono uppercase">
+                                                            <CheckCircle2 className="w-3 h-3 text-neon-green shrink-0 mt-0.5" />
+                                                            {rank.description}
+                                                        </li>
+                                                        <li className="pt-4 border-t border-white/5 mt-auto">
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {rank.roles?.map(role => (
+                                                                    <span key={role} className="px-1.5 py-0.5 bg-neon-blue/10 border border-neon-blue/30 rounded text-[7px] text-neon-blue font-mono font-bold uppercase">
+                                                                        {role}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </li>
+                                                    </ul>
+                                                    <button
+                                                        onClick={() => handleRankPurchase(id)}
+                                                        disabled={isOwned || !canAfford || !!purchasing}
+                                                        className={`w-full py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all flex items-center justify-center gap-2 ${isOwned
+                                                            ? 'bg-neon-green/20 text-neon-green border border-neon-green/30 cursor-default'
+                                                            : canAfford
+                                                                ? 'bg-white text-black hover:bg-neon-green shadow-xl cursor-pointer'
+                                                                : 'bg-gray-900 text-gray-600 border border-white/5 cursor-not-allowed'
+                                                            }`}
+                                                    >
+                                                        {isPurchasing ? <Activity className="w-4 h-4 animate-spin" /> : isOwned ? 'CURRENT_TIER' : `${rank.kpcPrice} KPC`}
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
