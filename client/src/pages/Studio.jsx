@@ -40,7 +40,7 @@ const formatDate = (dateValue) => {
 const Studio = () => {
     const { currentUser, updateUser, setIsRedemptionOpen } = useAuth();
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const initialView = searchParams.get('view') || 'DASHBOARD';
     const [view, setView] = useState(initialView);
     const [projects, setProjects] = useState([]);
@@ -66,6 +66,11 @@ const Studio = () => {
         { id: 3, title: 'PULSE_DONOR', desc: 'Like 3 different projects in the discovery grid.', reward: 100, completed: false, icon: <Heart className="w-10 h-10" /> },
         { id: 4, title: 'STREAK_MAINTAINER', desc: 'Maintain a 3-day sync streak.', reward: 500, completed: false, icon: <Zap className="w-10 h-10" /> }
     ]);
+
+    // Update URL query param when view changes
+    useEffect(() => {
+        setSearchParams({ view }, { replace: true });
+    }, [view, setSearchParams]);
 
     useEffect(() => {
         const fetchStudioData = async () => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
     Shield, Lock, Terminal, Activity, LifeBuoy, Mail,
     Clock, CheckCircle2, Send, ArrowLeft, LogOut, Loader2,
@@ -49,7 +49,9 @@ const Admin = () => {
         if (isAuthenticated) fetchTickets();
     }, [isAuthenticated]);
 
-    const [activeTab, setActiveTab] = useState('SUPPORT'); // SUPPORT, VERIFICATION, USER_MANAGEMENT, NEXUS_MANAGER
+    const [searchParams, setSearchParams] = useSearchParams();
+    const initialTab = searchParams.get('tab') || 'SUPPORT';
+    const [activeTab, setActiveTab] = useState(initialTab); // SUPPORT, VERIFICATION, USER_MANAGEMENT, NEXUS_MANAGER
     const [hackathons, setHackathons] = useState([]);
     const [isNexusLoading, setIsNexusLoading] = useState(false);
     const [newHack, setNewHack] = useState({ title: '', description: '', reward: '', entryFee: 0, durationDays: 7, image: '' });
@@ -62,7 +64,10 @@ const Admin = () => {
         if (isAuthenticated && activeTab === 'VERIFICATION') fetchPendingVerifications();
         if (isAuthenticated && activeTab === 'NEXUS_MANAGER') fetchHackathons();
         if (isAuthenticated && activeTab === 'PAYOUTS') fetchPayoutRequests();
-    }, [isAuthenticated, activeTab]);
+
+        // Update URL query param when tab changes
+        setSearchParams({ tab: activeTab }, { replace: true });
+    }, [isAuthenticated, activeTab, setSearchParams]);
 
     const handleLogin = (e) => {
         e.preventDefault();
