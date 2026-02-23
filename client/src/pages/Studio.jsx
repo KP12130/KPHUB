@@ -382,23 +382,20 @@ const Studio = () => {
                                             className="flex flex-col items-center justify-center text-center p-4 border border-white/5 hover:border-neon-blue/50 transition-all cursor-pointer group"
                                         >
                                             <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-blue/10 rounded-xl mb-3 group-hover:bg-neon-blue/20 transition-colors">
-                                                <DollarSign className="w-5 h-5 text-neon-blue" />
+                                                <Zap className="w-6 h-6 text-neon-blue" />
                                             </motion.div>
                                             <span className="text-2xl font-black text-white">{currentUser.stats?.kpcBalance?.toLocaleString() || 0}</span>
-                                            <span className="text-[8px] font-mono text-gray-500 uppercase">KPC Credits</span>
-                                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Plus className="w-3 h-3 text-neon-blue" />
-                                            </div>
+                                            <span className="text-[8px] font-mono text-gray-500 uppercase">KPC Balance</span>
                                         </GlassCard>
                                         <GlassCard
                                             onClick={() => setView('REWARDS')}
-                                            className="flex flex-col items-center justify-center text-center p-4 border border-white/5 hover:border-neon-green/50 transition-all cursor-pointer group"
+                                            className="flex flex-col items-center justify-center text-center p-4 border border-white/5 hover:border-neon-purple/50 transition-all cursor-pointer group"
                                         >
-                                            <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-green/10 rounded-xl mb-3 group-hover:bg-neon-green/20 transition-colors">
-                                                <TrendingUp className="w-5 h-5 text-neon-green" />
+                                            <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-purple/10 rounded-xl mb-3 group-hover:bg-neon-purple/20 transition-colors">
+                                                <ShoppingBag className="w-6 h-6 text-neon-purple" />
                                             </motion.div>
-                                            <span className="text-2xl font-black text-white">${stats.adRevenue.toFixed(2)}</span>
-                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Redeem_Earnings</span>
+                                            <span className="text-2xl font-black text-white">REDEEM</span>
+                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Vault Rewards</span>
                                             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <ArrowRight className="w-3 h-3 text-neon-green" />
                                             </div>

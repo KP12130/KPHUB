@@ -39,8 +39,8 @@ const WithdrawalModal = ({ isOpen, onClose, isEmbedded = false }) => {
         if (!card) return toast.error("Please select a reward.");
         if (!email.includes('@')) return toast.error("Valid email required for digital delivery.");
 
-        if ((currentUser.stats?.withdrawableKpc || 0) < card.cost) {
-            return toast.error("Insufficient Earned KPC for this reward.");
+        if ((currentUser.stats?.kpcBalance || 0) < card.cost) {
+            return toast.error("Insufficient KPC for this reward.");
         }
 
         setIsSubmitting(true);
@@ -58,7 +58,7 @@ const WithdrawalModal = ({ isOpen, onClose, isEmbedded = false }) => {
                 updateUser({
                     stats: {
                         ...currentUser.stats,
-                        withdrawableKpc: (currentUser.stats.withdrawableKpc || 0) - card.cost
+                        kpcBalance: (currentUser.stats.kpcBalance || 0) - card.cost
                     }
                 });
                 if (!isEmbedded) onClose();
@@ -105,8 +105,8 @@ const WithdrawalModal = ({ isOpen, onClose, isEmbedded = false }) => {
                         <Zap className="w-5 h-5" />
                     </div>
                     <div>
-                        <p className="text-[9px] font-black text-gray-500 uppercase">Available_to_Redeem</p>
-                        <p className={`${isEmbedded ? 'text-lg' : 'text-xl'} font-black text-white`}>{(currentUser.stats?.withdrawableKpc || 0).toLocaleString()} <span className="text-xs text-gray-400">KPC</span></p>
+                        <p className="text-[9px] font-black text-gray-500 uppercase">Total_Credits_Available</p>
+                        <p className={`${isEmbedded ? 'text-lg' : 'text-xl'} font-black text-white`}>{(currentUser.stats?.kpcBalance || 0).toLocaleString()} <span className="text-xs text-gray-400">KPC</span></p>
                     </div>
                 </div>
                 <div className="text-right">
@@ -126,7 +126,7 @@ const WithdrawalModal = ({ isOpen, onClose, isEmbedded = false }) => {
                     <div className={`grid grid-cols-1 ${isEmbedded ? 'md:grid-cols-3' : 'sm:grid-cols-2'} gap-4`}>
                         {Object.values(giftCards).map((card) => {
                             const Icon = iconMap[card.icon] || ShoppingBag;
-                            const isAffordable = (currentUser.stats?.withdrawableKpc || 0) >= card.cost;
+                            const isAffordable = (currentUser.stats?.kpcBalance || 0) >= card.cost;
                             const isSelected = selectedCardId === card.id;
 
                             return (

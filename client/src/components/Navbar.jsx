@@ -186,7 +186,11 @@ const Navbar = ({ onOpenCommandPalette }) => {
                             </div>
 
                             <div className="flex bg-black/20 rounded-full px-4 py-2 border border-white/5 backdrop-blur-sm shadow-inner gap-4 items-center">
-                                <div className="flex items-center gap-2 pr-3 border-r border-white/10 group/spend" title="Spendable Credits">
+                                <Link to="/studio?view=REWARDS" className="flex items-center gap-2 pr-3 border-r border-white/10 group/earn group transition-all" title="Redeem Rewards">
+                                    <ShoppingBag className="w-3 h-3 text-yellow-500 group-hover:scale-110 transition-transform" />
+                                    <span className="text-[10px] font-black text-white">REDEEM</span>
+                                </Link>
+                                <div className="flex items-center gap-2 group/spend" title="KPC Credits">
                                     <Zap className="w-3 h-3 text-neon-green group-hover/spend:animate-pulse" />
                                     <span className="text-[10px] font-black text-white">{currentUser.stats?.kpcBalance?.toLocaleString() || 0}</span>
                                     <span className="text-[7px] font-mono text-neon-green uppercase tracking-tighter">KPC</span>
@@ -194,15 +198,6 @@ const Navbar = ({ onOpenCommandPalette }) => {
                                         <Plus className="w-3 h-3" />
                                     </Link>
                                 </div>
-                                <button
-                                    onClick={() => setIsRedemptionOpen(true)}
-                                    className="flex items-center gap-2 group/earn hover:opacity-80 transition-all"
-                                    title="Redeem for Gift Cards"
-                                >
-                                    <TrendingUp className="w-3 h-3 text-yellow-500 group-hover/earn:translate-y-[-2px] transition-transform" />
-                                    <span className="text-[10px] font-black text-white">{currentUser.stats?.withdrawableKpc?.toLocaleString() || 0}</span>
-                                    <span className="text-[7px] font-mono text-yellow-500 uppercase tracking-tighter">EARNED</span>
-                                </button>
                             </div>
 
                             <div className="flex items-center gap-3 pl-4 border-l border-glass-border">

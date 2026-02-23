@@ -431,8 +431,7 @@ const Admin = () => {
                                             {req.userSnapshot && (
                                                 <div className="mt-2 text-[8px] font-mono text-gray-600 uppercase">
                                                     <p>Audit_Snapshot:</p>
-                                                    <p>W_KPC: {req.userSnapshot.withdrawableKpc}</p>
-                                                    <p>S_KPC: {req.userSnapshot.kpcBalance}</p>
+                                                    <p>UNIFIED_KPC: {req.userSnapshot.kpcBalance}</p>
                                                 </div>
                                             )}
                                         </div>

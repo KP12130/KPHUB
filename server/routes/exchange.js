@@ -187,14 +187,14 @@ router.post('/withdraw', async (req, res) => {
             if (!userDoc.exists) throw new Error('Citizen not found.');
             const userData = userDoc.data();
 
-            // Check against WITHDRAWABLE balance
-            if ((userData.stats?.withdrawableKpc || 0) < amount) {
-                throw new Error('INSUFFICIENT_WITHDRAWABLE_CREDITS');
+            // Check against unified balance
+            if ((userData.stats?.kpcBalance || 0) < amount) {
+                throw new Error('INSUFFICIENT_KPC_CREDITS');
             }
 
-            // Deduct from withdrawable balance
+            // Deduct from unified balance
             transaction.update(userRef, {
-                'stats.withdrawableKpc': admin.firestore.FieldValue.increment(-amount),
+                'stats.kpcBalance': admin.firestore.FieldValue.increment(-amount),
                 'updatedAt': admin.firestore.FieldValue.serverTimestamp()
             });
 
@@ -211,8 +211,7 @@ router.post('/withdraw', async (req, res) => {
                 type: 'GIFT_CARD_REDEMPTION',
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 userSnapshot: {
-                    kpcBalance: userData.stats?.kpcBalance || 0,
-                    withdrawableKpc: userData.stats?.withdrawableKpc || 0
+                    kpcBalance: userData.stats?.kpcBalance || 0
                 }
             });
 
@@ -270,9 +269,9 @@ router.post('/support-creator', async (req, res) => {
                 'stats.kpcBalance': admin.firestore.FieldValue.increment(-amount)
             });
 
-            // Add to receiver's WITHDRAWABLE balance
+            // Add to receiver's unified balance
             transaction.update(receiverRef, {
-                'stats.withdrawableKpc': admin.firestore.FieldValue.increment(netAmount),
+                'stats.kpcBalance': admin.firestore.FieldValue.increment(netAmount),
                 'notifications': admin.firestore.FieldValue.arrayUnion({
                     type: 'CREATOR_SUPPORT',
                     senderUsername: senderData.username,
