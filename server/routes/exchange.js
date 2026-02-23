@@ -30,7 +30,8 @@ const KPC_BUNDLES = {
     'STARTER': { amount: 5000, price: 14.99, label: 'Starter Hub' },
     'PULSE': { amount: 20000, price: 39.99, label: 'Pulse Stream' },
     'MATRIX': { amount: 50000, price: 74.99, label: 'Matrix Core' },
-    'OVERLORD': { amount: 100000, price: 100.00, label: 'Overlord Node' }
+    'OVERLORD': { amount: 100000, price: 100.00, label: 'Overlord Node' },
+    'NEXUS': { amount: 250000, price: 199.99, label: 'Nexus Protocol' }
 };
 
 const FLARES = {

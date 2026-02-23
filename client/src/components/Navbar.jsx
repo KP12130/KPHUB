@@ -190,7 +190,7 @@ const Navbar = ({ onOpenCommandPalette }) => {
                                     <Zap className="w-3 h-3 text-neon-green group-hover/spend:animate-pulse" />
                                     <span className="text-[10px] font-black text-white">{currentUser.stats?.kpcBalance?.toLocaleString() || 0}</span>
                                     <span className="text-[7px] font-mono text-neon-green uppercase tracking-tighter">KPC</span>
-                                    <Link to="/forge" className="ml-1 p-1 rounded-md bg-neon-green/10 hover:bg-neon-green/20 text-neon-green transition-colors">
+                                    <Link to="/studio?view=FORGE" className="ml-1 p-1 rounded-md bg-neon-green/10 hover:bg-neon-green/20 text-neon-green transition-colors">
                                         <Plus className="w-3 h-3" />
                                     </Link>
                                 </div>

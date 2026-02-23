@@ -19,6 +19,7 @@ import Sentinel from '../components/Sentinel';
 import SupportChat from '../components/SupportChat';
 import SupportChatAdmin from '../components/SupportChatAdmin';
 import ViolationsPanel from '../components/ViolationsPanel';
+import ForgeStore from '../components/ForgeStore';
 
 const GlassCard = ({ children, className = "" }) => (
     <div className={`glass-panel rounded-2xl p-6 ${className}`}>
@@ -321,6 +322,7 @@ const Studio = () => {
                             />
                             <MenuButton id="TRANSACTIONS" icon={CreditCard} label="Transactions" />
                             <MenuButton id="SENTINEL" icon={Shield} label="Sentinel" />
+                            <MenuButton id="FORGE" icon={Zap} label="KPC_Forge" />
                             <MenuButton id="VIOLATIONS" icon={ShieldOff} label="Violations" />
                             <MenuButton id="SETTINGS" icon={Settings} label="Settings" />
                         </div>
@@ -375,7 +377,7 @@ const Studio = () => {
                                             <span className="text-[8px] font-mono text-gray-500 uppercase">Pulses Received</span>
                                         </GlassCard>
                                         <GlassCard
-                                            onClick={() => navigate('/forge')}
+                                            onClick={() => setView('FORGE')}
                                             className="flex flex-col items-center justify-center text-center p-4 border border-white/5 hover:border-neon-blue/50 transition-all cursor-pointer group"
                                         >
                                             <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-blue/10 rounded-xl mb-3 group-hover:bg-neon-blue/20 transition-colors">
@@ -788,6 +790,22 @@ const Studio = () => {
                                     <GlassCard>
                                         <ViolationsPanel currentUser={currentUser} />
                                     </GlassCard>
+                                </motion.div>
+                            )}
+                            {view === 'FORGE' && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="space-y-6"
+                                >
+                                    <div>
+                                        <h2 className="text-4xl font-black text-white tracking-tighter italic uppercase flex items-center gap-4">
+                                            <Zap className="w-10 h-10 text-neon-green" />
+                                            Credit_Forge
+                                        </h2>
+                                        <p className="text-gray-500 font-mono text-sm mt-2">Aquire high-density KPC Credits to accelerate your grid influence.</p>
+                                    </div>
+                                    <ForgeStore isEmbedded={true} />
                                 </motion.div>
                             )}
                         </motion.div>
