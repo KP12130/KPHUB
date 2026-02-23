@@ -4,7 +4,7 @@ import {
     Shield, Lock, Terminal, Activity, LifeBuoy, Mail,
     Clock, CheckCircle2, Send, ArrowLeft, LogOut, Loader2,
     AlertCircle, Check, ExternalLink, Users, Slash, Globe, Trophy, Plus,
-    Calendar, DollarSign, Gift, Star, X, ShieldCheck, ShieldAlert
+    Calendar, DollarSign, Gift, Star, X, ShieldCheck, ShieldAlert, Zap, ShoppingBag
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE } from '../api';
