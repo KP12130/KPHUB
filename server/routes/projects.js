@@ -208,12 +208,7 @@ router.post('/', upload.fields([
         }
 
         const projectId = admin.firestore().collection('projects').doc().id;
-        const UPLOAD_FEE = 100;
 
-        // 2. Preliminary Balance Check
-        if ((userData.stats?.kpcBalance || 0) < UPLOAD_FEE) {
-            return res.status(403).json({ error: `INSUFFICIENT_FUNDS: Deployment requires ${UPLOAD_FEE} KPC for spam protection.` });
-        }
 
         // 3. Upload Project Files & Build Tree
         const uploadedFiles = [];
@@ -276,26 +271,14 @@ router.post('/', upload.fields([
             const userSnap = await transaction.get(userRef);
             if (!userSnap.exists) throw new Error('User protocol not found.');
 
-            const currentBalance = userSnap.data().stats?.kpcBalance || 0;
-            if (currentBalance < UPLOAD_FEE) throw new Error('INSUFFICIENT_FUNDS');
-
             // 1. Create Project
             transaction.set(projectRef, newProject);
 
-            // 2. Deduct Fee & Increment Project Count
+            // 2. Increment Project Count
             transaction.update(userRef, {
-                'stats.kpcBalance': admin.firestore.FieldValue.increment(-UPLOAD_FEE),
                 'stats.uploads': admin.firestore.FieldValue.increment(1)
             });
 
-            // 3. Log to Ledger
-            transaction.set(db.collection('kpc_ledger').doc(), {
-                uid: authorId,
-                amount: -UPLOAD_FEE,
-                type: 'UPLOAD_FEE',
-                details: { projectId, title },
-                timestamp: admin.firestore.FieldValue.serverTimestamp()
-            });
         });
 
         // 6. Log Activity (Non-critical to transaction)

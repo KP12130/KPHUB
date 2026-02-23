@@ -58,12 +58,6 @@ const Upload = () => {
             return;
         }
 
-        // 2. Fee balance check
-        const DEPLOYMENT_FEE = 100;
-        if ((currentUser?.stats?.kpcBalance || 0) < DEPLOYMENT_FEE) {
-            setError(`INSUFFICIENT_KPC: Deployment requires ${DEPLOYMENT_FEE} KPC. Recharge in the Forge.`);
-            return;
-        }
 
         if (files.length === 0) return setError('Please select at least one source file.');
 
@@ -102,11 +96,10 @@ const Upload = () => {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
 
-            // Deduct locally for immediate UI feedback
+            // Increment locally for immediate UI feedback
             updateUser({
                 stats: {
                     ...currentUser.stats,
-                    kpcBalance: (currentUser.stats?.kpcBalance || 0) - DEPLOYMENT_FEE,
                     uploads: (currentUser.stats?.uploads || 0) + 1
                 }
             });
@@ -149,11 +142,6 @@ const Upload = () => {
                             <span className="text-[8px] font-mono text-neon-purple uppercase font-black">
                                 Max_Payload: {100 + (currentUser?.stats?.extraStorageLifetimeMB || 0) + (Date.now() < (currentUser?.stats?.extraStorageExpiry || 0) ? (currentUser?.stats?.extraStorageSubMB || 0) : 0)}MB
                             </span>
-                            <div className="mt-1 px-2 py-0.5 bg-neon-green/10 border border-neon-green/20 rounded-md">
-                                <span className="text-[7px] font-mono text-neon-green uppercase font-black tracking-tighter">
-                                    Deployment_Cost: 100 KPC
-                                </span>
-                            </div>
                         </div>
                     </div>
                 </div>
