@@ -206,7 +206,7 @@ const Studio = () => {
         }
         const amt = parseFloat(withdrawAmount);
         if (isNaN(amt) || amt < 10) return toast.error("Minimum withdrawal is $10.");
-        if (amt > (currentUser.stats?.balance || 0)) return toast.error("Insufficient USD Balance.");
+        if (amt > (currentUser?.stats?.balance || 0)) return toast.error("Insufficient USD Balance.");
 
         setIsWithdrawing(true);
         try {
@@ -328,14 +328,14 @@ const Studio = () => {
 
                         <div className="flex items-center gap-4">
                             <div className="relative">
-                                <img src={currentUser.photoURL} className="w-14 h-14 rounded-full border-2 border-neon-green/30" />
+                                <img src={currentUser?.photoURL} className="w-14 h-14 rounded-full border-2 border-neon-green/30" />
                             </div>
                             <div>
                                 <h2 className="font-black text-white leading-none text-lg flex items-center gap-2">
-                                    <span style={currentUser.activeFlare ? Object.fromEntries(allFlares[currentUser.activeFlare]?.style.split(';').filter(s => s).map(s => s.split(':').map(x => x.trim()))) : {}}>
-                                        {currentUser.displayName}
+                                    <span style={currentUser?.activeFlare ? Object.fromEntries(allFlares[currentUser.activeFlare]?.style.split(';').filter(s => s).map(s => s.split(':').map(x => x.trim()))) : {}}>
+                                        {currentUser?.displayName}
                                     </span>
-                                    {currentUser.stats?.verified && <CheckCircle2 className="w-4 h-4 text-neon-blue" />}
+                                    {currentUser?.stats?.verified && <CheckCircle2 className="w-4 h-4 text-neon-blue" />}
                                 </h2>
                                 <div className="flex items-center gap-2 mt-2">
                                     <span className={`text-[8px] font-mono uppercase px-2 py-0.5 rounded bg-gray-900 text-gray-400`}>
@@ -407,7 +407,7 @@ const Studio = () => {
                                             <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-yellow-500/10 rounded-xl mb-3">
                                                 <Heart className="w-5 h-5 text-yellow-500" />
                                             </motion.div>
-                                            <span className="text-2xl font-black text-white">{currentUser.stats?.likesReceived || 0}</span>
+                                            <span className="text-2xl font-black text-white">{currentUser?.stats?.likesReceived || 0}</span>
                                             <span className="text-[8px] font-mono text-gray-500 uppercase">Pulses Received</span>
                                         </GlassCard>
                                         <GlassCard
@@ -417,7 +417,7 @@ const Studio = () => {
                                             <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-blue/10 rounded-xl mb-3 group-hover:bg-neon-blue/20 transition-colors">
                                                 <Zap className="w-6 h-6 text-neon-blue" />
                                             </motion.div>
-                                            <span className="text-2xl font-black text-white">{currentUser.stats?.kpcBalance?.toLocaleString() || 0}</span>
+                                            <span className="text-2xl font-black text-white">{currentUser?.stats?.kpcBalance?.toLocaleString() || 0}</span>
                                             <span className="text-[8px] font-mono text-gray-500 uppercase">KPC Balance</span>
                                         </GlassCard>
                                         <GlassCard
@@ -636,7 +636,7 @@ const Studio = () => {
                                                             <div className="flex justify-between items-center text-[8px] font-mono text-gray-500 uppercase">
                                                                 <span>Next Renewal</span>
                                                                 <span className="text-white">
-                                                                    {currentUser.membershipExpires
+                                                                    {currentUser?.membershipExpires
                                                                         ? new Date(currentUser.membershipExpires).toLocaleDateString()
                                                                         : 'LEGACY / PENDING'}
                                                                 </span>
@@ -644,10 +644,10 @@ const Studio = () => {
                                                             <div className="flex justify-between items-center">
                                                                 <span className="text-[8px] font-mono text-gray-500 uppercase">Auto-Renew</span>
                                                                 <button
-                                                                    onClick={() => handleToggleRenewal(!currentUser.autoRenew)}
-                                                                    className={`px-2 py-1 rounded text-[7px] font-black uppercase transition-all ${currentUser.autoRenew ? 'bg-neon-green text-black' : 'bg-red-500/20 text-red-500 border border-red-500/30'}`}
+                                                                    onClick={() => handleToggleRenewal(!currentUser?.autoRenew)}
+                                                                    className={`px-2 py-1 rounded text-[7px] font-black uppercase transition-all ${currentUser?.autoRenew ? 'bg-neon-green text-black' : 'bg-red-500/20 text-red-500 border border-red-500/30'}`}
                                                                 >
-                                                                    {currentUser.autoRenew ? 'ENABLED' : 'DISABLED'}
+                                                                    {currentUser?.autoRenew ? 'ENABLED' : 'DISABLED'}
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -900,7 +900,7 @@ const Studio = () => {
                         </motion.div>
                     </AnimatePresence>
                 </div>
-            </motion.div>
+            </motion.div >
 
             {/* Payment Modal */}
             {

@@ -45,7 +45,7 @@ const NexusExchange = () => {
     const handlePurchase = async (rankId) => {
         if (!currentUser) return toast.error("Identity unknown. Login to access the exchange.");
         const rank = ranks[rankId];
-        if (currentUser.stats?.kpcBalance < rank.kpcPrice) {
+        if (currentUser?.stats?.kpcBalance < rank.kpcPrice) {
             return toast.error("INSUFFICIENT_KPC_CREDITS: Sync more data or complete quests.");
         }
         setPurchasing(rankId);
@@ -53,7 +53,7 @@ const NexusExchange = () => {
             const res = await axios.post(`${API_BASE}/api/exchange/purchase`, { uid: currentUser.uid, rankId });
             if (res.data.success) {
                 toast.success(`Success! Identity upgraded to ${rankId}.`);
-                updateUser({ tier: rankId, stats: { ...currentUser.stats, kpcBalance: currentUser.stats.kpcBalance - rank.kpcPrice } });
+                updateUser({ tier: rankId, stats: { ...(currentUser?.stats || {}), kpcBalance: (currentUser?.stats?.kpcBalance || 0) - rank.kpcPrice } });
             }
         } catch (err) {
             toast.error(err.response?.data?.error || "Transaction aborted.");
@@ -63,7 +63,7 @@ const NexusExchange = () => {
     const handleBuyFlare = async (flareId) => {
         if (!currentUser) return toast.error("Login required.");
         const flare = flares[flareId];
-        if (currentUser.stats?.kpcBalance < flare.kpcPrice) return toast.error("Insufficient KPC.");
+        if (currentUser?.stats?.kpcBalance < flare.kpcPrice) return toast.error("Insufficient KPC.");
 
         setProcessingFlare(flareId);
         try {
@@ -72,8 +72,8 @@ const NexusExchange = () => {
                 toast.success(`${flare.label} unlocked!`);
                 updateUser({
                     activeFlare: flareId,
-                    unlockedFlares: [...(currentUser.unlockedFlares || []), flareId],
-                    stats: { ...currentUser.stats, kpcBalance: currentUser.stats.kpcBalance - flare.kpcPrice }
+                    unlockedFlares: [...(currentUser?.unlockedFlares || []), flareId],
+                    stats: { ...(currentUser?.stats || {}), kpcBalance: (currentUser?.stats?.kpcBalance || 0) - flare.kpcPrice }
                 });
             }
         } catch (err) { toast.error(err.response?.data?.error || "Flare sync failed."); }
@@ -82,14 +82,14 @@ const NexusExchange = () => {
 
     const handleApplyVerification = async () => {
         if (!currentUser) return;
-        if (currentUser.stats?.kpcBalance < 25000) return toast.error("25,000 KPC required for audit.");
+        if (currentUser?.stats?.kpcBalance < 25000) return toast.error("25,000 KPC required for audit.");
 
         setProcessingVerify(true);
         try {
             const res = await axios.post(`${API_BASE}/api/exchange/verify`, { uid: currentUser.uid });
             if (res.data.success) {
                 toast.success("Audit initiated. Verification pending.");
-                updateUser({ verificationPending: true, stats: { ...currentUser.stats, kpcBalance: currentUser.stats.kpcBalance - 25000 } });
+                updateUser({ verificationPending: true, stats: { ...(currentUser?.stats || {}), kpcBalance: (currentUser?.stats?.kpcBalance || 0) - 25000 } });
             }
         } catch (err) { toast.error(err.response?.data?.error || "Audit request failed."); }
         finally { setProcessingVerify(false); }
@@ -98,7 +98,7 @@ const NexusExchange = () => {
     const handleBroadcast = async () => {
         if (!currentUser) return;
         if (!broadcastMsg.trim()) return toast.error("Transmission packet empty.");
-        if (currentUser.stats?.kpcBalance < 50000) return toast.error("Insufficient KPC for global broadcast.");
+        if (currentUser?.stats?.kpcBalance < 50000) return toast.error("Insufficient KPC for global broadcast.");
 
         setProcessingBroadcast(true);
         try {
@@ -106,7 +106,7 @@ const NexusExchange = () => {
             if (res.data.success) {
                 toast.success("BROADCAST_PROTOCOLS_ENGAGED: Message live on the grid.");
                 setBroadcastMsg('');
-                updateUser({ stats: { ...currentUser.stats, kpcBalance: currentUser.stats.kpcBalance - 50000 } });
+                updateUser({ stats: { ...(currentUser?.stats || {}), kpcBalance: (currentUser?.stats?.kpcBalance || 0) - 50000 } });
             }
         } catch (err) { toast.error(err.response?.data?.error || "Broadcast failure."); }
         finally { setProcessingBroadcast(false); }

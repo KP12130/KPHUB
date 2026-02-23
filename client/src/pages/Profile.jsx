@@ -172,7 +172,7 @@ const Profile = () => {
                 <div className="max-w-xs mb-8">
                     <div className="flex justify-between text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">
                         <span>Wealth_Index</span>
-                        <span className="text-neon-green">{currentUser.stats?.kpcBalance?.toLocaleString() || 0} KPC</span>
+                        <span className="text-neon-green">{currentUser?.stats?.kpcBalance?.toLocaleString() || 0} KPC</span>
                     </div>
                 </div>
                 <p className="text-gray-500 mb-8 font-mono text-sm">Manage your public identity on the grid.</p>
@@ -227,8 +227,8 @@ const Profile = () => {
                                 <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
                             ) : formData.photoURL ? (
                                 <img src={formData.photoURL} alt="Profile" className="w-full h-full object-cover" />
-                            ) : currentUser.photoURL ? (
-                                <img src={currentUser.photoURL} alt="Profile" className="w-full h-full object-cover" />
+                            ) : currentUser?.photoURL ? (
+                                <img src={currentUser?.photoURL} alt="Profile" className="w-full h-full object-cover" />
                             ) : (
                                 <div className="w-full h-full bg-gray-800 flex items-center justify-center">
                                     <User className="w-12 h-12 text-gray-500" />

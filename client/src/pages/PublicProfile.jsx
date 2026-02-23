@@ -98,7 +98,7 @@ const PublicProfile = () => {
     const handleGiftRank = async (rankId) => {
         if (!currentUser) return toast.error("Identity unknown. Login to gift.");
         const rank = ranks[rankId];
-        if (currentUser.stats?.kpcBalance < rank.kpcPrice) return toast.error("Insufficient KPC credits.");
+        if (currentUser?.stats?.kpcBalance < rank.kpcPrice) return toast.error("Insufficient KPC credits.");
 
         setIsGifting(rankId);
         try {
@@ -109,7 +109,7 @@ const PublicProfile = () => {
             });
             toast.success(`Success! ${rankId} gifted to ${profile.user.username}.`);
             setShowGiftModal(false);
-            updateUser({ stats: { ...currentUser.stats, kpcBalance: currentUser.stats.kpcBalance - rank.kpcPrice } });
+            updateUser({ stats: { ...(currentUser?.stats || {}), kpcBalance: (currentUser?.stats?.kpcBalance || 0) - rank.kpcPrice } });
         } catch (err) {
             toast.error(err.response?.data?.error || "Gift protocol aborted.");
         } finally {
