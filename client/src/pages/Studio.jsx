@@ -40,6 +40,8 @@ const Studio = () => {
         views: 0, downloads: 0, subs: 0, revenue: 0, adRevenue: 0
     });
     const [userTier, setUserTier] = useState('GHOST');
+    const [payoutHistory, setPayoutHistory] = useState([]);
+    const [isPayoutHistoryLoading, setIsPayoutHistoryLoading] = useState(false);
     const [userLevel, setUserLevel] = useState(1);
     const [allFlares, setAllFlares] = useState({});
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
@@ -242,6 +244,25 @@ const Studio = () => {
             toast.error('Failed to update renewal preference.');
         }
     };
+
+    const fetchPayoutHistory = async () => {
+        if (!currentUser?.uid) return;
+        setIsPayoutHistoryLoading(true);
+        try {
+            const res = await axios.get(`${API_BASE}/api/exchange/payout-requests/${currentUser.uid}`);
+            setPayoutHistory(res.data);
+        } catch (err) {
+            console.error('Error fetching payout history:', err);
+        } finally {
+            setIsPayoutHistoryLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (view === 'REWARDS') {
+            fetchPayoutHistory();
+        }
+    }, [view]);
 
     useEffect(() => {
         const fetchLedger = async () => {
@@ -812,6 +833,98 @@ const Studio = () => {
                                             onClose={() => setView('DASHBOARD')}
                                             isEmbedded={true}
                                         />
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
+                                            <Activity className="w-5 h-5 text-neon-blue" /> Redemption_History
+                                        </h3>
+                                        <GlassCard className="p-0 overflow-hidden min-h-[200px]">
+                                            {isPayoutHistoryLoading ? (
+                                                <div className="p-10 text-center space-y-4">
+                                                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="inline-block"><Activity className="w-8 h-8 text-neon-blue" /></motion.div>
+                                                    <p className="text-gray-500 font-mono text-[10px] uppercase animate-pulse">Scanning payout matrix...</p>
+                                                </div>
+                                            ) : payoutHistory.length > 0 ? (
+                                                <div className="divide-y divide-white/5">
+                                                    {payoutHistory.map(req => (
+                                                        <div key={req.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className={`p-2 rounded-lg ${req.status === 'PAID' ? 'bg-neon-green/10 text-neon-green' : req.status === 'REJECTED' ? 'bg-red-500/10 text-red-500' : 'bg-yellow-500/10 text-yellow-500'}`}>
+                                                                    <Zap className="w-4 h-4" />
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="font-bold text-white text-[10px] uppercase tracking-wider">{req.cardId} Redemption</h4>
+                                                                    <p className="text-[8px] text-gray-500 font-mono">
+                                                                        {req.createdAt?.toDate ? new Date(req.createdAt.toDate()).toLocaleString() : new Date(req.createdAt).toLocaleString()}
+                                                                        {req.feedback && ` // Feedback: ${req.feedback}`}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <div className="text-xs font-black font-mono text-white">
+                                                                    {req.amount.toLocaleString()} KPC
+                                                                </div>
+                                                                <div className={`text-[8px] font-black uppercase ${req.status === 'PAID' ? 'text-neon-green' : req.status === 'REJECTED' ? 'text-red-500' : 'text-yellow-500'}`}>
+                                                                    {req.status}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="p-10 text-center space-y-4">
+                                                    <AlertCircle className="w-8 h-8 text-gray-800 mx-auto" />
+                                                    <p className="text-[10px] text-gray-600 font-mono uppercase">History is clean. No redemptions logged.</p>
+                                                </div>
+                                            )}
+                                        </GlassCard>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
+                                            <Activity className="w-5 h-5 text-neon-blue" /> Redemption_History
+                                        </h3>
+                                        <GlassCard className="p-0 overflow-hidden min-h-[200px]">
+                                            {isPayoutHistoryLoading ? (
+                                                <div className="p-10 text-center space-y-4">
+                                                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="inline-block"><Activity className="w-8 h-8 text-neon-blue" /></motion.div>
+                                                    <p className="text-gray-500 font-mono text-[10px] uppercase animate-pulse">Scanning payout matrix...</p>
+                                                </div>
+                                            ) : payoutHistory.length > 0 ? (
+                                                <div className="divide-y divide-white/5">
+                                                    {payoutHistory.map(req => (
+                                                        <div key={req.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className={`p-2 rounded-lg ${req.status === 'PAID' ? 'bg-neon-green/10 text-neon-green' : req.status === 'REJECTED' ? 'bg-red-500/10 text-red-500' : 'bg-yellow-500/10 text-yellow-500'}`}>
+                                                                    <Zap className="w-4 h-4" />
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="font-bold text-white text-[10px] uppercase tracking-wider">{req.cardId} Redemption</h4>
+                                                                    <p className="text-[8px] text-gray-500 font-mono">
+                                                                        {req.createdAt?.toDate ? new Date(req.createdAt.toDate()).toLocaleString() : new Date(req.createdAt).toLocaleString()}
+                                                                        {req.feedback && ` // Feedback: ${req.feedback}`}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <div className="text-xs font-black font-mono text-white">
+                                                                    {req.amount.toLocaleString()} KPC
+                                                                </div>
+                                                                <div className={`text-[8px] font-black uppercase ${req.status === 'PAID' ? 'text-neon-green' : req.status === 'REJECTED' ? 'text-red-500' : 'text-yellow-500'}`}>
+                                                                    {req.status}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="p-10 text-center space-y-4">
+                                                    <AlertCircle className="w-8 h-8 text-gray-800 mx-auto" />
+                                                    <p className="text-[10px] text-gray-600 font-mono uppercase">History is clean. No redemptions logged.</p>
+                                                </div>
+                                            )}
+                                        </GlassCard>
                                     </div>
                                 </motion.div>
                             )}

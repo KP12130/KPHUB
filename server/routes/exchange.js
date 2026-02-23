@@ -313,6 +313,22 @@ router.get('/admin/payout-requests', async (req, res) => {
     }
 });
 
+// GET /api/exchange/payout-requests/:uid
+router.get('/payout-requests/:uid', async (req, res) => {
+    try {
+        const { uid } = req.params;
+        const snapshot = await db.collection('payout_requests')
+            .where('uid', '==', uid)
+            .orderBy('createdAt', 'desc')
+            .limit(20)
+            .get();
+        const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.json(requests);
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
 // ADMIN: POST /api/exchange/admin/payout-action
 router.post('/admin/payout-action', async (req, res) => {
     try {
