@@ -60,6 +60,10 @@ app.use(sanitizeInput); // Data sanitization against XSS
 app.use(securityMiddleware); // Custom security logic
 
 // Apply IP Ban Firewall on all routes EARLY
+app.use((req, res, next) => {
+    console.log(`[NET] ${req.method} ${req.url} - Size: ${req.headers['content-length'] || 'unknown'} bytes`);
+    next();
+});
 app.use(ipBanMiddleware);
 app.use((req, res, next) => {
     // Re-verify against latest bannedIPs just in case middleware was cached
