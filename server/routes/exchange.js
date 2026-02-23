@@ -18,12 +18,23 @@ const WITHDRAWAL_MINIMUM = 5000;
 const PLATFORM_COMMISSION = 0.15; // 15% commission on tips to cover fees/profit
 
 const INFRA_PRICING = {
-    SLOT_UNIT_COST: 1500,
+    SLOT_TIERS: { '1000': 50000, '100': 7500, '10': 1000, base: 150 },
     TIERS: {
         MONTHLY: { '1000': 100, '10000': 800, '100000': 6000, base: 10 },
         YEARLY: { '1000': 1000, '10000': 8000, '100000': 60000, base: 100 },
         LIFETIME: { '1000': 5000, '10000': 40000, '100000': 300000, base: 500 }
     }
+};
+
+const getSlotCost = (count) => {
+    if (count <= 0) return 0;
+
+    let unitCost = INFRA_PRICING.SLOT_TIERS.base;
+    if (count >= 1000) unitCost = INFRA_PRICING.SLOT_TIERS['1000'] / 1000;
+    else if (count >= 100) unitCost = INFRA_PRICING.SLOT_TIERS['100'] / 100;
+    else if (count >= 10) unitCost = INFRA_PRICING.SLOT_TIERS['10'] / 10;
+
+    return Math.ceil(count * unitCost);
 };
 
 const getStorageCost = (mb, period) => {
@@ -125,8 +136,9 @@ router.post('/buy-infrastructure', async (req, res) => {
             return res.status(400).json({ error: 'Selection required for upgrade.' });
         }
 
+        const slotCost = getSlotCost(numSlots);
         const storageCost = getStorageCost(numStorageMB, period);
-        const totalCost = (numSlots * INFRA_PRICING.SLOT_UNIT_COST) + storageCost;
+        const totalCost = slotCost + storageCost;
 
         const userRef = db.collection('users').doc(uid);
 

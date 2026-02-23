@@ -13,11 +13,20 @@ const InfrastructureManager = () => {
     const [period, setPeriod] = useState('MONTHLY');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const SLOT_COST = 1500;
+    const SLOT_TIERS = { '1000': 50000, '100': 7500, '10': 1000, base: 150 };
     const STORAGE_TIERS = {
         MONTHLY: { '1000': 100, '10000': 800, '100000': 6000, base: 10 },
         YEARLY: { '1000': 1000, '10000': 8000, '100000': 60000, base: 100 },
         LIFETIME: { '1000': 5000, '10000': 40000, '100000': 300000, base: 500 }
+    };
+
+    const getSlotCost = (count) => {
+        if (count <= 0) return 0;
+        let unitCost = SLOT_TIERS.base;
+        if (count >= 1000) unitCost = SLOT_TIERS['1000'] / 1000;
+        else if (count >= 100) unitCost = SLOT_TIERS['100'] / 100;
+        else if (count >= 10) unitCost = SLOT_TIERS['10'] / 10;
+        return Math.ceil(count * unitCost);
     };
 
     const getStorageCost = (mb, p) => {
@@ -30,8 +39,9 @@ const InfrastructureManager = () => {
         return Math.ceil((mb / 100) * unitCost);
     };
 
+    const slotCost = getSlotCost(slots);
     const storageCost = getStorageCost(storageMB, period);
-    const totalCost = (slots * SLOT_COST) + storageCost;
+    const totalCost = slotCost + storageCost;
     const canAfford = (currentUser?.stats?.kpcBalance || 0) >= totalCost;
 
     const handleUpgrade = async () => {
@@ -122,7 +132,7 @@ const InfrastructureManager = () => {
                     <input
                         type="range"
                         min="0"
-                        max="20"
+                        max="1000"
                         step="1"
                         value={slots}
                         onChange={(e) => setSlots(parseInt(e.target.value))}
