@@ -67,6 +67,17 @@ const Upload = () => {
 
         if (files.length === 0) return setError('Please select at least one source file.');
 
+        // 3. Verified Developer Check for Executables (.exe, .bat)
+        const EXECUTABLE_EXTENSIONS = ['.exe', '.bat', '.msi', '.cmd'];
+        const hasExecutables = files.some(f => EXECUTABLE_EXTENSIONS.some(ext => f.name.toLowerCase().endsWith(ext)));
+        if (hasExecutables) {
+            const isVerified = (currentUser.stats?.extraSlots || 0) >= 10 || currentUser.tier === 'PRO';
+            if (!isVerified) {
+                setError('SECURITY_RESTRICTION: Uploading executable apps (.exe, .bat) requires Verified Developer status. Acquire a Small Booster (+10 Slots) in the Forge to verify your identity.');
+                return;
+            }
+        }
+
         setError('');
         setLoading(true);
 

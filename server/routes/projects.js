@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 const multer = require('multer');
 const AdmZip = require('adm-zip');
@@ -7,6 +8,81 @@ const { uploadFile, getFileUrl, getFileBuffer } = require('../utils/storage');
 const { createNotification } = require('./notifications');
 const rateLimit = require('express-rate-limit');
 const { triggerAutoModeration, checkMuteMiddleware } = require('../middleware/security');
+
+// --- BACKGROUND SECURITY TASKS ---
+const triggerSecurityScan = async (projectId, hashes, title, authorName) => {
+    if (!hashes || hashes.length === 0) return;
+
+    const VT_API_KEY = process.env.VIRUSTOTAL_API_KEY;
+    const DISCORD_WEBHOOK = process.env.DISCORD_MODERATION_WEBHOOK;
+
+    let scanResults = [];
+    let vtSummary = "No scan performed (API Key missing)";
+
+    if (VT_API_KEY) {
+        try {
+            const results = await Promise.all(hashes.map(async (h) => {
+                const response = await fetch(`https://www.virustotal.com/api/v3/files/${h.sha256}`, {
+                    headers: { 'x-apikey': VT_API_KEY }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const stats = data.data.attributes.last_analysis_stats;
+                    return {
+                        name: h.name,
+                        malicious: stats.malicious,
+                        suspicious: stats.suspicious,
+                        permalink: `https://www.virustotal.com/gui/file/${h.sha256}`
+                    };
+                }
+                return { name: h.name, status: 'NOT_FOUND_OR_ERROR' };
+            }));
+
+            scanResults = results;
+            const maliciousCount = results.reduce((sum, r) => sum + (r.malicious || 0), 0);
+            vtSummary = maliciousCount > 0 ? `⚠️ ${maliciousCount} threats detected!` : "✅ Clean (Scan complete)";
+        } catch (e) {
+            console.error('[SECURITY_SCAN] VT Error:', e);
+            vtSummary = "❌ Scan Failed (Network)";
+        }
+    }
+
+    // Update Firestore with results
+    try {
+        await db.collection('projects').doc(projectId).update({
+            'security.scanStatus': VT_API_KEY ? 'COMPLETE' : 'NO_KEY',
+            'security.vtResults': scanResults,
+            'security.vtSummary': vtSummary
+        });
+    } catch (e) { console.error('[SECURITY_SCAN] DB Update Failed:', e); }
+
+    // Discord Notification
+    if (DISCORD_WEBHOOK) {
+        try {
+            const vtLinks = scanResults.map(r => `[${r.name}](${r.permalink || 'https://virustotal.com'}) - ${r.malicious || 0} detections`).join('\n');
+
+            await fetch(DISCORD_WEBHOOK, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    embeds: [{
+                        title: "📦 NEW APP UPLOAD DETECTED",
+                        color: maliciousCount > 0 ? 0xff0000 : 0x00ff00,
+                        fields: [
+                            { name: "Project", value: title, inline: true },
+                            { name: "Author", value: authorName, inline: true },
+                            { name: "Scan Result", value: vtSummary },
+                            { name: "VirusTotal Links", value: vtLinks || "None" },
+                            { name: "Admin Actions", value: `[🗑️ Delete Project](${process.env.FRONTEND_URL}/admin?action=delete&id=${projectId}) | [🚫 Ban Author](${process.env.FRONTEND_URL}/admin?action=ban&uid=${hashes[0]?.authorId || ''})` }
+                        ],
+                        footer: { text: `Project ID: ${projectId}` }
+                    }]
+                })
+            });
+        } catch (e) { console.error('[DISCORD_NOTIF] Failed:', e); }
+    }
+};
 
 const antiCheatHandler = (actionType) => async (req, res, next, options) => {
     const userId = req.body?.userId || req.query?.userId || req.params?.uid; // Detection parity
@@ -59,6 +135,29 @@ router.post('/', upload.fields([
             return res.status(400).json({ error: 'No project files detected.' });
         }
 
+        // --- SECURITY: File Filtering & Sandbox Logic ---
+        const BLOCKED_EXTENSIONS = ['.dll', '.sys', '.drv', '.ocx', '.scr', '.vbs'];
+        const EXECUTABLE_EXTENSIONS = ['.exe', '.bat', '.msi', '.cmd'];
+
+        for (const file of projectFiles) {
+            const fileName = file.originalname.toLowerCase();
+            const parts = fileName.split('.');
+
+            // 1. Block Double Extensions (Spam/Malware prevention)
+            if (parts.length > 2) {
+                const lastExt = parts[parts.length - 1];
+                const prevExt = parts[parts.length - 2];
+                if (EXECUTABLE_EXTENSIONS.includes(`.${lastExt}`)) {
+                    return res.status(400).json({ error: `SECURITY_VIOLATION: Double extension detected (${prevExt}.${lastExt}). This transmission has been flagged.` });
+                }
+            }
+
+            // 2. Block System Files
+            if (BLOCKED_EXTENSIONS.some(ext => fileName.endsWith(ext))) {
+                return res.status(400).json({ error: `SECURITY_VIOLATION: System-critical file type detected (${fileName}). These files are restricted for grid safety.` });
+            }
+        }
+
         // 1. Authorization & Limit Check
         const userDoc = await db.collection('users').doc(authorId).get();
         if (!userDoc.exists) return res.status(404).json({ error: 'User system not found' });
@@ -83,6 +182,18 @@ router.post('/', upload.fields([
         const extraStorageLifetimeMB = userData.stats?.extraStorageLifetimeMB || 0;
         const extraStorageSubMB = userData.stats?.extraStorageSubMB || 0;
         const extraStorageExpiry = userData.stats?.extraStorageExpiry || 0;
+
+        // --- SECURITY: Verified Developer Check for Apps ---
+        const hasExecutables = projectFiles.some(f => EXECUTABLE_EXTENSIONS.some(ext => f.originalname.toLowerCase().endsWith(ext)));
+        if (hasExecutables) {
+            const isVerified = (userData.stats?.extraSlots || 0) >= 10 || userData.tier === 'PRO';
+            if (!isVerified) {
+                return res.status(403).json({
+                    error: 'SECURITY_RESTRICTION: Uploading executable apps (.exe, .bat) requires Verified Developer status. Acquire a Small Booster (+10 Slots) in the Forge to verify your identity.'
+                });
+            }
+        }
+
         const activeSubStorage = (Date.now() < extraStorageExpiry) ? extraStorageSubMB : 0;
 
         const totalStorageMB = baseStorageMB + extraStorageLifetimeMB + activeSubStorage;
@@ -144,6 +255,14 @@ router.post('/', upload.fields([
                 name: authorName,
                 avatar: authorAvatar
             },
+            security: {
+                hasExecutables,
+                scanStatus: hasExecutables ? 'PENDING' : 'SKIPPED',
+                hashes: hasExecutables ? projectFiles.filter(f => EXECUTABLE_EXTENSIONS.some(ext => f.originalname.toLowerCase().endsWith(ext))).map(f => ({
+                    name: f.originalname,
+                    sha256: crypto.createHash('sha256').update(f.buffer).digest('hex')
+                })) : []
+            },
             stats: { likes: 0, views: 0, downloads: 0, comments: 0 },
             memberOnly: req.body.memberOnly === 'true' || req.body.memberOnly === true,
             isPrivate: req.body.isPrivate === 'true' || req.body.isPrivate === true,
@@ -182,6 +301,11 @@ router.post('/', upload.fields([
         // 6. Log Activity (Non-critical to transaction)
         const { logActivity } = require('./activities');
         await logActivity(authorId, authorName, 'upload', projectId, title).catch(console.error);
+
+        // 7. Trigger Security Scan (Background)
+        if (newProject.security.hasExecutables) {
+            triggerSecurityScan(projectId, newProject.security.hashes, title, authorName).catch(console.error);
+        }
 
         res.status(201).json(newProject);
 
@@ -537,6 +661,16 @@ router.get('/:id', async (req, res) => {
         const data = doc.data();
         if (!data.memberOnly) projectDetailCache.set(projectId, data);
 
+        // Fetch Author Rank & Tenure for Trust Signals
+        try {
+            const authorDoc = await db.collection('users').doc(data.author.uid).get();
+            if (authorDoc.exists) {
+                const authorData = authorDoc.data();
+                data.author.tier = authorData.tier || 'GHOST';
+                data.author.memberSince = authorData.createdAt || data.createdAt;
+                data.author.isVerified = (authorData.stats?.extraSlots || 0) >= 10;
+            }
+        } catch (e) { console.warn("Failed to fetch author trust signals", e); }
 
         if (data.memberOnly && data.author.uid !== userId) {
             if (!userId) {

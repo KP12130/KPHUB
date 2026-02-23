@@ -35,6 +35,75 @@ const SectionTitle = ({ icon: Icon, title }) => (
     </h3>
 );
 
+// --- SECURITY COMPONENTS ---
+const SecurityBadge = ({ status, summary }) => {
+    if (status === 'SKIPPED') return null;
+    const isClean = summary?.includes('Clean');
+    const isPending = status === 'PENDING';
+
+    return (
+        <div className={`px-3 py-1.5 rounded-lg border flex items-center gap-2 font-black text-[10px] tracking-widest uppercase transition-all ${isPending ? 'bg-white/5 border-white/10 text-gray-500' :
+            isClean ? 'bg-neon-green/10 border-neon-green/30 text-neon-green shadow-[0_0_15px_rgba(57,255,20,0.1)]' :
+                'bg-red-500/10 border-red-500/30 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.1)]'
+            }`}>
+            {isPending ? <Zap className="w-3 h-3 animate-pulse" /> : isClean ? <Shield className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+            {isPending ? 'SCAN_IN_PROGRESS...' : summary || 'THREAT_DETECTED'}
+        </div>
+    );
+};
+
+const DangerZoneModal = ({ isOpen, onClose, onConfirm, project }) => {
+    if (!isOpen) return null;
+    return (
+        <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
+        >
+            <div className="bg-red-950/20 border border-red-500/30 rounded-3xl p-8 max-w-md w-full relative overflow-hidden shadow-[0_0_100px_rgba(239,68,68,0.2)]">
+                <div className="absolute -top-20 -right-20 w-40 h-40 bg-red-500/10 blur-[80px] rounded-full" />
+                <div className="relative z-10 space-y-6">
+                    <div className="flex items-center gap-4 text-red-500">
+                        <div className="p-3 bg-red-500/20 rounded-2xl">
+                            <AlertCircle className="w-8 h-8" />
+                        </div>
+                        <h2 className="text-2xl font-black italic uppercase tracking-tighter">Danger_Zone</h2>
+                    </div>
+
+                    <div className="p-4 bg-black/40 rounded-2xl border border-red-500/10 space-y-3">
+                        <p className="text-sm font-bold text-red-200 uppercase tracking-tight">Biztonsági figyelmeztetés:</p>
+                        <p className="text-xs text-gray-400 leading-relaxed font-mono">
+                            Ez a rendszer futtatható fájlokat (.exe / .bat) tartalmaz. Csak akkor indítsd el, ha megbízol a feltöltőben! A KPHUB nem vállal felelősséget a tartalmáért.
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
+                        <img src={project.author?.avatar} className="w-8 h-8 rounded-full border border-neon-green" />
+                        <div>
+                            <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Uploader</p>
+                            <p className="text-xs font-bold text-white">@{project.author?.username || project.author?.name}</p>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-4 pt-2">
+                        <button
+                            onClick={onClose}
+                            className="flex-1 py-3 bg-white/5 text-gray-400 font-bold uppercase text-xs tracking-widest rounded-xl hover:bg-white/10 transition-colors"
+                        >
+                            Aborted
+                        </button>
+                        <button
+                            onClick={onConfirm}
+                            className="flex-1 py-3 bg-red-600 text-white font-black uppercase text-xs tracking-widest rounded-xl hover:bg-red-500 transition-all shadow-lg hover:shadow-red-500/20"
+                        >
+                            Proceed_Anyway
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
 // --- File Tree Component (Preserved & Styled) ---
 const FileTree = ({ files, selectedFile, onSelectFile, isRepoView = false }) => {
     const [expandedFolders, setExpandedFolders] = useState(['root']);
@@ -139,6 +208,7 @@ const ProjectDetails = () => {
     const likeClickCount = React.useRef(0);
     const [isDownloading, setIsDownloading] = useState(false);
     const [isFileLoading, setIsFileLoading] = useState(false);
+    const [isDangerZoneOpen, setIsDangerZoneOpen] = useState(false);
 
     // Fetch Logic
     // Capture uid on mount only — do NOT put currentUser in deps or the project
@@ -226,6 +296,14 @@ const ProjectDetails = () => {
 
     const handleDownload = async () => {
         if (currentUser?.restrictions?.downloadBlocked) return toast.error("⬇️ DOWNLOAD BLOCKED — Downloads are restricted on your account. Contact support to appeal.", { duration: 4000 });
+
+        // Trigger Danger Zone for executables
+        if (project?.security?.hasExecutables && !isDangerZoneOpen) {
+            setIsDangerZoneOpen(true);
+            return;
+        }
+
+        setIsDangerZoneOpen(false);
         setIsDownloading(true);
         try {
             const url = `${API_BASE}/api/projects/${id}/download${currentUser ? `?userId=${currentUser.uid}` : ''}`;
@@ -365,6 +443,7 @@ const ProjectDetails = () => {
                             <span className="text-gray-400 font-mono text-xs flex items-center gap-2">
                                 <Calendar className="w-3 h-3" /> {new Date(project.createdAt).toLocaleDateString()}
                             </span>
+                            <SecurityBadge status={project.security?.scanStatus} summary={project.security?.vtSummary} />
                         </motion.div>
 
                         <motion.h1
@@ -500,9 +579,17 @@ const ProjectDetails = () => {
                                                         <span className="text-[10px] text-neon-blue animate-pulse">STREAMING_MATRIX...</span>
                                                     </div>
                                                 ) : selectedFile ? (
-                                                    <pre className="text-gray-300">
-                                                        <code>{fileContent || `// Empty file or could not read stream.`}</code>
-                                                    </pre>
+                                                    <div className="space-y-4">
+                                                        {selectedFile.name.endsWith('.bat') && (
+                                                            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center gap-3 text-red-500 mb-4">
+                                                                <Terminal className="w-4 h-4" />
+                                                                <span className="text-[10px] font-black uppercase tracking-widest">Szkript előnézet (Biztonsági ellenőrzés)</span>
+                                                            </div>
+                                                        )}
+                                                        <pre className="text-gray-300">
+                                                            <code>{fileContent || `// Empty file or could not read stream.`}</code>
+                                                        </pre>
+                                                    </div>
                                                 ) : (
                                                     <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-2">
                                                         <FileCode className="w-8 h-8 opacity-20" />
@@ -646,6 +733,58 @@ const ProjectDetails = () => {
                             )}
                         </GlassCard>
 
+                        {/* Author Trust Profile */}
+                        <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-4">
+                            <div className="flex items-center gap-4">
+                                <div className="relative">
+                                    <img src={project.author?.avatar} className="w-12 h-12 rounded-full border-2 border-neon-green" />
+                                    {project.author?.isVerified && (
+                                        <div className="absolute -bottom-1 -right-1 bg-neon-blue text-black p-0.5 rounded-full" title="Verified Developer">
+                                            <CheckCircle2 className="w-3 h-3" />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="overflow-hidden">
+                                    <h4 className="font-black text-white text-sm truncate tracking-tight">@{project.author?.name}</h4>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${project.author?.tier === 'PRO' ? 'bg-neon-purple text-white' : 'bg-gray-800 text-gray-400'
+                                            }`}>
+                                            {project.author?.tier}
+                                        </span>
+                                        {project.author?.isVerified && (
+                                            <span className="text-[8px] font-black uppercase px-2 py-0.5 bg-neon-blue/20 text-neon-blue rounded border border-neon-blue/20">
+                                                Verified_Dev
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="pt-2 space-y-2 border-t border-white/5">
+                                <div className="flex justify-between text-[10px] font-mono">
+                                    <span className="text-gray-600 uppercase">Tenure</span>
+                                    <span className="text-gray-300">
+                                        {(() => {
+                                            const start = new Date(project.author?.memberSince || Date.now());
+                                            const diff = Date.now() - start.getTime();
+                                            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                                            if (days < 30) return `${days} Days`;
+                                            const months = Math.floor(days / 30);
+                                            if (months < 12) return `${months} Months`;
+                                            return `${(months / 12).toFixed(1)} Years`;
+                                        })()} member
+                                    </span>
+                                </div>
+                            </div>
+
+                            <Link
+                                to={`/p/${project.author?.uid}`}
+                                className="block w-full py-2 bg-white/5 hover:bg-white/10 text-white text-center text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all"
+                            >
+                                View Grid Profile
+                            </Link>
+                        </div>
+
                         {/* Recent Activity / Devlog */}
                         <div className="glass-panel rounded-3xl overflow-hidden">
                             <div className="p-4 border-b border-glass-border bg-white/5">
@@ -689,6 +828,14 @@ const ProjectDetails = () => {
             </div>
 
             {/* DonationModal removed in favor of SupportButton inline component */}
+
+            {/* Danger Zone Modal */}
+            <DangerZoneModal
+                isOpen={isDangerZoneOpen}
+                onClose={() => setIsDangerZoneOpen(false)}
+                onConfirm={handleDownload}
+                project={project}
+            />
 
             {/* Request Review Modal */}
             {isRequestOpen && (

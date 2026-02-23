@@ -13,30 +13,28 @@ const InfrastructureManager = () => {
     const [period, setPeriod] = useState('MONTHLY');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const SLOT_TIERS = { '1000': 50000, '100': 7500, '10': 1000, base: 150 };
-    const STORAGE_TIERS = {
-        MONTHLY: { '1000': 100, '10000': 800, '100000': 6000, base: 10 },
-        YEARLY: { '1000': 1000, '10000': 8000, '100000': 60000, base: 100 },
-        LIFETIME: { '1000': 5000, '10000': 40000, '100000': 300000, base: 500 }
-    };
+    const SLOT_TIERS = { '100': 3000, '30': 1000, '10': 400, base: 150 };
+    const STORAGE_TIERS = { '20000': 6000, '5000': 2000, '1000': 500, base: 50 };
 
     const getSlotCost = (count) => {
         if (count <= 0) return 0;
         let unitCost = SLOT_TIERS.base;
-        if (count >= 1000) unitCost = SLOT_TIERS['1000'] / 1000;
-        else if (count >= 100) unitCost = SLOT_TIERS['100'] / 100;
+        if (count >= 100) unitCost = SLOT_TIERS['100'] / 100;
+        else if (count >= 30) unitCost = SLOT_TIERS['30'] / 30;
         else if (count >= 10) unitCost = SLOT_TIERS['10'] / 10;
         return Math.ceil(count * unitCost);
     };
 
     const getStorageCost = (mb, p) => {
-        const tier = STORAGE_TIERS[p];
-        if (!tier) return 0;
-        let unitCost = tier.base;
-        if (mb >= 100000) unitCost = tier['100000'] / 1000;
-        else if (mb >= 10000) unitCost = tier['10000'] / 100;
-        else if (mb >= 1000) unitCost = tier['1000'] / 10;
-        return Math.ceil((mb / 100) * unitCost);
+        let unitCost = STORAGE_TIERS.base;
+        if (mb >= 20000) unitCost = STORAGE_TIERS['20000'] / 200;
+        else if (mb >= 5000) unitCost = STORAGE_TIERS['5000'] / 50;
+        else if (mb >= 1000) unitCost = STORAGE_TIERS['1000'] / 10;
+
+        let baseCost = (mb / 100) * unitCost;
+        if (p === 'YEARLY') return Math.ceil(baseCost * 10);
+        if (p === 'LIFETIME') return Math.ceil(baseCost * 50);
+        return Math.ceil(baseCost);
     };
 
     const slotCost = getSlotCost(slots);
@@ -132,7 +130,7 @@ const InfrastructureManager = () => {
                     <input
                         type="range"
                         min="0"
-                        max="1000"
+                        max="100"
                         step="1"
                         value={slots}
                         onChange={(e) => setSlots(parseInt(e.target.value))}
@@ -140,7 +138,7 @@ const InfrastructureManager = () => {
                     />
                     <div className="flex justify-between text-[8px] font-mono text-gray-700 uppercase">
                         <span>Original Capacity</span>
-                        <span>+20 Slots Max Burst</span>
+                        <span>+100 Slots (Pro Developer)</span>
                     </div>
                 </div>
 
@@ -167,7 +165,7 @@ const InfrastructureManager = () => {
                     <input
                         type="range"
                         min="0"
-                        max="100000"
+                        max="20000"
                         step="100"
                         value={storageMB}
                         onChange={(e) => setStorageMB(parseInt(e.target.value))}
@@ -175,7 +173,7 @@ const InfrastructureManager = () => {
                     />
                     <div className="flex justify-between text-[8px] font-mono text-gray-700 uppercase">
                         <span>100MB units</span>
-                        <span>100GB Max Node</span>
+                        <span>20GB (Studio Pack)</span>
                     </div>
                 </div>
 

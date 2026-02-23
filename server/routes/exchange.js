@@ -18,35 +18,34 @@ const WITHDRAWAL_MINIMUM = 5000;
 const PLATFORM_COMMISSION = 0.15; // 15% commission on tips to cover fees/profit
 
 const INFRA_PRICING = {
-    SLOT_TIERS: { '1000': 50000, '100': 7500, '10': 1000, base: 150 },
-    TIERS: {
-        MONTHLY: { '1000': 100, '10000': 800, '100000': 6000, base: 10 },
-        YEARLY: { '1000': 1000, '10000': 8000, '100000': 60000, base: 100 },
-        LIFETIME: { '1000': 5000, '10000': 40000, '100000': 300000, base: 500 }
-    }
+    SLOT_TIERS: { '100': 3000, '30': 1000, '10': 400, base: 150 },
+    STORAGE_TIERS: { '20000': 6000, '5000': 2000, '1000': 500, base: 50 }
 };
 
 const getSlotCost = (count) => {
     if (count <= 0) return 0;
 
     let unitCost = INFRA_PRICING.SLOT_TIERS.base;
-    if (count >= 1000) unitCost = INFRA_PRICING.SLOT_TIERS['1000'] / 1000;
-    else if (count >= 100) unitCost = INFRA_PRICING.SLOT_TIERS['100'] / 100;
+    if (count >= 100) unitCost = INFRA_PRICING.SLOT_TIERS['100'] / 100;
+    else if (count >= 30) unitCost = INFRA_PRICING.SLOT_TIERS['30'] / 30;
     else if (count >= 10) unitCost = INFRA_PRICING.SLOT_TIERS['10'] / 10;
 
     return Math.ceil(count * unitCost);
 };
 
 const getStorageCost = (mb, period) => {
-    const tier = INFRA_PRICING.TIERS[period];
-    if (!tier) return 0;
+    let unitCost = INFRA_PRICING.STORAGE_TIERS.base; // Cost per 100MB
+    if (mb >= 20000) unitCost = INFRA_PRICING.STORAGE_TIERS['20000'] / 200;
+    else if (mb >= 5000) unitCost = INFRA_PRICING.STORAGE_TIERS['5000'] / 50;
+    else if (mb >= 1000) unitCost = INFRA_PRICING.STORAGE_TIERS['1000'] / 10;
 
-    let unitCost = tier.base; // Cost per 100MB
-    if (mb >= 100000) unitCost = tier['100000'] / 1000;
-    else if (mb >= 10000) unitCost = tier['10000'] / 100;
-    else if (mb >= 1000) unitCost = tier['1000'] / 10;
+    let baseCost = (mb / 100) * unitCost;
 
-    return Math.ceil((mb / 100) * unitCost);
+    // Apply duration multiplier
+    if (period === 'YEARLY') return Math.ceil(baseCost * 10);
+    if (period === 'LIFETIME') return Math.ceil(baseCost * 50);
+
+    return Math.ceil(baseCost);
 };
 
 const GIFT_CARDS = {
