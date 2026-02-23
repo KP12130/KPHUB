@@ -41,7 +41,7 @@ const triggerSecurityScan = async (projectId, hashes, title, authorName) => {
 
             scanResults = results;
             const maliciousCount = results.reduce((sum, r) => sum + (r.malicious || 0), 0);
-            vtSummary = maliciousCount > 0 ? `⚠️ ${maliciousCount} threats detected!` : "✅ Clean (Scan complete)";
+            vtSummary = maliciousCount > 0 ? `⚠️ ${maliciousCount} Scanning Engines flagged this` : "✅ Clean (Scan complete)";
         } catch (e) {
             console.error('[SECURITY_SCAN] VT Error:', e);
             vtSummary = "❌ Scan Failed (Network)";
@@ -186,7 +186,7 @@ router.post('/', upload.fields([
         // --- SECURITY: Verified Developer Check for Apps ---
         const hasExecutables = projectFiles.some(f => EXECUTABLE_EXTENSIONS.some(ext => f.originalname.toLowerCase().endsWith(ext)));
         if (hasExecutables) {
-            const isVerified = (userData.stats?.extraSlots || 0) >= 10 || userData.tier === 'PRO';
+            const isVerified = (userData.stats?.extraSlots || 0) >= 10 || userData.tier === 'PRO' || userData.tier === 'ADMIN';
             if (!isVerified) {
                 return res.status(403).json({
                     error: 'SECURITY_RESTRICTION: Uploading executable apps (.exe, .bat) requires Verified Developer status. Acquire a Small Booster (+10 Slots) in the Forge to verify your identity.'

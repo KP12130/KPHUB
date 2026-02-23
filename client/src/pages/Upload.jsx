@@ -65,7 +65,7 @@ const Upload = () => {
         const EXECUTABLE_EXTENSIONS = ['.exe', '.bat', '.msi', '.cmd'];
         const hasExecutables = files.some(f => EXECUTABLE_EXTENSIONS.some(ext => f.name.toLowerCase().endsWith(ext)));
         if (hasExecutables && currentUser) {
-            const isVerified = (currentUser.stats?.extraSlots || 0) >= 10 || currentUser.tier === 'PRO';
+            const isVerified = (currentUser.stats?.extraSlots || 0) >= 10 || currentUser.tier === 'PRO' || currentUser.tier === 'ADMIN';
             if (!isVerified) {
                 setError('SECURITY_RESTRICTION: Uploading executable apps (.exe, .bat) requires Verified Developer status. Acquire a Small Booster (+10 Slots) in the Forge to verify your identity.');
                 return;
