@@ -9,7 +9,7 @@ import {
     MoreVertical, Eye, Download, Heart, Trash2, Edit3,
     Lock, Globe, Shield, ShieldOff, CreditCard, TrendingUp, Users,
     CheckCircle2, AlertCircle, Plus, Zap, Star, Trophy, Activity, ArrowRight,
-    DollarSign, BarChart3, PieChart, X, LifeBuoy, Mail, Clock, Send
+    DollarSign, BarChart3, PieChart, X, LifeBuoy, Mail, Clock, Send, ShoppingBag
 } from 'lucide-react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
