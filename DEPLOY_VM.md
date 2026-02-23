@@ -28,6 +28,7 @@ Az Nginx irányítja a `https://kphub.dev` forgalmát a belső `5000`-es portra.
 **Kritikus beállítás a Redirect hurok ellen:**
 ```nginx
 location /api {
+    client_max_body_size 500M;
     proxy_pass http://localhost:5000;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;

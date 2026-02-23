@@ -92,9 +92,7 @@ const Upload = () => {
         data.append('isPrivate', formData.isPrivate);
 
         try {
-            await axios.post(`${API_BASE}/api/projects`, data, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            await axios.post(`${API_BASE}/api/projects`, data);
 
             // Increment locally for immediate UI feedback
             if (currentUser) {
