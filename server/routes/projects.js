@@ -144,10 +144,12 @@ router.post('/', upload.fields([
             const parts = fileName.split('.');
 
             // 1. Block Double Extensions (Spam/Malware prevention)
+            const DECOY_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'docx', 'xlsx', 'txt', 'zip', 'rar', 'mp4', 'mp3'];
             if (parts.length > 2) {
                 const lastExt = parts[parts.length - 1];
                 const prevExt = parts[parts.length - 2];
-                if (EXECUTABLE_EXTENSIONS.includes(`.${lastExt}`)) {
+                // Only flag if the last extension is an executable AND the previous one is a common 'decoy' type.
+                if (EXECUTABLE_EXTENSIONS.includes(`.${lastExt}`) && DECOY_EXTENSIONS.includes(prevExt)) {
                     return res.status(400).json({ error: `SECURITY_VIOLATION: Double extension detected (${prevExt}.${lastExt}). This transmission has been flagged.` });
                 }
             }
