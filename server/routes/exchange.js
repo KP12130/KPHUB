@@ -18,20 +18,24 @@ const WITHDRAWAL_MINIMUM = 5000;
 const PLATFORM_COMMISSION = 0.15; // 15% commission on tips to cover fees/profit
 
 const GIFT_CARDS = {
-    'AMZN_10': { id: 'AMZN_10', label: 'Amazon.com $10', cost: 10000, company: 'Amazon', icon: 'ShoppingBag' },
-    'AMZN_25': { id: 'AMZN_25', label: 'Amazon.com $25', cost: 25000, company: 'Amazon', icon: 'ShoppingBag' },
-    'STM_10': { id: 'STM_10', label: 'Steam Wallet $10', cost: 10000, company: 'Steam', icon: 'Gamepad2' },
-    'STM_20': { id: 'STM_20', label: 'Steam Wallet $20', cost: 20000, company: 'Steam', icon: 'Gamepad2' },
-    'RBLX_10': { id: 'RBLX_10', label: 'Roblox 800 Robux', cost: 10000, company: 'Roblox', icon: 'Dice6' },
-    'GPLY_10': { id: 'GPLY_10', label: 'Google Play $10', cost: 10000, company: 'Google', icon: 'Play' }
+    'AMZN_10': { id: 'AMZN_10', label: 'Amazon.com $10', cost: 15000, company: 'Amazon', icon: 'ShoppingBag' },
+    'AMZN_25': { id: 'AMZN_25', label: 'Amazon.com $25', cost: 37500, company: 'Amazon', icon: 'ShoppingBag' },
+    'AMZN_50': { id: 'AMZN_50', label: 'Amazon.com $50', cost: 75000, company: 'Amazon', icon: 'ShoppingBag' },
+    'STM_10': { id: 'STM_10', label: 'Steam Wallet $10', cost: 15000, company: 'Steam', icon: 'Gamepad2' },
+    'STM_25': { id: 'STM_25', label: 'Steam Wallet $25', cost: 37500, company: 'Steam', icon: 'Gamepad2' },
+    'STM_50': { id: 'STM_50', label: 'Steam Wallet $50', cost: 75000, company: 'Steam', icon: 'Gamepad2' },
+    'RBLX_10': { id: 'RBLX_10', label: 'Roblox $10 (800 Robux)', cost: 15000, company: 'Roblox', icon: 'Dice6' },
+    'RBLX_25': { id: 'RBLX_25', label: 'Roblox $25 (2000 Robux)', cost: 37500, company: 'Roblox', icon: 'Dice6' },
+    'GPLY_10': { id: 'GPLY_10', label: 'Google Play $10', cost: 15000, company: 'Google', icon: 'Play' },
+    'GPLY_25': { id: 'GPLY_25', label: 'Google Play $25', cost: 37500, company: 'Google', icon: 'Play' }
 };
 
 const KPC_BUNDLES = {
-    'STARTER': { amount: 5000, price: 14.99, label: 'Starter Hub' },
-    'PULSE': { amount: 20000, price: 39.99, label: 'Pulse Stream' },
-    'MATRIX': { amount: 50000, price: 74.99, label: 'Matrix Core' },
-    'OVERLORD': { amount: 100000, price: 100.00, label: 'Overlord Node' },
-    'NEXUS': { amount: 250000, price: 199.99, label: 'Nexus Protocol' }
+    'STARTER': { amount: 5000, price: 4.99, label: 'Starter Hub' },
+    'PULSE': { amount: 12000, price: 9.99, label: 'Pulse Stream' },
+    'MATRIX': { amount: 35000, price: 24.99, label: 'Matrix Core' },
+    'OVERLORD': { amount: 75000, price: 49.99, label: 'Overlord Node' },
+    'NEXUS': { amount: 160000, price: 99.99, label: 'Nexus Protocol' }
 };
 
 const FLARES = {

@@ -13,6 +13,7 @@ const WithdrawalModal = ({ isOpen, onClose, isEmbedded = false }) => {
     const [email, setEmail] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [cardIndices, setCardIndices] = useState({}); // Tracking amount index for each company
 
     useEffect(() => {
         if (isOpen || isEmbedded) {
@@ -25,6 +26,13 @@ const WithdrawalModal = ({ isOpen, onClose, isEmbedded = false }) => {
         try {
             const res = await axios.get(`${API_BASE}/api/exchange/gift-cards`);
             setGiftCards(res.data);
+
+            // Initialize indices for companies
+            const initialIndices = {};
+            Object.values(res.data).forEach(card => {
+                if (!initialIndices[card.company]) initialIndices[card.company] = 0;
+            });
+            setCardIndices(initialIndices);
         } catch (err) {
             toast.error("Failed to load rewards store.");
         } finally {
@@ -123,39 +131,86 @@ const WithdrawalModal = ({ isOpen, onClose, isEmbedded = false }) => {
                 </div>
             ) : (
                 <div className={`flex-grow ${isEmbedded ? '' : 'overflow-y-auto custom-scrollbar pr-2 mb-6'}`}>
-                    <div className={`grid grid-cols-1 ${isEmbedded ? 'md:grid-cols-3' : 'sm:grid-cols-2'} gap-4`}>
-                        {Object.values(giftCards).map((card) => {
+                    <div className={`grid grid-cols-1 ${isEmbedded ? 'md:grid-cols-2' : 'sm:grid-cols-2'} gap-4`}>
+                        {Object.entries(
+                            Object.values(giftCards).reduce((acc, card) => {
+                                if (!acc[card.company]) acc[card.company] = [];
+                                acc[card.company].push(card);
+                                return acc;
+                            }, {})
+                        ).map(([company, cards]) => {
+                            const index = cardIndices[company] || 0;
+                            const card = cards[index];
                             const Icon = iconMap[card.icon] || ShoppingBag;
                             const isAffordable = (currentUser.stats?.kpcBalance || 0) >= card.cost;
                             const isSelected = selectedCardId === card.id;
 
+                            const cycleAmount = (dir) => {
+                                const newIndex = (index + dir + cards.length) % cards.length;
+                                setCardIndices(prev => ({ ...prev, [company]: newIndex }));
+                                if (isSelected) setSelectedCardId(cards[newIndex].id);
+                            };
+
                             return (
-                                <button
-                                    key={card.id}
-                                    onClick={() => setSelectedCardId(card.id)}
-                                    disabled={!isAffordable}
-                                    className={`relative p-5 rounded-3xl border transition-all text-left flex flex-col gap-4 group ${isSelected
+                                <div
+                                    key={company}
+                                    className={`relative p-5 rounded-3xl border transition-all flex flex-col gap-4 group ${isSelected
                                         ? 'bg-neon-blue/20 border-neon-blue shadow-[0_0_20px_rgba(0,212,255,0.15)]'
                                         : !isAffordable
-                                            ? 'bg-void/40 border-white/5 opacity-50 grayscale cursor-not-allowed'
+                                            ? 'bg-void/40 border-white/5 opacity-50 grayscale'
                                             : 'bg-void/60 border-white/10 hover:border-neon-blue/50'
                                         }`}
                                 >
                                     <div className="flex justify-between items-start">
-                                        <div className={`p-3 rounded-2xl bg-white/5 group-hover:bg-neon-blue/10 transition-colors ${isSelected ? 'bg-neon-blue/10 text-neon-blue' : 'text-gray-400'}`}>
+                                        <div
+                                            onClick={() => isAffordable && setSelectedCardId(card.id)}
+                                            className={`p-3 rounded-2xl bg-white/5 group-hover:bg-neon-blue/10 transition-colors cursor-pointer ${isSelected ? 'bg-neon-blue/10 text-neon-blue' : 'text-gray-400'}`}
+                                        >
                                             <Icon className="w-6 h-6" />
                                         </div>
-                                        {isSelected && <CheckCircle2 className="w-5 h-5 text-neon-blue" />}
+                                        <div className="flex items-center gap-1 bg-black/40 rounded-full px-2 py-1 border border-white/5">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); cycleAmount(-1); }}
+                                                className="p-1 hover:text-neon-blue text-gray-500 transition-colors"
+                                            >
+                                                <X className="w-3 h-3 rotate-45" /> {/* Using X as a placeholder for arrows if needed or just styling */}
+                                            </button>
+                                            <span className="text-[10px] font-black text-white px-2 uppercase tracking-tighter">
+                                                {cards.length} VARIANTS
+                                            </span>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); cycleAmount(1); }}
+                                                className="p-1 hover:text-neon-blue text-gray-500 transition-colors"
+                                            >
+                                                <ArrowRight className="w-3 h-3" />
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div>
+
+                                    <div
+                                        onClick={() => isAffordable && setSelectedCardId(card.id)}
+                                        className="cursor-pointer"
+                                    >
                                         <h4 className="text-white font-black uppercase text-sm">{card.label}</h4>
-                                        <p className="text-[10px] text-gray-500 font-mono mt-1">{card.company}</p>
+                                        <p className="text-[10px] text-gray-500 font-mono mt-1">{card.company} Digital Protocol</p>
                                     </div>
+
                                     <div className="pt-3 border-t border-white/5 flex justify-between items-center">
                                         <span className="text-xs font-black text-neon-blue">{card.cost.toLocaleString()} KPC</span>
-                                        {!isAffordable && <span className="text-[8px] font-bold text-red-500/50 uppercase">Insufficient</span>}
+                                        {isSelected ? (
+                                            <CheckCircle2 className="w-5 h-5 text-neon-blue" />
+                                        ) : !isAffordable ? (
+                                            <span className="text-[8px] font-bold text-red-500/50 uppercase">Insufficient</span>
+                                        ) : (
+                                            <button
+                                                onClick={() => setSelectedCardId(card.id)}
+                                                className="text-[10px] font-black text-gray-600 hover:text-white uppercase tracking-widest transition-colors"
+                                            >
+                                                Select
+                                            </button>
+                                        )}
                                     </div>
-                                </button>
+                                </div>
                             );
                         })}
                     </div>
