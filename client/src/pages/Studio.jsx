@@ -18,8 +18,9 @@ import PaymentModal from '../components/PaymentModal';
 import Sentinel from '../components/Sentinel';
 import SupportChat from '../components/SupportChat';
 import SupportChatAdmin from '../components/SupportChatAdmin';
-import ViolationsPanel from '../components/ViolationsPanel';
+import WithdrawalModal from '../components/WithdrawalModal';
 import ForgeStore from '../components/ForgeStore';
+import ViolationsPanel from '../components/ViolationsPanel';
 
 const GlassCard = ({ children, className = "" }) => (
     <div className={`glass-panel rounded-2xl p-6 ${className}`}>
