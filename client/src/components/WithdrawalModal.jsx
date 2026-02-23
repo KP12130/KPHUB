@@ -47,7 +47,7 @@ const WithdrawalModal = ({ isOpen, onClose, isEmbedded = false }) => {
         if (!card) return toast.error("Please select a reward.");
         if (!email.includes('@')) return toast.error("Valid email required for digital delivery.");
 
-        if ((currentUser.stats?.kpcBalance || 0) < card.cost) {
+        if ((currentUser?.stats?.kpcBalance || 0) < card.cost) {
             return toast.error("Insufficient KPC for this reward.");
         }
 
@@ -65,8 +65,8 @@ const WithdrawalModal = ({ isOpen, onClose, isEmbedded = false }) => {
                 toast.success("REDEMPTION_AUTHORIZED: Code will be sent via email.");
                 updateUser({
                     stats: {
-                        ...currentUser.stats,
-                        kpcBalance: (currentUser.stats.kpcBalance || 0) - card.cost
+                        ...(currentUser?.stats || {}),
+                        kpcBalance: (currentUser?.stats?.kpcBalance || 0) - card.cost
                     }
                 });
                 if (!isEmbedded) onClose();
@@ -114,7 +114,7 @@ const WithdrawalModal = ({ isOpen, onClose, isEmbedded = false }) => {
                     </div>
                     <div>
                         <p className="text-[9px] font-black text-gray-500 uppercase">Total_Credits_Available</p>
-                        <p className={`${isEmbedded ? 'text-lg' : 'text-xl'} font-black text-white`}>{(currentUser.stats?.kpcBalance || 0).toLocaleString()} <span className="text-xs text-gray-400">KPC</span></p>
+                        <p className={`${isEmbedded ? 'text-lg' : 'text-xl'} font-black text-white`}>{(currentUser?.stats?.kpcBalance || 0).toLocaleString()} <span className="text-xs text-gray-400">KPC</span></p>
                     </div>
                 </div>
                 <div className="text-right">
@@ -142,7 +142,7 @@ const WithdrawalModal = ({ isOpen, onClose, isEmbedded = false }) => {
                             const index = cardIndices[company] || 0;
                             const card = cards[index];
                             const Icon = iconMap[card.icon] || ShoppingBag;
-                            const isAffordable = (currentUser.stats?.kpcBalance || 0) >= card.cost;
+                            const isAffordable = (currentUser?.stats?.kpcBalance || 0) >= card.cost;
                             const isSelected = selectedCardId === card.id;
 
                             const cycleAmount = (dir) => {

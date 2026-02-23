@@ -117,7 +117,12 @@ const App = () => {
           </Routes>
           <CookieConsent />
           {currentUser && <AchievementHub currentUser={currentUser} />}
-          <WithdrawalModal isOpen={isRedemptionOpen} onClose={() => setIsRedemptionOpen(false)} />
+          {currentUser && (
+            <WithdrawalModal
+              isOpen={isRedemptionOpen}
+              onClose={() => setIsRedemptionOpen(false)}
+            />
+          )}
         </Layout>
       </Router>
     </ThemeProvider>

@@ -332,7 +332,7 @@ const Studio = () => {
                             </div>
                             <div>
                                 <h2 className="font-black text-white leading-none text-lg flex items-center gap-2">
-                                    <span style={currentUser?.activeFlare ? Object.fromEntries(allFlares[currentUser.activeFlare]?.style.split(';').filter(s => s).map(s => s.split(':').map(x => x.trim()))) : {}}>
+                                    <span style={currentUser?.activeFlare && allFlares?.[currentUser.activeFlare] ? Object.fromEntries(allFlares[currentUser.activeFlare].style.split(';').filter(s => s).map(s => s.split(':').map(x => x.trim()))) : {}} className="relative group">
                                         {currentUser?.displayName}
                                     </span>
                                     {currentUser?.stats?.verified && <CheckCircle2 className="w-4 h-4 text-neon-blue" />}

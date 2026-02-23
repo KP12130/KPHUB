@@ -34,8 +34,8 @@ const SupportButton = ({ receiverUid, projectTitle, projectId, className = "" })
                 toast.success(`TRANSMITTED: ${amount} KPC sent to creator.`);
                 updateUser({
                     stats: {
-                        ...currentUser.stats,
-                        kpcBalance: currentUser.stats.kpcBalance - amount
+                        ...(currentUser?.stats || {}),
+                        kpcBalance: (currentUser?.stats?.kpcBalance || 0) - amount
                     }
                 });
                 setShowAmountSelect(false);

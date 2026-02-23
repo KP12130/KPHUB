@@ -47,8 +47,8 @@ const ForgeStore = ({ isEmbedded = false }) => {
                 toast.success(`Acquisition Successful! Credits channeled.`);
                 updateUser({
                     stats: {
-                        ...currentUser.stats,
-                        kpcBalance: (currentUser.stats?.kpcBalance || 0) + bundles[selectedBundle].amount
+                        ...(currentUser?.stats || {}),
+                        kpcBalance: (currentUser?.stats?.kpcBalance || 0) + bundles[selectedBundle].amount
                     }
                 });
             }

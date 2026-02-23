@@ -192,7 +192,7 @@ const Navbar = ({ onOpenCommandPalette }) => {
                                 </Link>
                                 <div className="flex items-center gap-2 group/spend" title="KPC Credits">
                                     <Zap className="w-3 h-3 text-neon-green group-hover/spend:animate-pulse" />
-                                    <span className="text-[10px] font-black text-white">{currentUser.stats?.kpcBalance?.toLocaleString() || 0}</span>
+                                    <span className="text-[10px] font-black text-white">{currentUser?.stats?.kpcBalance?.toLocaleString() || 0}</span>
                                     <span className="text-[7px] font-mono text-neon-green uppercase tracking-tighter">KPC</span>
                                     <Link to="/forge" className="ml-1 p-1 rounded-md bg-neon-green/10 hover:bg-neon-green/20 text-neon-green transition-colors">
                                         <Plus className="w-3 h-3" />
@@ -204,10 +204,21 @@ const Navbar = ({ onOpenCommandPalette }) => {
                                 <Link to="/studio" className="flex items-center gap-2 group">
                                     <div className="flex flex-col items-end">
                                         <p className="text-white font-black text-xs group-hover:text-neon-green transition-colors flex items-center gap-2">
-                                            <span style={currentUser.activeFlare ? Object.fromEntries(allFlares[currentUser.activeFlare]?.style.split(';').filter(s => s).map(s => s.split(':').map(x => x.trim()))) : {}}>
-                                                {currentUser.displayName}
+                                            <span style={currentUser?.activeFlare && allFlares?.[currentUser.activeFlare]?.style
+                                                ? Object.fromEntries(
+                                                    allFlares[currentUser.activeFlare].style
+                                                        .split(';')
+                                                        .filter(s => s.includes(':')) // Ensure it's a key-value pair
+                                                        .map(s => {
+                                                            const parts = s.split(':').map(x => x.trim());
+                                                            return parts.length === 2 ? parts : null; // Only return valid pairs
+                                                        })
+                                                        .filter(Boolean) // Filter out nulls
+                                                )
+                                                : {}}>
+                                                {currentUser?.displayName}
                                             </span>
-                                            {currentUser.stats?.verified && <Trophy className="w-3 h-3 text-neon-blue" />}
+                                            {currentUser?.stats?.verified && <Trophy className="w-3 h-3 text-neon-blue" />}
                                         </p>
                                     </div>
                                     {currentUser.photoURL ? (

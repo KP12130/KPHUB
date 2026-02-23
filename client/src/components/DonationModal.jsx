@@ -17,7 +17,7 @@ const DonationModal = ({ targetUser, onClose, onSuccess }) => {
             return;
         }
 
-        if ((currentUser.stats?.kpcBalance || 0) < amount) {
+        if ((currentUser?.stats?.kpcBalance || 0) < amount) {
             toast.error("Insufficient KPC for transfer.");
             return;
         }
