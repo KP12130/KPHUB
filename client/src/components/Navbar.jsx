@@ -7,7 +7,7 @@ import { db } from '../firebase';
 import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import {
     LayoutDashboard, Trophy, Code, Upload as UploadIcon, HelpCircle,
-    Bell, BellDot, User, LogOut, Menu, X, Terminal, ShoppingCart, Zap, TrendingUp
+    Bell, BellDot, User, LogOut, Menu, X, Terminal, ShoppingCart, Zap, TrendingUp, Plus
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import useSound from '../hooks/useSound';
