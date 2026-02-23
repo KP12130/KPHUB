@@ -319,7 +319,7 @@ const Studio = () => {
                             <MenuButton
                                 id="SUPPORT"
                                 icon={LifeBuoy}
-                                label={currentUser.username === 'KovacsPatrik12130' ? 'Support Grid' : 'Support'}
+                                label={currentUser.username === 'KP12130' ? 'Support Grid' : 'Support'}
                             />
                             <MenuButton id="TRANSACTIONS" icon={CreditCard} label="Transactions" />
                             <MenuButton id="SENTINEL" icon={Shield} label="Sentinel" />
@@ -765,7 +765,7 @@ const Studio = () => {
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                 >
-                                    {currentUser.username === 'KovacsPatrik12130' ? (
+                                    {currentUser.username === 'KP12130' ? (
                                         <SupportChatAdmin />
                                     ) : (
                                         <SupportChat currentUser={currentUser} />

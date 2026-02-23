@@ -15,7 +15,7 @@ import ModerationPanel from '../components/ModerationPanel';
 import SecurityPanel from '../components/SecurityPanel';
 
 // CREDENTIALS
-const ADMIN_USER = "KovacsPatrik12130";
+const ADMIN_USER = "KP12130";
 const ADMIN_PASS = "KxhTpq53249..__gKP";
 
 const GlassCard = ({ children, className = "" }) => (
