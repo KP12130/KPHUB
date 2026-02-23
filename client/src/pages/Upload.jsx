@@ -99,13 +99,24 @@ const Upload = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 className="w-full max-w-3xl bg-terminal border border-gray-800 rounded-2xl p-8 shadow-[0_0_30px_rgba(0,0,0,0.5)]"
             >
-                <div className="flex items-center gap-4 mb-8 border-b border-gray-800 pb-4">
+                <div className="flex items-center gap-4 mb-4 border-b border-gray-800 pb-4">
                     <div className="p-3 bg-neon-green/10 rounded-lg text-neon-green">
                         <UploadIcon className="w-8 h-8" />
                     </div>
-                    <div>
+                    <div className="flex-grow">
                         <h1 className="text-2xl font-black tracking-tight text-white uppercase italic">System Deployment</h1>
                         <p className="text-gray-500 text-[10px] font-mono tracking-widest uppercase">Initializing grid transmission protocol...</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[8px] font-mono text-gray-500 uppercase mb-1">Grid_Capacity</p>
+                        <div className="flex items-center gap-2 justify-end">
+                            <span className="text-white font-black text-sm">
+                                {currentUser?.stats?.uploads || 0} / {(currentUser?.tier === 'GHOST' ? 5 : Infinity) + (currentUser?.stats?.extraSlots || 0)}
+                            </span>
+                            <Link to="/forge" className="p-1.5 bg-neon-blue/10 border border-neon-blue/30 rounded text-neon-blue hover:bg-neon-blue hover:text-white transition-all shadow-[0_0_10px_rgba(0,212,255,0.2)]">
+                                <Plus className="w-3 h-3" />
+                            </Link>
+                        </div>
                     </div>
                 </div>
 

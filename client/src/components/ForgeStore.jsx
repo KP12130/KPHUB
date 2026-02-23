@@ -6,6 +6,7 @@ import axios from 'axios';
 import { API_BASE } from '../api';
 import { toast } from 'react-hot-toast';
 import PaymentModal from './PaymentModal';
+import InfrastructureManager from './InfrastructureManager';
 
 const ForgeStore = ({ isEmbedded = false }) => {
     const { currentUser, updateUser } = useAuth();
@@ -114,6 +115,12 @@ const ForgeStore = ({ isEmbedded = false }) => {
                     </div>
                 ))}
             </div>
+
+            {!isEmbedded && (
+                <div className="mt-20">
+                    <InfrastructureManager />
+                </div>
+            )}
 
             <PaymentModal
                 isOpen={isPaymentOpen}

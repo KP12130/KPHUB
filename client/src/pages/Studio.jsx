@@ -9,13 +9,12 @@ import {
     MoreVertical, Eye, Download, Heart, Trash2, Edit3,
     Lock, Globe, Shield, ShieldOff, CreditCard, TrendingUp, Users,
     CheckCircle2, AlertCircle, Plus, Zap, Star, Trophy, Activity, ArrowRight,
-    DollarSign, BarChart3, PieChart, X, LifeBuoy, Mail, Clock, Send, ShoppingBag
+    DollarSign, BarChart3, PieChart, X, LifeBuoy, Mail, Clock, Send, ShoppingBag, Box
 } from 'lucide-react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import AnalyticsChart from '../components/AnalyticsChart';
 import PaymentModal from '../components/PaymentModal';
-import Sentinel from '../components/Sentinel';
 import SupportChat from '../components/SupportChat';
 import SupportChatAdmin from '../components/SupportChatAdmin';
 import WithdrawalModal from '../components/WithdrawalModal';
@@ -357,7 +356,6 @@ const Studio = () => {
                                 label={currentUser.username === 'KP12130' ? 'Support Grid' : 'Support'}
                             />
                             <MenuButton id="TRANSACTIONS" icon={CreditCard} label="Transactions" />
-                            <MenuButton id="SENTINEL" icon={Shield} label="Sentinel" />
                             <MenuButton id="REWARDS" icon={ShoppingBag} label="Rewards" />
                             <MenuButton id="VIOLATIONS" icon={ShieldOff} label="Violations" />
                             <MenuButton id="SETTINGS" icon={Settings} label="Settings" />
@@ -433,6 +431,21 @@ const Studio = () => {
                                             <span className="text-[8px] font-mono text-gray-500 uppercase">Vault Rewards</span>
                                             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <ArrowRight className="w-3 h-3 text-neon-green" />
+                                            </div>
+                                        </GlassCard>
+                                        <GlassCard
+                                            onClick={() => navigate('/forge')}
+                                            className="flex flex-col items-center justify-center text-center p-4 border border-white/5 hover:border-white/20 transition-all cursor-pointer group relative overflow-hidden"
+                                        >
+                                            <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-white/5 rounded-xl mb-3 group-hover:bg-white/10 transition-colors">
+                                                <Box className="w-6 h-6 text-gray-400 group-hover:text-neon-blue transition-colors" />
+                                            </motion.div>
+                                            <span className="text-2xl font-black text-white">
+                                                {currentUser?.stats?.uploads || 0} / {(userTier === 'GHOST' ? 5 : 99) + (currentUser?.stats?.extraSlots || 0)}
+                                            </span>
+                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Grid Slots</span>
+                                            <div className="absolute top-2 right-2 p-1 bg-neon-blue/10 rounded group-hover:bg-neon-blue/20 transition-colors text-neon-blue">
+                                                <Plus className="w-2 h-2" />
                                             </div>
                                         </GlassCard>
                                     </div>
@@ -776,24 +789,6 @@ const Studio = () => {
                                 </GlassCard>
                             )}
 
-                            {view === 'SENTINEL' && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="space-y-8"
-                                >
-                                    <div className="flex justify-between items-end">
-                                        <div>
-                                            <h2 className="text-4xl font-black text-white tracking-tighter italic uppercase flex items-center gap-4">
-                                                <Shield className="w-10 h-10 text-neon-blue" />
-                                                Sentinel Protocol
-                                            </h2>
-                                            <p className="text-gray-500 font-mono text-sm mt-2">Security automation & perimeter defense intelligence.</p>
-                                        </div>
-                                    </div>
-                                    <Sentinel />
-                                </motion.div>
-                            )}
 
                             {view === 'SUPPORT' && (
                                 <motion.div

@@ -17,6 +17,12 @@ const RANKS = {
 const WITHDRAWAL_MINIMUM = 5000;
 const PLATFORM_COMMISSION = 0.15; // 15% commission on tips to cover fees/profit
 
+const INFRA_PRICING = {
+    SLOT_UNIT_COST: 1500, // KPC per extra slot
+    STORAGE_UNIT_COST: 3000, // KPC per extra 50MB
+    STORAGE_UNIT_MB: 50
+};
+
 const GIFT_CARDS = {
     'AMZN_10': { id: 'AMZN_10', label: 'Amazon.com $10', cost: 15000, company: 'Amazon', icon: 'ShoppingBag' },
     'AMZN_25': { id: 'AMZN_25', label: 'Amazon.com $25', cost: 37500, company: 'Amazon', icon: 'ShoppingBag' },
@@ -88,6 +94,62 @@ router.post('/buy-flare', async (req, res) => {
         });
 
         res.json({ success: true, flareId });
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
+// POST /api/exchange/buy-infrastructure
+router.post('/buy-infrastructure', async (req, res) => {
+    try {
+        const { uid, slots, storageUnits } = req.body;
+        if (!uid) return res.status(400).json({ error: 'Identification required.' });
+
+        const numSlots = parseInt(slots) || 0;
+        const numStorageUnits = parseInt(storageUnits) || 0;
+
+        if (numSlots <= 0 && numStorageUnits <= 0) {
+            return res.status(400).json({ error: 'Selection required for upgrade.' });
+        }
+
+        const totalCost = (numSlots * INFRA_PRICING.SLOT_UNIT_COST) +
+            (numStorageUnits * INFRA_PRICING.STORAGE_UNIT_COST);
+
+        const userRef = db.collection('users').doc(uid);
+
+        await db.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) throw new Error('User not found.');
+
+            const userData = userDoc.data();
+            const currentBalance = userData.stats?.kpcBalance || 0;
+
+            if (currentBalance < totalCost) {
+                throw new Error('INSUFFICIENT_CREDITS');
+            }
+
+            transaction.update(userRef, {
+                'stats.kpcBalance': admin.firestore.FieldValue.increment(-totalCost),
+                'stats.extraSlots': admin.firestore.FieldValue.increment(numSlots),
+                'stats.extraStorageMB': admin.firestore.FieldValue.increment(numStorageUnits * INFRA_PRICING.STORAGE_UNIT_MB)
+            });
+
+            // Ledger log
+            transaction.set(db.collection('kpc_ledger').doc(), {
+                uid,
+                amount: -totalCost,
+                type: 'INFRA_UPGRADE',
+                details: { slots: numSlots, storageMB: numStorageUnits * INFRA_PRICING.STORAGE_UNIT_MB },
+                timestamp: admin.firestore.FieldValue.serverTimestamp()
+            });
+        });
+
+        res.json({
+            success: true,
+            addedSlots: numSlots,
+            addedStorageMB: numStorageUnits * INFRA_PRICING.STORAGE_UNIT_MB,
+            totalCost
+        });
     } catch (e) {
         res.status(400).json({ error: e.message });
     }

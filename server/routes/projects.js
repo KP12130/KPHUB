@@ -67,9 +67,27 @@ router.post('/', upload.fields([
         const userTier = userData.tier || 'GHOST';
         const projectCount = userData.stats?.uploads || 0;
 
-        if (userTier === 'GHOST' && projectCount >= 5) {
+        // Multi-tier & Upgradeable Limits
+        const baseSlots = userTier === 'GHOST' ? 5 : Infinity;
+        const extraSlots = userData.stats?.extraSlots || 0;
+        const maxSlots = baseSlots + extraSlots;
+
+        if (projectCount >= maxSlots) {
             return res.status(403).json({
-                error: 'UPLOAD_LIMIT_REACHED: GHOST citizens are limited to 5 systems. Upgrade to PRO to unlock unlimited grid bandwidth.'
+                error: `UPLOAD_LIMIT_REACHED: Your grid capacity is full (${projectCount}/${maxSlots} slots occupied). Upgrade to PRO or acquire extra infrastructure slots in the Forge.`
+            });
+        }
+
+        // Dynamic File Size Limit
+        const baseStorageMB = 100; // Base 100MB
+        const extraStorageMB = userData.stats?.extraStorageMB || 0;
+        const maxFileSize = (baseStorageMB + extraStorageMB) * 1024 * 1024;
+
+        // Check total size of current upload
+        const totalUploadSize = projectFiles.reduce((sum, f) => sum + f.size, 0);
+        if (totalUploadSize > maxFileSize) {
+            return res.status(413).json({
+                error: `SYSTEM_PAYLOAD_EXCEEDED: Your transmission size (${(totalUploadSize / (1024 * 1024)).toFixed(2)}MB) exceeds your current grid allocation (${baseStorageMB + extraStorageMB}MB). Acquire more storage in the Forge.`
             });
         }
 
