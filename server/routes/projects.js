@@ -263,6 +263,7 @@ router.post('/', upload.fields([
             stats: { likes: 0, views: 0, downloads: 0, comments: 0 },
             memberOnly: req.body.memberOnly === 'true' || req.body.memberOnly === true,
             isPrivate: req.body.isPrivate === 'true' || req.body.isPrivate === true,
+            moderationStatus: hasExecutables ? 'PENDING' : 'APPROVED',
             createdAt: new Date().toISOString()
         };
 
@@ -592,7 +593,7 @@ router.get('/', async (req, res) => {
         let projects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         // Filter in memory for safety
-        projects = projects.filter(p => p.isPrivate !== true);
+        projects = projects.filter(p => p.isPrivate !== true && p.moderationStatus !== 'PENDING' && p.moderationStatus !== 'REJECTED');
 
         if (search) {
             const searchLower = search.toLowerCase();
@@ -644,6 +645,12 @@ router.get('/:id', async (req, res) => {
         if (!doc.exists) return res.status(404).json({ error: 'Project not found' });
 
         const data = doc.data();
+
+        // Security: Block PENDING projects from public view
+        if (data.moderationStatus === 'PENDING' && data.author.uid !== userId && userId !== 'KP12130') {
+            return res.status(403).json({ error: 'This project is currently awaiting administrative audit.' });
+        }
+
         if (!data.memberOnly) projectDetailCache.set(projectId, data);
 
         // Fetch Author Rank & Tenure for Trust Signals
@@ -818,6 +825,45 @@ router.get('/raw', async (req, res) => {
     } catch (error) {
         console.error('Raw File Fetch Error:', error);
         res.status(500).json({ error: 'Failed' });
+    }
+});
+
+// --- ADMIN MODERATION ENDPOINTS ---
+
+// GET /api/projects/admin/pending - Fetch all pending projects
+router.get('/admin/pending', async (req, res) => {
+    try {
+        const snapshot = await db.collection('projects')
+            .where('moderationStatus', '==', 'PENDING')
+            .get();
+        const projects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.json(projects);
+    } catch (error) {
+        console.error('[ADMIN_MOD] Pending fetch failed:', error);
+        res.status(500).json({ error: 'Failed to fetch pending projects.' });
+    }
+});
+
+// POST /api/projects/admin/approve - Approve a project
+router.post('/admin/approve', async (req, res) => {
+    try {
+        const { projectId, adminToken } = req.body;
+
+        // Simple token check (could be improved with proper auth)
+        if (adminToken !== "KxhTpq53249..__gKP") {
+            return res.status(403).json({ error: 'UNAUTHORIZED_ACCESS' });
+        }
+
+        if (!projectId) return res.status(400).json({ error: 'Project ID required' });
+
+        await db.collection('projects').doc(projectId).update({
+            moderationStatus: 'APPROVED'
+        });
+
+        res.json({ success: true, message: 'Project approved successfully.' });
+    } catch (error) {
+        console.error('[ADMIN_MOD] Approval failed:', error);
+        res.status(500).json({ error: 'Approval process failed.' });
     }
 });
 

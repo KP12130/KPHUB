@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SupportChatAdmin from '../components/SupportChatAdmin';
 import ModerationPanel from '../components/ModerationPanel';
 import SecurityPanel from '../components/SecurityPanel';
+import ProjectModerationPanel from '../components/ProjectModerationPanel';
 
 // CREDENTIALS
 const ADMIN_USER = "KP12130";
@@ -51,7 +52,7 @@ const Admin = () => {
 
     const [searchParams, setSearchParams] = useSearchParams();
     const initialTab = searchParams.get('tab') || 'SUPPORT';
-    const [activeTab, setActiveTab] = useState(initialTab); // SUPPORT, VERIFICATION, USER_MANAGEMENT, NEXUS_MANAGER
+    const [activeTab, setActiveTab] = useState(initialTab); // SUPPORT, VERIFICATION, USER_MANAGEMENT, NEXUS_MANAGER, PROJECTS
     const [hackathons, setHackathons] = useState([]);
     const [isNexusLoading, setIsNexusLoading] = useState(false);
     const [newHack, setNewHack] = useState({ title: '', description: '', reward: '', entryFee: 0, durationDays: 7, image: '' });
@@ -63,6 +64,7 @@ const Admin = () => {
     useEffect(() => {
         if (isAuthenticated && activeTab === 'VERIFICATION') fetchPendingVerifications();
         if (isAuthenticated && activeTab === 'NEXUS_MANAGER') fetchHackathons();
+        if (isAuthenticated && activeTab === 'PAYOUTS') fetchPayoutRequests();
         if (isAuthenticated && activeTab === 'PAYOUTS') fetchPayoutRequests();
 
         // Update URL query param when tab changes
@@ -309,7 +311,7 @@ const Admin = () => {
                     <p className="text-gray-500 font-mono text-xs tracking-[0.3em] uppercase mt-2">System command & support orchestration.</p>
                 </div>
                 <div className="flex gap-4">
-                    {['SUPPORT', 'VERIFICATION', 'PAYOUTS'].includes(activeTab) && (
+                    {['SUPPORT', 'VERIFICATION', 'PAYOUTS', 'PROJECTS'].includes(activeTab) && (
                         <button onClick={() => {
                             if (activeTab === 'SUPPORT') fetchTickets();
                             if (activeTab === 'VERIFICATION') fetchPendingVerifications();
@@ -336,6 +338,12 @@ const Admin = () => {
                     className={`px-6 py-2.5 rounded-xl font-black uppercase text-[9px] tracking-widest transition-all flex items-center gap-2 ${activeTab === 'VERIFICATION' ? 'bg-neon-green text-black shadow-[0_0_20px_rgba(57,255,20,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
                 >
                     <ShieldCheck className="w-3.5 h-3.5" /> Citizen_Audits
+                </button>
+                <button
+                    onClick={() => setActiveTab('PROJECTS')}
+                    className={`px-6 py-2.5 rounded-xl font-black uppercase text-[9px] tracking-widest transition-all flex items-center gap-2 ${activeTab === 'PROJECTS' ? 'bg-neon-blue text-black shadow-[0_0_20px_rgba(0,212,255,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
+                >
+                    <Package className="w-3.5 h-3.5" /> Project_Audits
                 </button>
                 <button
                     onClick={() => setActiveTab('PAYOUTS')}
@@ -427,6 +435,10 @@ const Admin = () => {
 
             {activeTab === 'SECURITY_IP' && (
                 <SecurityPanel />
+            )}
+
+            {activeTab === 'PROJECTS' && (
+                <ProjectModerationPanel adminToken={loginData.pass} />
             )}
 
             {activeTab === 'PAYOUTS' && (
