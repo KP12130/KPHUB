@@ -4,7 +4,7 @@ import {
     Shield, Lock, Terminal, Activity, LifeBuoy, Mail,
     Clock, CheckCircle2, Send, ArrowLeft, LogOut, Loader2,
     AlertCircle, Check, ExternalLink, Users, Slash, Globe, Trophy, Plus,
-    Calendar, DollarSign, Gift, Star, X
+    Calendar, DollarSign, Gift, Star, X, ShieldCheck, ShieldAlert
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE } from '../api';
@@ -201,6 +201,18 @@ const Admin = () => {
         }
     };
 
+    const fetchPayoutRequests = async () => {
+        setIsLoading(true);
+        try {
+            const res = await axios.get(`${API_BASE}/api/exchange/admin/payout-requests`);
+            setPayoutRequests(res.data);
+        } catch (err) {
+            toast.error("Payout data sync failure.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleCreateHack = async (e) => {
         e.preventDefault();
         try {
@@ -307,18 +319,42 @@ const Admin = () => {
                 </div>
             </header>
 
-            <div className="flex gap-4 mb-8">
+            <div className="flex flex-wrap gap-3 mb-10">
+                <button
+                    onClick={() => setActiveTab('SUPPORT')}
+                    className={`px-6 py-2.5 rounded-xl font-black uppercase text-[9px] tracking-widest transition-all flex items-center gap-2 ${activeTab === 'SUPPORT' ? 'bg-neon-blue text-black shadow-[0_0_20px_rgba(0,212,255,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
+                >
+                    <LifeBuoy className="w-3.5 h-3.5" /> Support_Tickets
+                </button>
+                <button
+                    onClick={() => setActiveTab('VERIFICATION')}
+                    className={`px-6 py-2.5 rounded-xl font-black uppercase text-[9px] tracking-widest transition-all flex items-center gap-2 ${activeTab === 'VERIFICATION' ? 'bg-neon-green text-black shadow-[0_0_20px_rgba(57,255,20,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
+                >
+                    <ShieldCheck className="w-3.5 h-3.5" /> Citizen_Audits
+                </button>
                 <button
                     onClick={() => setActiveTab('PAYOUTS')}
-                    className={`px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${activeTab === 'PAYOUTS' ? 'bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
+                    className={`px-6 py-2.5 rounded-xl font-black uppercase text-[9px] tracking-widest transition-all flex items-center gap-2 ${activeTab === 'PAYOUTS' ? 'bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
                 >
-                    Redemption_Queue
+                    <Zap className="w-3.5 h-3.5" /> Redemption_Queue
+                </button>
+                <button
+                    onClick={() => setActiveTab('USER_MANAGEMENT')}
+                    className={`px-6 py-2.5 rounded-xl font-black uppercase text-[9px] tracking-widest transition-all flex items-center gap-2 ${activeTab === 'USER_MANAGEMENT' ? 'bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
+                >
+                    <Users className="w-3.5 h-3.5" /> Moderation
+                </button>
+                <button
+                    onClick={() => setActiveTab('NEXUS_MANAGER')}
+                    className={`px-6 py-2.5 rounded-xl font-black uppercase text-[9px] tracking-widest transition-all flex items-center gap-2 ${activeTab === 'NEXUS_MANAGER' ? 'bg-purple-600 text-white shadow-[0_0_20px_rgba(147,51,234,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
+                >
+                    <Trophy className="w-3.5 h-3.5" /> Nexus_Events
                 </button>
                 <button
                     onClick={() => setActiveTab('SECURITY_IP')}
-                    className={`px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${activeTab === 'SECURITY_IP' ? 'bg-orange-500 text-black shadow-[0_0_20px_rgba(249,115,22,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
+                    className={`px-6 py-2.5 rounded-xl font-black uppercase text-[9px] tracking-widest transition-all flex items-center gap-2 ${activeTab === 'SECURITY_IP' ? 'bg-orange-500 text-black shadow-[0_0_20px_rgba(249,115,22,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
                 >
-                    Security_&_IPs
+                    <ShieldAlert className="w-3.5 h-3.5" /> Security_&_IPs
                 </button>
             </div>
 
