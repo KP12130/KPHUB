@@ -56,10 +56,12 @@ const Admin = () => {
     const [selectedHackId, setSelectedHackId] = useState(null);
     const [pendingVerifications, setPendingVerifications] = useState([]);
     const [isVerifying, setIsVerifying] = useState(false);
+    const [payoutRequests, setPayoutRequests] = useState([]);
 
     useEffect(() => {
         if (isAuthenticated && activeTab === 'VERIFICATION') fetchPendingVerifications();
         if (isAuthenticated && activeTab === 'NEXUS_MANAGER') fetchHackathons();
+        if (isAuthenticated && activeTab === 'PAYOUTS') fetchPayoutRequests();
     }, [isAuthenticated, activeTab]);
 
     const handleLogin = (e) => {
@@ -148,6 +150,22 @@ const Admin = () => {
             toast.error("Audit action failed.");
         } finally {
             setIsVerifying(false);
+        }
+    };
+
+    const handlePayoutAction = async (requestId, action) => {
+        const feedback = (action === 'REJECT' || action === 'REFUND') ? window.prompt(`${action}_REASON:`, "Information mismatch.") : null;
+        if ((action === 'REJECT' || action === 'REFUND') && feedback === null) return;
+
+        setIsLoading(true);
+        try {
+            await axios.post(`${API_BASE}/api/exchange/admin/payout-action`, { requestId, action, feedback });
+            toast.success(`PAYOUT_${action}: Request updated.`);
+            fetchPayoutRequests();
+        } catch (err) {
+            toast.error("Payout action failure.");
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -274,8 +292,12 @@ const Admin = () => {
                     <p className="text-gray-500 font-mono text-xs tracking-[0.3em] uppercase mt-2">System command & support orchestration.</p>
                 </div>
                 <div className="flex gap-4">
-                    {activeTab !== 'USER_MANAGEMENT' && (
-                        <button onClick={activeTab === 'SUPPORT' ? fetchTickets : fetchPendingVerifications} className="px-4 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-white/10 transition-all flex items-center gap-2">
+                    {['SUPPORT', 'VERIFICATION', 'PAYOUTS'].includes(activeTab) && (
+                        <button onClick={() => {
+                            if (activeTab === 'SUPPORT') fetchTickets();
+                            if (activeTab === 'VERIFICATION') fetchPendingVerifications();
+                            if (activeTab === 'PAYOUTS') fetchPayoutRequests();
+                        }} className="px-4 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-white/10 transition-all flex items-center gap-2">
                             <Loader2 className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} /> Sync_Data
                         </button>
                     )}
@@ -287,32 +309,14 @@ const Admin = () => {
 
             <div className="flex gap-4 mb-8">
                 <button
-                    onClick={() => setActiveTab('SUPPORT')}
-                    className={`px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${activeTab === 'SUPPORT' ? 'bg-neon-blue text-black shadow-[0_0_20px_rgba(0,212,255,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
+                    onClick={() => setActiveTab('PAYOUTS')}
+                    className={`px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${activeTab === 'PAYOUTS' ? 'bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
                 >
-                    Support_Transmissions
-                </button>
-                <button
-                    onClick={() => setActiveTab('VERIFICATION')}
-                    className={`px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${activeTab === 'VERIFICATION' ? 'bg-neon-green text-black shadow-[0_0_20px_rgba(57,255,20,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
-                >
-                    Identity_Audits
-                </button>
-                <button
-                    onClick={() => setActiveTab('USER_MANAGEMENT')}
-                    className={`px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${activeTab === 'USER_MANAGEMENT' ? 'bg-red-500 text-black shadow-[0_0_20px_rgba(239,68,68,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
-                >
-                    User_Management
-                </button>
-                <button
-                    onClick={() => setActiveTab('NEXUS_MANAGER')}
-                    className={`px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${activeTab === 'NEXUS_MANAGER' ? 'bg-purple-500 text-black shadow-[0_0_20px_rgba(168,85,247,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
-                >
-                    Nexus_Manager
+                    Redemption_Queue
                 </button>
                 <button
                     onClick={() => setActiveTab('SECURITY_IP')}
-                    className={`px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${activeTab === 'SECURITY_IP' ? 'bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
+                    className={`px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${activeTab === 'SECURITY_IP' ? 'bg-orange-500 text-black shadow-[0_0_20px_rgba(249,115,22,0.4)]' : 'bg-white/5 text-gray-500 hover:text-white'}`}
                 >
                     Security_&_IPs
                 </button>
@@ -382,6 +386,92 @@ const Admin = () => {
 
             {activeTab === 'SECURITY_IP' && (
                 <SecurityPanel />
+            )}
+
+            {activeTab === 'PAYOUTS' && (
+                <div className="space-y-8">
+                    <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic flex items-center gap-3">
+                        <Trophy className="text-yellow-500" /> Pending_Reward_Redemptions
+                    </h2>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {payoutRequests.length > 0 ? (
+                            payoutRequests.map(req => (
+                                <GlassCard key={req.id} className="border border-white/5 hover:border-yellow-500/30 transition-all flex flex-col md:flex-row gap-6">
+                                    <div className="flex-grow space-y-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-500">
+                                                <Zap className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-white font-black uppercase text-sm tracking-widest">@{req.username}</h3>
+                                                <p className="text-[10px] text-gray-500 font-mono tracking-tighter truncate max-w-[200px]">{req.id}</p>
+                                            </div>
+                                        </div>
+                                        <div className="p-4 bg-void border border-white/5 rounded-2xl">
+                                            <p className="text-[8px] font-bold text-gray-600 uppercase mb-2">Redemption_Data</p>
+                                            <p className="text-xs font-mono text-gray-300 break-all">{req.details}</p>
+                                            {req.cardId && (
+                                                <div className="mt-2 pt-2 border-t border-white/5 flex gap-4">
+                                                    <div>
+                                                        <p className="text-[8px] text-gray-500 uppercase">Card_ID</p>
+                                                        <p className="text-[10px] font-black text-neon-blue uppercase">{req.cardId}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[8px] text-gray-500 uppercase">Target_Email</p>
+                                                        <p className="text-[10px] font-black text-white">{req.email || 'N/A'}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="w-full md:w-48 flex flex-col justify-between pt-2">
+                                        <div className="text-right mb-4">
+                                            <p className="text-[10px] font-black text-gray-500 uppercase">Amount_Requested</p>
+                                            <p className="text-2xl font-black text-yellow-500">{req.amount.toLocaleString()} <span className="text-xs">KPC</span></p>
+                                            {req.userSnapshot && (
+                                                <div className="mt-2 text-[8px] font-mono text-gray-600 uppercase">
+                                                    <p>Audit_Snapshot:</p>
+                                                    <p>W_KPC: {req.userSnapshot.withdrawableKpc}</p>
+                                                    <p>S_KPC: {req.userSnapshot.kpcBalance}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="space-y-2">
+                                            <button
+                                                onClick={() => handlePayoutAction(req.id, 'APPROVE')}
+                                                disabled={isLoading}
+                                                className="w-full py-2 bg-neon-green text-black font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-white transition-all shadow-lg"
+                                            >
+                                                Fulfill_&_Settle
+                                            </button>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handlePayoutAction(req.id, 'REJECT')}
+                                                    disabled={isLoading}
+                                                    className="flex-1 py-2 bg-red-500/10 text-red-500 border border-red-500/20 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-red-500 hover:text-white transition-all"
+                                                >
+                                                    Reject
+                                                </button>
+                                                <button
+                                                    onClick={() => handlePayoutAction(req.id, 'REFUND')}
+                                                    disabled={isLoading}
+                                                    className="flex-1 py-2 bg-blue-500/10 text-blue-400 border border-blue-500/20 font-black uppercase text-[9px] tracking-widest rounded-lg hover:bg-blue-500 hover:text-white transition-all"
+                                                >
+                                                    Refund
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </GlassCard>
+                            ))
+                        ) : (
+                            <div className="col-span-full py-20 text-center glass-panel rounded-3xl border border-dashed border-white/5">
+                                <DollarSign className="w-12 h-12 text-gray-800 mx-auto mb-4" />
+                                <p className="text-gray-500 font-mono text-xs uppercase tracking-widest">The payout queue is currently empty.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
             )}
 
             {activeTab === 'NEXUS_MANAGER' && (

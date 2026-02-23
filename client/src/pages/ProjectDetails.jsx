@@ -19,7 +19,7 @@ import AIAssistant from '../components/AIAssistant';
 import Devlog from '../components/Devlog';
 import ShowcaseEmbed from '../components/ShowcaseEmbed';
 import AdUnit from '../components/AdUnit';
-import DonationModal from '../components/DonationModal';
+import SupportButton from '../components/SupportButton';
 
 // --- Reusable Glass Components ---
 const GlassCard = ({ children, className = "" }) => (
@@ -395,12 +395,12 @@ const ProjectDetails = () => {
                         initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}
                         className="flex gap-4"
                     >
-                        <button
-                            onClick={() => setIsDonationOpen(true)}
-                            className="h-14 px-6 bg-purple-600/20 border border-purple-500/50 text-white font-black uppercase tracking-widest rounded-2xl flex items-center gap-2 hover:bg-purple-600 hover:scale-105 transition-all shadow-[0_0_20px_rgba(168,85,247,0.3)]"
-                        >
-                            <CreditCard className="w-5 h-5" /> Support
-                        </button>
+                        <SupportButton
+                            receiverUid={project.author?.uid}
+                            projectTitle={project.title}
+                            projectId={id}
+                            className="h-14"
+                        />
 
                         <button
                             onClick={handleLike}
@@ -688,13 +688,7 @@ const ProjectDetails = () => {
                 </div>
             </div>
 
-            {/* Donation Modal */}
-            {isDonationOpen && (
-                <DonationModal
-                    targetUser={project.author}
-                    onClose={() => setIsDonationOpen(false)}
-                />
-            )}
+            {/* DonationModal removed in favor of SupportButton inline component */}
 
             {/* Request Review Modal */}
             {isRequestOpen && (

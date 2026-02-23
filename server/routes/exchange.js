@@ -14,11 +14,23 @@ const RANKS = {
     'LEGEND': { kpcPrice: 50000, label: 'Grid Legend', description: 'Permanent footprint in the global leaderboard and exclusive badge metadata.', roles: ['PRO_ARCHITECT', 'ELITE_OPERATOR', 'GRID_LEGEND'], weight: 3, periodDays: 30 }
 };
 
+const WITHDRAWAL_MINIMUM = 5000;
+const PLATFORM_COMMISSION = 0.15; // 15% commission on tips to cover fees/profit
+
+const GIFT_CARDS = {
+    'AMZN_10': { id: 'AMZN_10', label: 'Amazon.com $10', cost: 10000, company: 'Amazon', icon: 'ShoppingBag' },
+    'AMZN_25': { id: 'AMZN_25', label: 'Amazon.com $25', cost: 25000, company: 'Amazon', icon: 'ShoppingBag' },
+    'STM_10': { id: 'STM_10', label: 'Steam Wallet $10', cost: 10000, company: 'Steam', icon: 'Gamepad2' },
+    'STM_20': { id: 'STM_20', label: 'Steam Wallet $20', cost: 20000, company: 'Steam', icon: 'Gamepad2' },
+    'RBLX_10': { id: 'RBLX_10', label: 'Roblox 800 Robux', cost: 10000, company: 'Roblox', icon: 'Dice6' },
+    'GPLY_10': { id: 'GPLY_10', label: 'Google Play $10', cost: 10000, company: 'Google', icon: 'Play' }
+};
+
 const KPC_BUNDLES = {
-    'STARTER': { amount: 2500, price: 4.99, label: 'Starter Hub' },
-    'PULSE': { amount: 10000, price: 14.99, label: 'Pulse Stream' },
-    'MATRIX': { amount: 50000, price: 49.99, label: 'Matrix Core' },
-    'OVERLORD': { amount: 150000, price: 99.99, label: 'Overlord Node' }
+    'STARTER': { amount: 5000, price: 14.99, label: 'Starter Hub' },
+    'PULSE': { amount: 20000, price: 39.99, label: 'Pulse Stream' },
+    'MATRIX': { amount: 50000, price: 74.99, label: 'Matrix Core' },
+    'OVERLORD': { amount: 100000, price: 100.00, label: 'Overlord Node' }
 };
 
 const FLARES = {
@@ -123,9 +135,6 @@ router.post('/buy-kpc', async (req, res) => {
             const userDoc = await transaction.get(userRef);
             if (!userDoc.exists) throw new Error('User not found.');
 
-            // In a real app, verify payment status here with Stripe/PayPal webhook
-            // For this sim, we assume payment success reached this route.
-
             transaction.update(userRef, {
                 'stats.kpcBalance': admin.firestore.FieldValue.increment(bundle.amount),
                 'updatedAt': admin.firestore.FieldValue.serverTimestamp()
@@ -148,6 +157,201 @@ router.post('/buy-kpc', async (req, res) => {
     } catch (error) {
         console.error('KPC Purchase Error:', error);
         res.status(400).json({ error: error.message || 'Acquisition failed.' });
+    }
+});
+
+/**
+ * WITHDRAWAL SYSTEM
+ */
+
+// POST /api/exchange/withdraw (Legacy name, now used for Gift Card redemptions)
+router.post('/withdraw', async (req, res) => {
+    try {
+        const { uid, amount, details, cardId, email } = req.body;
+
+        // Basic validation
+        if (!uid || !amount || amount < WITHDRAWAL_MINIMUM) {
+            return res.status(400).json({ error: `Minimum redemption: ${WITHDRAWAL_MINIMUM} KPC.` });
+        }
+
+        // Card validation if provided (new system)
+        if (cardId && !GIFT_CARDS[cardId]) {
+            return res.status(400).json({ error: "Invalid reward selection." });
+        }
+
+        const userRef = db.collection('users').doc(uid);
+
+        await db.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) throw new Error('Citizen not found.');
+            const userData = userDoc.data();
+
+            // Check against WITHDRAWABLE balance
+            if ((userData.stats?.withdrawableKpc || 0) < amount) {
+                throw new Error('INSUFFICIENT_WITHDRAWABLE_CREDITS');
+            }
+
+            // Deduct from withdrawable balance
+            transaction.update(userRef, {
+                'stats.withdrawableKpc': admin.firestore.FieldValue.increment(-amount),
+                'updatedAt': admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            // Create redemption request document
+            const requestRef = db.collection('payout_requests').doc();
+            transaction.set(requestRef, {
+                uid,
+                username: userData.username || 'GHOST',
+                amount,
+                details: details || `Redeem: ${cardId} to ${email}`,
+                cardId: cardId || 'LEGACY_CASH',
+                email: email || null,
+                status: 'PENDING',
+                type: 'GIFT_CARD_REDEMPTION',
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                userSnapshot: {
+                    kpcBalance: userData.stats?.kpcBalance || 0,
+                    withdrawableKpc: userData.stats?.withdrawableKpc || 0
+                }
+            });
+
+            // Log to ledger
+            transaction.set(db.collection('kpc_ledger').doc(), {
+                uid,
+                amount: -amount,
+                type: 'GIFT_CARD_REDEEM',
+                cardId: cardId || 'CASH',
+                requestId: requestRef.id,
+                timestamp: admin.firestore.FieldValue.serverTimestamp()
+            });
+        });
+
+        res.json({ success: true, message: "Redemption sequence engaged. Reward code will be transmitted via email." });
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
+// NEW: GET /api/exchange/gift-cards
+router.get('/gift-cards', (req, res) => {
+    res.json(GIFT_CARDS);
+});
+
+// NEW: POST /api/exchange/support-creator - Tipping system
+router.post('/support-creator', async (req, res) => {
+    try {
+        const { senderUid, receiverUid, amount, projectId, projectTitle } = req.body;
+        if (!senderUid || !receiverUid || !amount || amount < 100) {
+            return res.status(400).json({ error: "Min support: 100 KPC." });
+        }
+        if (senderUid === receiverUid) {
+            return res.status(400).json({ error: "Cannot channel support to yourself." });
+        }
+
+        const senderRef = db.collection('users').doc(senderUid);
+        const receiverRef = db.collection('users').doc(receiverUid);
+
+        await db.runTransaction(async (transaction) => {
+            const senderDoc = await transaction.get(senderRef);
+            const receiverDoc = await transaction.get(receiverRef);
+
+            if (!senderDoc.exists || !receiverDoc.exists) throw new Error('User not found.');
+            const senderData = senderDoc.data();
+
+            if ((senderData.stats?.kpcBalance || 0) < amount) {
+                throw new Error('INSUFFICIENT_CREDITS');
+            }
+
+            const netAmount = Math.floor(amount * (1 - PLATFORM_COMMISSION));
+
+            // Deduct from sender's SPENDABLE balance
+            transaction.update(senderRef, {
+                'stats.kpcBalance': admin.firestore.FieldValue.increment(-amount)
+            });
+
+            // Add to receiver's WITHDRAWABLE balance
+            transaction.update(receiverRef, {
+                'stats.withdrawableKpc': admin.firestore.FieldValue.increment(netAmount),
+                'notifications': admin.firestore.FieldValue.arrayUnion({
+                    type: 'CREATOR_SUPPORT',
+                    senderUsername: senderData.username,
+                    amount: netAmount,
+                    projectTitle: projectTitle || 'Generic Support',
+                    timestamp: new Date().toISOString()
+                })
+            });
+
+            // Log entry
+            transaction.set(db.collection('kpc_ledger').doc(), {
+                senderUid,
+                receiverUid,
+                amount,
+                netAmount,
+                type: 'CREATOR_SUPPORT',
+                projectId,
+                timestamp: admin.firestore.FieldValue.serverTimestamp()
+            });
+        });
+
+        res.json({ success: true, message: "Support packet transmitted!" });
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
+// ADMIN: GET /api/exchange/admin/payout-requests
+router.get('/admin/payout-requests', async (req, res) => {
+    try {
+        const snapshot = await db.collection('payout_requests')
+            .where('status', '==', 'PENDING')
+            .orderBy('createdAt', 'desc')
+            .get();
+        const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.json(requests);
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
+// ADMIN: POST /api/exchange/admin/payout-action
+router.post('/admin/payout-action', async (req, res) => {
+    try {
+        const { requestId, action, feedback } = req.body; // action: 'APPROVE', 'REJECT', 'REFUND'
+        const requestRef = db.collection('payout_requests').doc(requestId);
+
+        await db.runTransaction(async (transaction) => {
+            const requestDoc = await transaction.get(requestRef);
+            if (!requestDoc.exists) throw new Error('Request not found.');
+            const requestData = requestDoc.data();
+
+            if (requestData.status !== 'PENDING') throw new Error('Request already processed.');
+
+            const userRef = db.collection('users').doc(requestData.uid);
+
+            if (action === 'APPROVE') {
+                transaction.update(requestRef, { status: 'PAID', processedAt: admin.firestore.FieldValue.serverTimestamp() });
+                // Log final payout in ledger
+                transaction.set(db.collection('kpc_ledger').doc(), {
+                    uid: requestData.uid, amount: 0, type: 'WITHDRAWAL_PAID', requestId, timestamp: admin.firestore.FieldValue.serverTimestamp()
+                });
+            } else if (action === 'REJECT') {
+                transaction.update(requestRef, { status: 'REJECTED', feedback, processedAt: admin.firestore.FieldValue.serverTimestamp() });
+            } else if (action === 'REFUND') {
+                // Return credits to user
+                transaction.update(userRef, {
+                    'stats.kpcBalance': admin.firestore.FieldValue.increment(requestData.amount)
+                });
+                transaction.update(requestRef, { status: 'REFUNDED', feedback, processedAt: admin.firestore.FieldValue.serverTimestamp() });
+                // Log refund in ledger
+                transaction.set(db.collection('kpc_ledger').doc(), {
+                    uid: requestData.uid, amount: requestData.amount, type: 'WITHDRAWAL_REFUND', requestId, timestamp: admin.firestore.FieldValue.serverTimestamp()
+                });
+            }
+        });
+
+        res.json({ success: true, message: `Payout request ${action} processed.` });
+    } catch (e) {
+        res.status(400).json({ error: e.message });
     }
 });
 

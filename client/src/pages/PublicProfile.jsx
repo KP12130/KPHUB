@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { User, Calendar, Award, Code, Trophy, ArrowLeft, Github, Twitter, Globe, ExternalLink, Gift, Heart, Shield } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import ProjectCard from '../components/ProjectCard';
+import SupportButton from '../components/SupportButton';
 import { ActivityCalendar as GitHubCalendar } from 'react-activity-calendar';
 
 const PublicProfile = () => {
@@ -196,6 +197,13 @@ const PublicProfile = () => {
                                 >
                                     {isFollowing ? 'Disconnected' : 'Sync_Follow'}
                                 </button>
+                            )}
+                            {currentUser && currentUser.uid !== user.uid && (
+                                <SupportButton
+                                    receiverUid={user.uid}
+                                    projectTitle="Profile Support"
+                                    className="scale-110"
+                                />
                             )}
                             {currentUser && currentUser.uid !== user.uid && (
                                 <button
