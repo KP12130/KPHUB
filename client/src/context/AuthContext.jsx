@@ -11,6 +11,7 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }) => {
     const [currentUser, setCurrentUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isRedemptionOpen, setIsRedemptionOpen] = useState(false);
 
     const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
     const loginWithGithub = () => signInWithPopup(auth, githubProvider);
@@ -97,6 +98,8 @@ export const AuthProvider = ({ children }) => {
         logout,
         updateUser,
         refreshUser,
+        isRedemptionOpen,
+        setIsRedemptionOpen,
     };
 
     return (

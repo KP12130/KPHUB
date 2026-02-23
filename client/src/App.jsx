@@ -27,6 +27,7 @@ import ActivityFeed from './components/ActivityFeed';
 import FeaturedCarousel from './components/FeaturedCarousel';
 import AdUnit from './components/AdUnit';
 import Ticker from './components/Ticker';
+import WithdrawalModal from './components/WithdrawalModal';
 import Layout from './components/Layout'; // Import Layout
 import CookieConsent from './components/CookieConsent';
 import AchievementHub from './components/AchievementHub';
@@ -36,7 +37,7 @@ import { API_BASE } from './api';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const App = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, isRedemptionOpen, setIsRedemptionOpen } = useAuth();
 
   // 2. Global Connection Monitor (Heartbeat) - REDIRECT PROTOCOL
   useEffect(() => {
@@ -116,6 +117,7 @@ const App = () => {
           </Routes>
           <CookieConsent />
           {currentUser && <AchievementHub currentUser={currentUser} />}
+          <WithdrawalModal isOpen={isRedemptionOpen} onClose={() => setIsRedemptionOpen(false)} />
         </Layout>
       </Router>
     </ThemeProvider>

@@ -11,17 +11,15 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import useSound from '../hooks/useSound';
-import WithdrawalModal from './WithdrawalModal';
 
 const Navbar = ({ onOpenCommandPalette }) => {
-    const { currentUser, logout } = useAuth();
+    const { currentUser, logout, setIsRedemptionOpen } = useAuth();
     const navigate = useNavigate();
     const { playSound } = useSound();
     const [notifications, setNotifications] = useState([]);
     const [showNotifications, setShowNotifications] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [allFlares, setAllFlares] = useState({});
-    const [isWithdrawalOpen, setIsWithdrawalOpen] = useState(false);
 
     // Use a ref to track notification count without triggering dependency loops
     const notifCountRef = React.useRef(0);
@@ -192,9 +190,12 @@ const Navbar = ({ onOpenCommandPalette }) => {
                                     <Zap className="w-3 h-3 text-neon-green group-hover/spend:animate-pulse" />
                                     <span className="text-[10px] font-black text-white">{currentUser.stats?.kpcBalance?.toLocaleString() || 0}</span>
                                     <span className="text-[7px] font-mono text-neon-green uppercase tracking-tighter">KPC</span>
+                                    <Link to="/forge" className="ml-1 p-1 rounded-md bg-neon-green/10 hover:bg-neon-green/20 text-neon-green transition-colors">
+                                        <Plus className="w-3 h-3" />
+                                    </Link>
                                 </div>
                                 <button
-                                    onClick={() => setIsWithdrawalOpen(true)}
+                                    onClick={() => setIsRedemptionOpen(true)}
                                     className="flex items-center gap-2 group/earn hover:opacity-80 transition-all"
                                     title="Redeem for Gift Cards"
                                 >
@@ -300,7 +301,6 @@ const Navbar = ({ onOpenCommandPalette }) => {
                     )}
                 </AnimatePresence>
             </div>
-            <WithdrawalModal isOpen={isWithdrawalOpen} onClose={() => setIsWithdrawalOpen(false)} />
         </nav>
     );
 };

@@ -11,7 +11,7 @@ import {
     CheckCircle2, AlertCircle, Plus, Zap, Star, Trophy, Activity,
     DollarSign, BarChart3, PieChart, X, LifeBuoy, Mail, Clock, Send
 } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import AnalyticsChart from '../components/AnalyticsChart';
 import PaymentModal from '../components/PaymentModal';
@@ -27,7 +27,8 @@ const GlassCard = ({ children, className = "" }) => (
 );
 
 const Studio = () => {
-    const { currentUser, updateUser } = useAuth();
+    const { currentUser, updateUser, setIsRedemptionOpen } = useAuth();
+    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const initialView = searchParams.get('view') || 'DASHBOARD';
     const [view, setView] = useState(initialView);
@@ -373,19 +374,31 @@ const Studio = () => {
                                             <span className="text-2xl font-black text-white">{currentUser.stats?.likesReceived || 0}</span>
                                             <span className="text-[8px] font-mono text-gray-500 uppercase">Pulses Received</span>
                                         </GlassCard>
-                                        <GlassCard className="flex flex-col items-center justify-center text-center p-4 hover:border-neon-blue/30 transition-colors">
-                                            <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-blue/10 rounded-xl mb-3">
+                                        <GlassCard
+                                            onClick={() => navigate('/forge')}
+                                            className="flex flex-col items-center justify-center text-center p-4 border border-white/5 hover:border-neon-blue/50 transition-all cursor-pointer group"
+                                        >
+                                            <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-blue/10 rounded-xl mb-3 group-hover:bg-neon-blue/20 transition-colors">
                                                 <DollarSign className="w-5 h-5 text-neon-blue" />
                                             </motion.div>
                                             <span className="text-2xl font-black text-white">{currentUser.stats?.kpcBalance?.toLocaleString() || 0}</span>
                                             <span className="text-[8px] font-mono text-gray-500 uppercase">KPC Credits</span>
+                                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Plus className="w-3 h-3 text-neon-blue" />
+                                            </div>
                                         </GlassCard>
-                                        <GlassCard className="flex flex-col items-center justify-center text-center p-4 hover:border-neon-green/30 transition-colors">
-                                            <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-green/10 rounded-xl mb-3">
+                                        <GlassCard
+                                            onClick={() => setIsRedemptionOpen(true)}
+                                            className="flex flex-col items-center justify-center text-center p-4 border border-white/5 hover:border-neon-green/50 transition-all cursor-pointer group"
+                                        >
+                                            <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-neon-green/10 rounded-xl mb-3 group-hover:bg-neon-green/20 transition-colors">
                                                 <TrendingUp className="w-5 h-5 text-neon-green" />
                                             </motion.div>
                                             <span className="text-2xl font-black text-white">${stats.adRevenue.toFixed(2)}</span>
-                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Ad Revenue</span>
+                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Redeem_Earnings</span>
+                                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <ArrowRight className="w-3 h-3 text-neon-green" />
+                                            </div>
                                         </GlassCard>
                                     </div>
 
