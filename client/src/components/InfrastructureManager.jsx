@@ -55,7 +55,7 @@ const InfrastructureManager = () => {
                 period
             });
 
-            if (res.data.success) {
+            if (res.data.success && currentUser) {
                 toast.success("INFRASTRUCTURE_EXPANDED: Grid capacity updated.");
 
                 const stats = currentUser.stats || {};

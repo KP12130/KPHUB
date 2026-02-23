@@ -64,7 +64,7 @@ const Upload = () => {
         // 3. Verified Developer Check for Executables (.exe, .bat)
         const EXECUTABLE_EXTENSIONS = ['.exe', '.bat', '.msi', '.cmd'];
         const hasExecutables = files.some(f => EXECUTABLE_EXTENSIONS.some(ext => f.name.toLowerCase().endsWith(ext)));
-        if (hasExecutables) {
+        if (hasExecutables && currentUser) {
             const isVerified = (currentUser.stats?.extraSlots || 0) >= 10 || currentUser.tier === 'PRO';
             if (!isVerified) {
                 setError('SECURITY_RESTRICTION: Uploading executable apps (.exe, .bat) requires Verified Developer status. Acquire a Small Booster (+10 Slots) in the Forge to verify your identity.');
@@ -85,9 +85,9 @@ const Upload = () => {
         data.append('tags', formData.tags);
         data.append('demoUrl', formData.demoUrl);
         data.append('repoUrl', formData.repoUrl);
-        data.append('authorId', currentUser.uid);
-        data.append('authorName', currentUser.displayName || 'Anonymous');
-        data.append('authorAvatar', currentUser.photoURL || '');
+        data.append('authorId', currentUser?.uid || '');
+        data.append('authorName', currentUser?.displayName || currentUser?.username || 'Anonymous');
+        data.append('authorAvatar', currentUser?.photoURL || '');
         data.append('memberOnly', formData.memberOnly);
         data.append('isPrivate', formData.isPrivate);
 
@@ -97,12 +97,14 @@ const Upload = () => {
             });
 
             // Increment locally for immediate UI feedback
-            updateUser({
-                stats: {
-                    ...currentUser.stats,
-                    uploads: (currentUser.stats?.uploads || 0) + 1
-                }
-            });
+            if (currentUser) {
+                updateUser({
+                    stats: {
+                        ...(currentUser.stats || {}),
+                        uploads: (currentUser.stats?.uploads || 0) + 1
+                    }
+                });
+            }
 
             navigate('/studio');
         } catch (err) {
