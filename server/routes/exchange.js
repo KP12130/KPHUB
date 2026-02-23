@@ -31,11 +31,11 @@ const GIFT_CARDS = {
 };
 
 const KPC_BUNDLES = {
-    'STARTER': { amount: 5000, price: 4.99, label: 'Starter Hub' },
-    'PULSE': { amount: 12000, price: 9.99, label: 'Pulse Stream' },
-    'MATRIX': { amount: 35000, price: 24.99, label: 'Matrix Core' },
-    'OVERLORD': { amount: 75000, price: 49.99, label: 'Overlord Node' },
-    'NEXUS': { amount: 160000, price: 99.99, label: 'Nexus Protocol' }
+    'STARTER': { amount: 2500, price: 4.99, label: 'Starter Hub' },
+    'PULSE': { amount: 6000, price: 9.99, label: 'Pulse Stream' },
+    'MATRIX': { amount: 17500, price: 24.99, label: 'Matrix Core' },
+    'OVERLORD': { amount: 40000, price: 49.99, label: 'Overlord Node' },
+    'NEXUS': { amount: 100000, price: 99.99, label: 'Nexus Protocol' }
 };
 
 const FLARES = {
