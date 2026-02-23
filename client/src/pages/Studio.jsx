@@ -28,6 +28,15 @@ const GlassCard = ({ children, className = "" }) => (
     </div>
 );
 
+const formatDate = (dateValue) => {
+    if (!dateValue) return 'N/A';
+    if (dateValue.toDate) return dateValue.toDate().toLocaleString();
+    if (dateValue._seconds) return new Date(dateValue._seconds * 1000).toLocaleString();
+    if (dateValue.seconds) return new Date(dateValue.seconds * 1000).toLocaleString();
+    const d = new Date(dateValue);
+    return isNaN(d.getTime()) ? 'N/A' : d.toLocaleString();
+};
+
 const Studio = () => {
     const { currentUser, updateUser, setIsRedemptionOpen } = useAuth();
     const navigate = useNavigate();
@@ -523,7 +532,7 @@ const Studio = () => {
                                                             <div>
                                                                 <h4 className="font-bold text-white text-sm uppercase tracking-wider">{tx.type.replace(/_/g, ' ')}</h4>
                                                                 <p className="text-[10px] text-gray-500 font-mono">
-                                                                    {new Date(tx.timestamp?.toDate ? tx.timestamp.toDate() : tx.timestamp).toLocaleString()}
+                                                                    {formatDate(tx.timestamp)}
                                                                     {tx.recipientName && ` // TO: @${tx.recipientName}`}
                                                                     {tx.donorName && ` // FROM: @${tx.donorName}`}
                                                                     {tx.item && ` // ITEM: ${tx.item}`}
@@ -902,7 +911,7 @@ const Studio = () => {
                                                                 <div>
                                                                     <h4 className="font-bold text-white text-[10px] uppercase tracking-wider">{req.cardId} Redemption</h4>
                                                                     <p className="text-[8px] text-gray-500 font-mono">
-                                                                        {req.createdAt?.toDate ? new Date(req.createdAt.toDate()).toLocaleString() : new Date(req.createdAt).toLocaleString()}
+                                                                        {formatDate(req.createdAt)}
                                                                         {req.feedback && ` // Feedback: ${req.feedback}`}
                                                                     </p>
                                                                 </div>

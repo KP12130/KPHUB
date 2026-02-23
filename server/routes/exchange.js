@@ -319,11 +319,17 @@ router.get('/payout-requests/:uid', async (req, res) => {
         const { uid } = req.params;
         const snapshot = await db.collection('payout_requests')
             .where('uid', '==', uid)
-            .orderBy('createdAt', 'desc')
-            .limit(20)
             .get();
         const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        res.json(requests);
+
+        // Sort in memory to avoid needing a composite index
+        requests.sort((a, b) => {
+            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+            return dateB - dateA;
+        });
+
+        res.json(requests.slice(0, 20));
     } catch (e) {
         res.status(400).json({ error: e.message });
     }
