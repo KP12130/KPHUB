@@ -54,7 +54,8 @@ app.use(cors({
     ],
     credentials: true
 }));
-app.use(express.json({ limit: '10kb' })); // Body limit to prevent DOS
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ limit: '500mb', extended: true }));
 app.use(sanitizeInput); // Data sanitization against XSS
 app.use(securityMiddleware); // Custom security logic
 
