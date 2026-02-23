@@ -7,7 +7,7 @@ import { Upload as UploadIcon, Check, AlertCircle, Loader, Shield, X, File as Fi
 import { API_BASE } from '../api';
 
 const Upload = () => {
-    const { currentUser } = useAuth();
+    const { currentUser, updateUser } = useAuth();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -52,9 +52,16 @@ const Upload = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Restriction check
+        // 1. Restriction check
         if (currentUser?.restrictions?.uploadBlocked) {
             setError('⬆️ UPLOAD BLOCKED — Uploading is restricted on your account. Contact support to appeal.');
+            return;
+        }
+
+        // 2. Fee balance check
+        const DEPLOYMENT_FEE = 100;
+        if ((currentUser?.stats?.kpcBalance || 0) < DEPLOYMENT_FEE) {
+            setError(`INSUFFICIENT_KPC: Deployment requires ${DEPLOYMENT_FEE} KPC. Recharge in the Forge.`);
             return;
         }
 
@@ -83,6 +90,16 @@ const Upload = () => {
             await axios.post(`${API_BASE}/api/projects`, data, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
+
+            // Deduct locally for immediate UI feedback
+            updateUser({
+                stats: {
+                    ...currentUser.stats,
+                    kpcBalance: (currentUser.stats?.kpcBalance || 0) - DEPLOYMENT_FEE,
+                    uploads: (currentUser.stats?.uploads || 0) + 1
+                }
+            });
+
             navigate('/studio');
         } catch (err) {
             console.error(err);
@@ -109,13 +126,23 @@ const Upload = () => {
                     </div>
                     <div className="text-right">
                         <p className="text-[8px] font-mono text-gray-500 uppercase mb-1">Grid_Capacity</p>
-                        <div className="flex items-center gap-2 justify-end">
-                            <span className="text-white font-black text-sm">
-                                {currentUser?.stats?.uploads || 0} / {(currentUser?.tier === 'GHOST' ? 5 : Infinity) + (currentUser?.stats?.extraSlots || 0)}
+                        <div className="flex flex-col items-end gap-1">
+                            <div className="flex items-center gap-2 justify-end">
+                                <span className="text-white font-black text-sm">
+                                    {currentUser?.stats?.uploads || 0} / {(currentUser?.tier === 'GHOST' ? 5 : Infinity) + (currentUser?.stats?.extraSlots || 0)}
+                                </span>
+                                <Link to="/forge" className="p-1.5 bg-neon-blue/10 border border-neon-blue/30 rounded text-neon-blue hover:bg-neon-blue hover:text-white transition-all shadow-[0_0_10px_rgba(0,212,255,0.2)]">
+                                    <Plus className="w-3 h-3" />
+                                </Link>
+                            </div>
+                            <span className="text-[8px] font-mono text-neon-purple uppercase font-black">
+                                Max_Payload: {100 + (currentUser?.stats?.extraStorageLifetimeMB || 0) + (Date.now() < (currentUser?.stats?.extraStorageExpiry || 0) ? (currentUser?.stats?.extraStorageSubMB || 0) : 0)}MB
                             </span>
-                            <Link to="/forge" className="p-1.5 bg-neon-blue/10 border border-neon-blue/30 rounded text-neon-blue hover:bg-neon-blue hover:text-white transition-all shadow-[0_0_10px_rgba(0,212,255,0.2)]">
-                                <Plus className="w-3 h-3" />
-                            </Link>
+                            <div className="mt-1 px-2 py-0.5 bg-neon-green/10 border border-neon-green/20 rounded-md">
+                                <span className="text-[7px] font-mono text-neon-green uppercase font-black tracking-tighter">
+                                    Deployment_Cost: 100 KPC
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>

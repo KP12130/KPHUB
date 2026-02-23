@@ -192,7 +192,11 @@ const WithdrawalModal = ({ isOpen, onClose, isEmbedded = false }) => {
                                         className="cursor-pointer"
                                     >
                                         <h4 className="text-white font-black uppercase text-sm">{card.label}</h4>
-                                        <p className="text-[10px] text-gray-500 font-mono mt-1">{card.company} Digital Protocol</p>
+                                        <div className="flex justify-between items-center mt-1">
+                                            <p className="text-[10px] text-gray-500 font-mono italic">{card.company} Digital Protocol</p>
+                                            {card.tier === 'SILVER' && <span className="text-[8px] font-black text-neon-green uppercase bg-neon-green/10 px-1.5 py-0.5 rounded-md">+5.0K KPC Bonus</span>}
+                                            {card.tier === 'GOLD' && <span className="text-[8px] font-black text-yellow-500 uppercase bg-yellow-500/10 px-1.5 py-0.5 rounded-md">+20.0K KPC Bonus</span>}
+                                        </div>
                                     </div>
 
                                     <div className="pt-3 border-t border-white/5 flex justify-between items-center">

@@ -444,6 +444,11 @@ const Studio = () => {
                                                 {currentUser?.stats?.uploads || 0} / {(userTier === 'GHOST' ? 5 : 99) + (currentUser?.stats?.extraSlots || 0)}
                                             </span>
                                             <span className="text-[8px] font-mono text-gray-500 uppercase">Grid Slots</span>
+                                            <div className="mt-1 pt-1 border-t border-white/5 w-full">
+                                                <span className="text-[8px] font-mono text-neon-purple uppercase">
+                                                    Max Payload: {100 + (currentUser?.stats?.extraStorageLifetimeMB || 0) + (Date.now() < (currentUser?.stats?.extraStorageExpiry || 0) ? (currentUser?.stats?.extraStorageSubMB || 0) : 0)}MB
+                                                </span>
+                                            </div>
                                             <div className="absolute top-2 right-2 p-1 bg-neon-blue/10 rounded group-hover:bg-neon-blue/20 transition-colors text-neon-blue">
                                                 <Plus className="w-2 h-2" />
                                             </div>

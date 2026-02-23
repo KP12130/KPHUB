@@ -18,30 +18,43 @@ const WITHDRAWAL_MINIMUM = 5000;
 const PLATFORM_COMMISSION = 0.15; // 15% commission on tips to cover fees/profit
 
 const INFRA_PRICING = {
-    SLOT_UNIT_COST: 1500, // KPC per extra slot
-    STORAGE_UNIT_COST: 3000, // KPC per extra 50MB
-    STORAGE_UNIT_MB: 50
+    SLOT_UNIT_COST: 1500,
+    TIERS: {
+        MONTHLY: { '1000': 100, '10000': 800, '100000': 6000, base: 10 },
+        YEARLY: { '1000': 1000, '10000': 8000, '100000': 60000, base: 100 },
+        LIFETIME: { '1000': 5000, '10000': 40000, '100000': 300000, base: 500 }
+    }
+};
+
+const getStorageCost = (mb, period) => {
+    const tier = INFRA_PRICING.TIERS[period];
+    if (!tier) return 0;
+
+    let unitCost = tier.base; // Cost per 100MB
+    if (mb >= 100000) unitCost = tier['100000'] / 1000;
+    else if (mb >= 10000) unitCost = tier['10000'] / 100;
+    else if (mb >= 1000) unitCost = tier['1000'] / 10;
+
+    return Math.ceil((mb / 100) * unitCost);
 };
 
 const GIFT_CARDS = {
-    'AMZN_10': { id: 'AMZN_10', label: 'Amazon.com $10', cost: 15000, company: 'Amazon', icon: 'ShoppingBag' },
-    'AMZN_25': { id: 'AMZN_25', label: 'Amazon.com $25', cost: 37500, company: 'Amazon', icon: 'ShoppingBag' },
-    'AMZN_50': { id: 'AMZN_50', label: 'Amazon.com $50', cost: 75000, company: 'Amazon', icon: 'ShoppingBag' },
-    'STM_10': { id: 'STM_10', label: 'Steam Wallet $10', cost: 15000, company: 'Steam', icon: 'Gamepad2' },
-    'STM_25': { id: 'STM_25', label: 'Steam Wallet $25', cost: 37500, company: 'Steam', icon: 'Gamepad2' },
-    'STM_50': { id: 'STM_50', label: 'Steam Wallet $50', cost: 75000, company: 'Steam', icon: 'Gamepad2' },
-    'RBLX_10': { id: 'RBLX_10', label: 'Roblox $10 (800 Robux)', cost: 15000, company: 'Roblox', icon: 'Dice6' },
-    'RBLX_25': { id: 'RBLX_25', label: 'Roblox $25 (2000 Robux)', cost: 37500, company: 'Roblox', icon: 'Dice6' },
-    'GPLY_10': { id: 'GPLY_10', label: 'Google Play $10', cost: 15000, company: 'Google', icon: 'Play' },
-    'GPLY_25': { id: 'GPLY_25', label: 'Google Play $25', cost: 37500, company: 'Google', icon: 'Play' }
+    'AMZN_10': { id: 'AMZN_10', label: 'Amazon.com $10', cost: 10000, company: 'Amazon', icon: 'ShoppingBag', tier: 'BRONZE' },
+    'AMZN_25': { id: 'AMZN_25', label: 'Amazon.com $25', cost: 30000, company: 'Amazon', icon: 'ShoppingBag', tier: 'SILVER' },
+    'AMZN_50': { id: 'AMZN_50', label: 'Amazon.com $50', cost: 70000, company: 'Amazon', icon: 'ShoppingBag', tier: 'GOLD' },
+    'STM_10': { id: 'STM_10', label: 'Steam Wallet $10', cost: 10000, company: 'Steam', icon: 'Gamepad2', tier: 'BRONZE' },
+    'STM_25': { id: 'STM_25', label: 'Steam Wallet $25', cost: 30000, company: 'Steam', icon: 'Gamepad2', tier: 'SILVER' },
+    'STM_50': { id: 'STM_50', label: 'Steam Wallet $50', cost: 70000, company: 'Steam', icon: 'Gamepad2', tier: 'GOLD' },
+    'RBLX_10': { id: 'RBLX_10', label: 'Roblox $10', cost: 10000, company: 'Roblox', icon: 'Dice6', tier: 'BRONZE' },
+    'RBLX_25': { id: 'RBLX_25', label: 'Roblox $25', cost: 30000, company: 'Roblox', icon: 'Dice6', tier: 'SILVER' },
+    'GPLY_10': { id: 'GPLY_10', label: 'Google Play $10', cost: 10000, company: 'Google', icon: 'Play', tier: 'BRONZE' },
+    'GPLY_25': { id: 'GPLY_25', label: 'Google Play $25', cost: 30000, company: 'Google', icon: 'Play', tier: 'SILVER' }
 };
 
 const KPC_BUNDLES = {
-    'STARTER': { amount: 2500, price: 4.99, label: 'Starter Hub' },
-    'PULSE': { amount: 6000, price: 9.99, label: 'Pulse Stream' },
-    'MATRIX': { amount: 17500, price: 24.99, label: 'Matrix Core' },
-    'OVERLORD': { amount: 40000, price: 49.99, label: 'Overlord Node' },
-    'NEXUS': { amount: 100000, price: 99.99, label: 'Nexus Protocol' }
+    'SMALL': { amount: 10000, price: 14.99, label: 'Small Pack' },
+    'MEDIUM': { amount: 27500, price: 34.99, label: 'Medium Pack' },
+    'LARGE': { amount: 60000, price: 69.99, label: 'Large Pack' }
 };
 
 const FLARES = {
@@ -102,18 +115,18 @@ router.post('/buy-flare', async (req, res) => {
 // POST /api/exchange/buy-infrastructure
 router.post('/buy-infrastructure', async (req, res) => {
     try {
-        const { uid, slots, storageUnits } = req.body;
+        const { uid, slots, storageMB, period = 'LIFETIME' } = req.body;
         if (!uid) return res.status(400).json({ error: 'Identification required.' });
 
         const numSlots = parseInt(slots) || 0;
-        const numStorageUnits = parseInt(storageUnits) || 0;
+        const numStorageMB = parseInt(storageMB) || 0;
 
-        if (numSlots <= 0 && numStorageUnits <= 0) {
+        if (numSlots <= 0 && numStorageMB <= 0) {
             return res.status(400).json({ error: 'Selection required for upgrade.' });
         }
 
-        const totalCost = (numSlots * INFRA_PRICING.SLOT_UNIT_COST) +
-            (numStorageUnits * INFRA_PRICING.STORAGE_UNIT_COST);
+        const storageCost = getStorageCost(numStorageMB, period);
+        const totalCost = (numSlots * INFRA_PRICING.SLOT_UNIT_COST) + storageCost;
 
         const userRef = db.collection('users').doc(uid);
 
@@ -128,27 +141,44 @@ router.post('/buy-infrastructure', async (req, res) => {
                 throw new Error('INSUFFICIENT_CREDITS');
             }
 
-            transaction.update(userRef, {
+            const stats = userData.stats || {};
+            const updates = {
                 'stats.kpcBalance': admin.firestore.FieldValue.increment(-totalCost),
-                'stats.extraSlots': admin.firestore.FieldValue.increment(numSlots),
-                'stats.extraStorageMB': admin.firestore.FieldValue.increment(numStorageUnits * INFRA_PRICING.STORAGE_UNIT_MB)
-            });
+                'stats.extraSlots': admin.firestore.FieldValue.increment(numSlots)
+            };
+
+            if (numStorageMB > 0) {
+                if (period === 'LIFETIME') {
+                    updates['stats.extraStorageLifetimeMB'] = admin.firestore.FieldValue.increment(numStorageMB);
+                } else {
+                    const now = Date.now();
+                    const currentExpiry = stats.extraStorageExpiry || now;
+                    const durationMs = period === 'YEARLY' ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
+
+                    // If still active, extend. If expired, start from now.
+                    const newExpiry = Math.max(currentExpiry, now) + durationMs;
+
+                    updates['stats.extraStorageSubMB'] = admin.firestore.FieldValue.increment(numStorageMB);
+                    updates['stats.extraStorageExpiry'] = newExpiry;
+                }
+            }
+
+            transaction.update(userRef, updates);
 
             // Ledger log
             transaction.set(db.collection('kpc_ledger').doc(), {
                 uid,
                 amount: -totalCost,
                 type: 'INFRA_UPGRADE',
-                details: { slots: numSlots, storageMB: numStorageUnits * INFRA_PRICING.STORAGE_UNIT_MB },
+                details: { slots: numSlots, storageMB: numStorageMB, period },
                 timestamp: admin.firestore.FieldValue.serverTimestamp()
             });
         });
 
         res.json({
             success: true,
-            addedSlots: numSlots,
-            addedStorageMB: numStorageUnits * INFRA_PRICING.STORAGE_UNIT_MB,
-            totalCost
+            totalCost,
+            period
         });
     } catch (e) {
         res.status(400).json({ error: e.message });

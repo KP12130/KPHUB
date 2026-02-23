@@ -80,31 +80,40 @@ router.post('/', upload.fields([
 
         // Dynamic File Size Limit
         const baseStorageMB = 100; // Base 100MB
-        const extraStorageMB = userData.stats?.extraStorageMB || 0;
-        const maxFileSize = (baseStorageMB + extraStorageMB) * 1024 * 1024;
+        const extraStorageLifetimeMB = userData.stats?.extraStorageLifetimeMB || 0;
+        const extraStorageSubMB = userData.stats?.extraStorageSubMB || 0;
+        const extraStorageExpiry = userData.stats?.extraStorageExpiry || 0;
+        const activeSubStorage = (Date.now() < extraStorageExpiry) ? extraStorageSubMB : 0;
+
+        const totalStorageMB = baseStorageMB + extraStorageLifetimeMB + activeSubStorage;
+        const maxFileSize = totalStorageMB * 1024 * 1024;
 
         // Check total size of current upload
         const totalUploadSize = projectFiles.reduce((sum, f) => sum + f.size, 0);
         if (totalUploadSize > maxFileSize) {
             return res.status(413).json({
-                error: `SYSTEM_PAYLOAD_EXCEEDED: Your transmission size (${(totalUploadSize / (1024 * 1024)).toFixed(2)}MB) exceeds your current grid allocation (${baseStorageMB + extraStorageMB}MB). Acquire more storage in the Forge.`
+                error: `SYSTEM_PAYLOAD_EXCEEDED: Your transmission size (${(totalUploadSize / (1024 * 1024)).toFixed(2)}MB) exceeds your current grid allocation (${totalStorageMB}MB). Acquire more storage in the Forge.`
             });
         }
 
         const projectId = admin.firestore().collection('projects').doc().id;
+        const UPLOAD_FEE = 100;
 
-        // 2. Upload Project Files & Build Tree
+        // 2. Preliminary Balance Check
+        if ((userData.stats?.kpcBalance || 0) < UPLOAD_FEE) {
+            return res.status(403).json({ error: `INSUFFICIENT_FUNDS: Deployment requires ${UPLOAD_FEE} KPC for spam protection.` });
+        }
+
+        // 3. Upload Project Files & Build Tree
         const uploadedFiles = [];
         for (const file of projectFiles) {
-            // Use relative path if provided by client (webkitRelativePath), otherwise just use name
-            // We expect the client to send the relative path in the 'path' field or originalname
             const relativePath = file.originalname;
             const fileName = `projects/${projectId}/source/${relativePath}`;
             const fileKey = await uploadFile(file.buffer, fileName, file.mimetype);
             uploadedFiles.push({ path: relativePath, key: fileKey, size: file.size });
         }
 
-        // 3. Upload Screenshots
+        // 4. Upload Screenshots
         const uploadedScreenshots = [];
         for (const file of screenshots) {
             const fileName = `projects/${projectId}/screenshots/${Date.now()}_${file.originalname}`;
@@ -112,7 +121,7 @@ router.post('/', upload.fields([
             uploadedScreenshots.push(fileKey);
         }
 
-        // 4. Save Metadata to Firestore
+        // 5. Save Metadata & Deduct Fee (Atomic)
         const tagsString = req.body.tags;
         const tagsArray = tagsString
             ? tagsString.split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag !== '')
@@ -125,7 +134,6 @@ router.post('/', upload.fields([
             category,
             tags: tagsArray,
             files: uploadedFiles,
-            screenshots: uploadedScreenshots,
             screenshots: uploadedScreenshots,
             thumbnail: uploadedScreenshots[0] ? await getFileUrl(uploadedScreenshots[0]) : '',
             demoUrl: demoUrl || '',
@@ -142,16 +150,38 @@ router.post('/', upload.fields([
             createdAt: new Date().toISOString()
         };
 
-        await db.collection('projects').doc(projectId).set(newProject);
+        const userRef = db.collection('users').doc(authorId);
+        const projectRef = db.collection('projects').doc(projectId);
 
-        // 5. Update User Stats & Log Activity
-        const { logActivity } = require('./activities');
-        await Promise.all([
-            db.collection('users').doc(authorId).update({
+        await db.runTransaction(async (transaction) => {
+            const userSnap = await transaction.get(userRef);
+            if (!userSnap.exists) throw new Error('User protocol not found.');
+
+            const currentBalance = userSnap.data().stats?.kpcBalance || 0;
+            if (currentBalance < UPLOAD_FEE) throw new Error('INSUFFICIENT_FUNDS');
+
+            // 1. Create Project
+            transaction.set(projectRef, newProject);
+
+            // 2. Deduct Fee & Increment Project Count
+            transaction.update(userRef, {
+                'stats.kpcBalance': admin.firestore.FieldValue.increment(-UPLOAD_FEE),
                 'stats.uploads': admin.firestore.FieldValue.increment(1)
-            }),
-            logActivity(authorId, authorName, 'upload', projectId, title)
-        ]);
+            });
+
+            // 3. Log to Ledger
+            transaction.set(db.collection('kpc_ledger').doc(), {
+                uid: authorId,
+                amount: -UPLOAD_FEE,
+                type: 'UPLOAD_FEE',
+                details: { projectId, title },
+                timestamp: admin.firestore.FieldValue.serverTimestamp()
+            });
+        });
+
+        // 6. Log Activity (Non-critical to transaction)
+        const { logActivity } = require('./activities');
+        await logActivity(authorId, authorName, 'upload', projectId, title).catch(console.error);
 
         res.status(201).json(newProject);
 
