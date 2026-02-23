@@ -119,6 +119,7 @@ const ForgeStore = ({ isEmbedded = false }) => {
                 isOpen={isPaymentOpen}
                 onClose={() => setIsPaymentOpen(false)}
                 plan={bundles[selectedBundle]?.label}
+                price={bundles[selectedBundle]?.price}
                 onConfirm={handleConfirmPurchase}
             />
         </div>

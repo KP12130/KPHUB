@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CreditCard, CheckCircle2, Lock, X, Loader } from 'lucide-react';
 
-const PaymentModal = ({ isOpen, onClose, plan, onConfirm }) => {
+const PaymentModal = ({ isOpen, onClose, plan, price, onConfirm, isSubscription = false }) => {
     const [status, setStatus] = useState('IDLE'); // IDLE, PROCESSING, SUCCESS
 
     const handlePayment = () => {
@@ -21,8 +21,8 @@ const PaymentModal = ({ isOpen, onClose, plan, onConfirm }) => {
 
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <motion.div 
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[2000] flex items-center justify-center p-4">
+                <motion.div
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
@@ -43,8 +43,8 @@ const PaymentModal = ({ isOpen, onClose, plan, onConfirm }) => {
                             <div className="space-y-6">
                                 <div className="text-center mb-8">
                                     <p className="text-gray-400 text-xs font-mono uppercase">Initializing Upgrade To</p>
-                                    <h2 className="text-3xl font-black text-white mt-1">{plan} TIER</h2>
-                                    <p className="text-neon-green font-mono text-xl mt-2">{plan === 'PRO' ? '$9.00' : '$29.00'} <span className="text-xs text-gray-500">/ cycle</span></p>
+                                    <h2 className="text-3xl font-black text-white mt-1">{plan}</h2>
+                                    <p className="text-neon-green font-mono text-xl mt-2">${price || '0.00'} {isSubscription && <span className="text-xs text-gray-500">/ cycle</span>}</p>
                                 </div>
 
                                 <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handlePayment(); }}>
@@ -88,7 +88,7 @@ const PaymentModal = ({ isOpen, onClose, plan, onConfirm }) => {
 
                         {status === 'SUCCESS' && (
                             <div className="py-12 text-center space-y-6">
-                                <motion.div 
+                                <motion.div
                                     initial={{ scale: 0 }} animate={{ scale: 1 }}
                                     className="w-20 h-20 bg-neon-green rounded-full flex items-center justify-center mx-auto shadow-[0_0_30px_#39FF14]"
                                 >
