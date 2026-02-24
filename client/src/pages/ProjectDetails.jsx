@@ -407,7 +407,7 @@ const ProjectDetails = () => {
         if (!window.confirm('Promote this transmission for 5,000 KPC? (7 Days Coverage)')) return;
 
         try {
-            const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/exchange/promote-project`, {
+            const response = await axios.post(`${API_BASE}/exchange/promote-project`, {
                 uid: currentUser.uid,
                 projectId: id
             });

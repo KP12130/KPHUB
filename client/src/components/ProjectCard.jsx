@@ -44,7 +44,7 @@ const ProjectCard = ({ project, loading, index = 0 }) => {
             whileHover={{ y: -10, scale: 1.02 }}
             onMouseEnter={() => playSound('hover')}
             className={`group relative h-[400px] w-full rounded-3xl overflow-hidden bg-terminal border transition-all duration-500 shadow-2xl 
-                ${isSponsored ? 'border-yellow-500/50 shadow-[0_0_40px_rgba(234,179,8,0.3)] ring-1 ring-yellow-500/30' :
+                ${isSponsored ? 'border-yellow-500/50 animate-sponsored-glow ring-2 ring-yellow-500/30' :
                     isBoosted ? 'border-neon-green/50 shadow-[0_0_30px_rgba(57,255,20,0.15)] ring-1 ring-neon-green/30' :
                         'border-gray-900 hover:border-white/20'}`}
         >
