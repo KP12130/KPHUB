@@ -833,7 +833,6 @@ const ProjectDetails = () => {
                             </div>
                         )}
 
-                        <AdUnit slot="project-sidebar-slot" format="auto" />
                     </div>
                 </div>
             </div>
