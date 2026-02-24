@@ -402,6 +402,25 @@ const ProjectDetails = () => {
         }
     };
 
+    const handlePromote = async () => {
+        if (!currentUser) return toast.error('Identification required.');
+        if (!window.confirm('Promote this transmission for 5,000 KPC? (7 Days Coverage)')) return;
+
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/exchange/promote-project`, {
+                uid: currentUser.uid,
+                projectId: id
+            });
+
+            if (response.data.success) {
+                toast.success('TRANSMISSION_BOOSTED: Project is now sponsored!');
+                setProject(prev => ({ ...prev, isSponsored: true, sponsoredUntil: Date.now() + 7 * 24 * 60 * 60 * 1000 }));
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Promotion failed.');
+        }
+    };
+
     if (loading) return (
         <div className="min-h-screen bg-void flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
@@ -748,13 +767,18 @@ const ProjectDetails = () => {
                                     <h4 className="font-black text-white text-sm truncate tracking-tight">@{project.author?.name}</h4>
                                     <div className="flex items-center gap-2">
                                         <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${project.author?.tier === 'TITAN' ? 'bg-red-600 text-white shadow-[0_0_10px_rgba(220,38,38,0.5)]' :
-                                                project.author?.tier === 'COMMANDER' ? 'bg-neon-purple text-white' :
-                                                    project.author?.tier === 'OPERATIVE' ? 'bg-neon-green text-black' :
-                                                        project.author?.tier === 'CITIZEN' ? 'bg-neon-blue text-black' :
-                                                            project.author?.tier === 'ARCHITECT' ? 'bg-yellow-500 text-black' :
-                                                                'bg-gray-800 text-gray-400'
+                                            project.author?.tier === 'COMMANDER' ? 'bg-neon-purple text-white' :
+                                                project.author?.tier === 'OPERATIVE' ? 'bg-neon-green text-black' :
+                                                    project.author?.tier === 'CITIZEN' ? 'bg-neon-blue text-black' :
+                                                        project.author?.tier === 'ARCHITECT' ? 'bg-yellow-500 text-black' :
+                                                            'bg-gray-800 text-gray-400'
                                             }`}>
-                                            {project.author?.tier || 'GHOST'}
+                                            {project.author?.tier === 'TITAN' ? '🏮 TITAN' :
+                                                project.author?.tier === 'COMMANDER' ? '🎖️ COMMANDER' :
+                                                    project.author?.tier === 'OPERATIVE' ? '🦾 OPERATIVE' :
+                                                        project.author?.tier === 'CITIZEN' ? '🏙️ CITIZEN' :
+                                                            project.author?.tier === 'ARCHITECT' ? '🏛️ ARCHITECT' :
+                                                                'GHOST'}
                                         </span>
                                         {project.author?.isVerified && (
                                             <span className="text-[8px] font-black uppercase px-2 py-0.5 bg-neon-blue/20 text-neon-blue rounded border border-neon-blue/20">
@@ -788,6 +812,15 @@ const ProjectDetails = () => {
                             >
                                 View Grid Profile
                             </Link>
+
+                            {currentUser?.uid === project.author?.uid && (
+                                <button
+                                    onClick={handlePromote}
+                                    className="block w-full py-3 bg-yellow-500/10 border border-yellow-500/30 hover:bg-yellow-500 hover:text-black text-yellow-500 text-center text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(234,179,8,0.1)] group mt-4"
+                                >
+                                    <Zap className="w-3 h-3 inline-block mr-1 group-hover:fill-current" /> Promote Transmission
+                                </button>
+                            )}
                         </div>
 
                         {/* Recent Activity / Devlog */}

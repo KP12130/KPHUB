@@ -8,6 +8,7 @@ import useSound from '../hooks/useSound';
 const ProjectCard = ({ project, loading, index = 0 }) => {
     const { playSound } = useSound();
     const { currentUser } = useAuth();
+
     if (loading || !project) {
         return (
             <div className="bg-void border border-gray-900 rounded-3xl overflow-hidden animate-pulse flex flex-col h-[350px] relative">
@@ -22,6 +23,18 @@ const ProjectCard = ({ project, loading, index = 0 }) => {
     }
 
     const isBoosted = project.boostedUntil && new Date(project.boostedUntil) > new Date();
+    const isSponsored = project.sponsoredUntil && new Date(project.sponsoredUntil) > new Date();
+    const authorRank = project.author?.tier || 'GHOST';
+
+    const RANK_FLAIRS = {
+        'CITIZEN': { emoji: '🏙️', color: 'text-neon-blue', aura: 'shadow-[0_0_15px_rgba(0,212,255,0.2)]' },
+        'OPERATIVE': { emoji: '🦾', color: 'text-neon-green', aura: 'shadow-[0_0_20px_rgba(57,255,20,0.3)]', animate: 'animate-pulse' },
+        'COMMANDER': { emoji: '🎖️', color: 'text-neon-purple', aura: 'shadow-[0_0_25px_rgba(217,70,239,0.4)]', animate: 'animate-pulse' },
+        'TITAN': { emoji: '🏮', color: 'text-red-500', aura: 'shadow-[0_0_40px_rgba(239,68,68,0.5)]', animate: 'animate-pulse italic font-black glitch-text' },
+        'ARCHITECT': { emoji: '🏛️', color: 'text-yellow-500', aura: 'shadow-[0_0_50px_rgba(234,179,8,0.6)]', animate: 'animate-glow' }
+    };
+
+    const flair = RANK_FLAIRS[authorRank];
 
     return (
         <motion.div
@@ -30,7 +43,10 @@ const ProjectCard = ({ project, loading, index = 0 }) => {
             transition={{ delay: index * 0.05 }}
             whileHover={{ y: -10, scale: 1.02 }}
             onMouseEnter={() => playSound('hover')}
-            className={`group relative h-[400px] w-full rounded-3xl overflow-hidden bg-terminal border transition-all duration-500 shadow-2xl ${isBoosted ? 'border-neon-green/50 shadow-[0_0_30px_rgba(57,255,20,0.15)] ring-1 ring-neon-green/30' : 'border-gray-900 hover:border-neon-green/50'}`}
+            className={`group relative h-[400px] w-full rounded-3xl overflow-hidden bg-terminal border transition-all duration-500 shadow-2xl 
+                ${isSponsored ? 'border-yellow-500/50 shadow-[0_0_40px_rgba(234,179,8,0.3)] ring-1 ring-yellow-500/30' :
+                    isBoosted ? 'border-neon-green/50 shadow-[0_0_30px_rgba(57,255,20,0.15)] ring-1 ring-neon-green/30' :
+                        'border-gray-900 hover:border-white/20'}`}
         >
             <Link to={`/project/${project.id}`} className="block h-full w-full relative">
                 {/* Background Image / Parallax */}
@@ -39,22 +55,28 @@ const ProjectCard = ({ project, loading, index = 0 }) => {
                         <img
                             src={project.screenshots[0]}
                             alt={project.title}
-                            className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${isBoosted ? 'opacity-80' : 'opacity-60'} group-hover:opacity-100`}
+                            className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${isSponsored || isBoosted ? 'opacity-80' : 'opacity-60'} group-hover:opacity-100`}
                         />
                     ) : (
                         <div className="w-full h-full bg-void flex items-center justify-center relative overflow-hidden">
                             <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(68,68,68,.2)_50%,transparent_75%,transparent_100%)] bg-[length:250%_250%,100%_100%] animate-[shimmer_3s_infinite]" />
-                            <Zap className={`w-12 h-12 ${isBoosted ? 'text-neon-green/20' : 'text-gray-800'}`} />
+                            <Zap className={`w-12 h-12 ${isSponsored ? 'text-yellow-500/20' : isBoosted ? 'text-neon-green/20' : 'text-gray-800'}`} />
                         </div>
                     )}
                     {/* Gradient Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-void via-void/80 to-transparent opacity-90 group-hover:opacity-70 transition-opacity duration-500" />
+                    {isSponsored && <div className="absolute inset-0 bg-yellow-500/5 mix-blend-overlay" />}
                     {isBoosted && <div className="absolute inset-0 bg-neon-green/5 mix-blend-overlay" />}
                 </div>
 
                 {/* Badges */}
                 <div className="absolute top-4 left-4 z-20 flex flex-wrap gap-2">
-                    {isBoosted && (
+                    {isSponsored && (
+                        <span className="px-3 py-1 bg-yellow-500 text-black text-[10px] font-black rounded-lg uppercase tracking-widest shadow-[0_0_15px_#EAB308] flex items-center gap-1 animate-pulse">
+                            <Zap className="w-3 h-3 fill-current" /> Sponsored
+                        </span>
+                    )}
+                    {isBoosted && !isSponsored && (
                         <span className="px-3 py-1 bg-neon-green text-black text-[10px] font-black rounded-lg uppercase tracking-widest shadow-[0_0_15px_#39FF14] flex items-center gap-1">
                             <Zap className="w-3 h-3 fill-current" /> Boosted
                         </span>
@@ -62,11 +84,6 @@ const ProjectCard = ({ project, loading, index = 0 }) => {
                     <span className="px-3 py-1 bg-black/50 backdrop-blur-xl border border-white/10 text-neon-green text-[10px] font-black rounded-lg uppercase tracking-widest shadow-lg">
                         {project.category}
                     </span>
-                    {project.isPrivate && (
-                        <span className="px-3 py-1 bg-purple-500/20 backdrop-blur-xl border border-purple-500/30 text-purple-400 text-[10px] font-black rounded-lg uppercase tracking-widest flex items-center gap-1">
-                            <Lock className="w-3 h-3" /> Private
-                        </span>
-                    )}
                 </div>
 
                 {/* Content - Glass Panel */}
@@ -75,14 +92,16 @@ const ProjectCard = ({ project, loading, index = 0 }) => {
                         {/* Author Info */}
                         <div className="flex items-center gap-2 mb-2 opacity-80 group-hover:opacity-100 transition-opacity">
                             {project.author?.photoURL ? (
-                                <img src={project.author.photoURL} className="w-5 h-5 rounded-full border border-white/20" />
+                                <img src={project.author.photoURL} className={`w-5 h-5 rounded-full border border-white/20 ${flair?.aura}`} />
                             ) : (
-                                <div className="w-5 h-5 rounded-full bg-gray-700" />
+                                <div className={`w-5 h-5 rounded-full bg-gray-700 ${flair?.aura}`} />
                             )}
-                            <span className="text-xs text-gray-300 font-mono">@{project.author?.username || 'GHOST'}</span>
+                            <span className={`text-xs font-mono flex items-center gap-1 ${flair?.color || 'text-gray-300'}`}>
+                                @{project.author?.username || 'GHOST'} {flair?.emoji}
+                            </span>
                         </div>
 
-                        <h3 className="text-2xl font-black text-white leading-none tracking-tight group-hover:text-neon-green transition-colors drop-shadow-lg">
+                        <h3 className={`text-2xl font-black leading-none tracking-tight group-hover:text-neon-green transition-colors drop-shadow-lg ${flair?.animate}`}>
                             {project.title}
                         </h3>
 

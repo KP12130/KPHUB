@@ -108,6 +108,9 @@ const FLARES = {
     'MATRIX': { kpcPrice: 10000, label: 'Matrix Flow', style: 'background: linear-gradient(180deg, #00FF41, #003B00); -webkit-background-clip: text; -webkit-text-fill-color: transparent;' }
 };
 
+const SPONSORSHIP_PRICE = 5000; // 5000 KPC per week
+const SPONSORSHIP_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
 // GET /api/exchange/ranks
 router.get('/ranks', (req, res) => {
     res.json(RANKS);
@@ -152,6 +155,59 @@ router.post('/buy-flare', async (req, res) => {
         });
 
         res.json({ success: true, flareId });
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
+// GET /api/exchange/promote-project
+router.post('/promote-project', async (req, res) => {
+    try {
+        const { uid, projectId } = req.body;
+        if (!uid || !projectId) return res.status(400).json({ error: 'Identification required.' });
+
+        const userRef = db.collection('users').doc(uid);
+        const projectRef = db.collection('projects').doc(projectId);
+
+        await db.runTransaction(async (transaction) => {
+            const [userDoc, projectDoc] = await Promise.all([
+                transaction.get(userRef),
+                transaction.get(projectRef)
+            ]);
+
+            if (!userDoc.exists) throw new Error('User protocol not found.');
+            if (!projectDoc.exists) throw new Error('Target project not found.');
+
+            const userData = userDoc.data();
+            const projectData = projectDoc.data();
+
+            if (projectData.authorId !== uid) throw new Error('AUTHORIZATION_VIOLATION: Ownership mismatch.');
+            if ((userData.stats?.kpcBalance || 0) < SPONSORSHIP_PRICE) throw new Error('INSUFFICIENT_KPC');
+
+            const currentSponsorship = (projectData.sponsoredUntil || 0);
+            const baseTime = Math.max(Date.now(), currentSponsorship);
+            const newExpiry = baseTime + SPONSORSHIP_DURATION_MS;
+
+            transaction.update(userRef, {
+                'stats.kpcBalance': admin.firestore.FieldValue.increment(-SPONSORSHIP_PRICE)
+            });
+
+            transaction.update(projectRef, {
+                isSponsored: true,
+                sponsoredUntil: newExpiry
+            });
+
+            // Ledger log
+            transaction.set(db.collection('kpc_ledger').doc(), {
+                uid,
+                amount: -SPONSORSHIP_PRICE,
+                type: 'PROJECT_PROMOTION',
+                projectId,
+                timestamp: admin.firestore.FieldValue.serverTimestamp()
+            });
+        });
+
+        res.json({ success: true });
     } catch (e) {
         res.status(400).json({ error: e.message });
     }

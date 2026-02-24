@@ -621,7 +621,13 @@ router.get('/', async (req, res) => {
         }
 
         projects.sort((a, b) => {
-            // Priority 1: Promoted/Boosted
+            // Priority 1: Sponsored (KPC Paid)
+            const aSponsored = a.sponsoredUntil && new Date(a.sponsoredUntil) > new Date();
+            const bSponsored = b.sponsoredUntil && b.sponsoredUntil && new Date(b.sponsoredUntil) > new Date();
+            if (aSponsored && !bSponsored) return -1;
+            if (!aSponsored && bSponsored) return 1;
+
+            // Priority 2: Promoted/Boosted (Classic system)
             const aPromoted = a.boostedUntil && new Date(a.boostedUntil) > new Date();
             const bPromoted = b.boostedUntil && new Date(b.boostedUntil) > new Date();
             if (aPromoted && !bPromoted) return -1;
