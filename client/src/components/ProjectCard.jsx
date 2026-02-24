@@ -30,7 +30,7 @@ const ProjectCard = ({ project, loading, index = 0 }) => {
         'CITIZEN': { emoji: '🏙️', color: 'text-neon-blue', aura: 'shadow-[0_0_15px_rgba(0,212,255,0.2)]' },
         'OPERATIVE': { emoji: '🦾', color: 'text-neon-green', aura: 'shadow-[0_0_20px_rgba(57,255,20,0.3)]', animate: 'animate-pulse' },
         'COMMANDER': { emoji: '🎖️', color: 'text-neon-purple', aura: 'shadow-[0_0_25px_rgba(217,70,239,0.4)]', animate: 'animate-pulse' },
-        'TITAN': { emoji: '🏮', color: 'text-red-500', aura: 'shadow-[0_0_40px_rgba(239,68,68,0.5)]', animate: 'animate-pulse italic font-black glitch-text' },
+        'TITAN': { emoji: '🏮', color: 'text-red-500', aura: 'shadow-[0_0_40px_rgba(239,68,68,0.5)]', animate: 'italic font-black glitch-text' },
         'ARCHITECT': { emoji: '🏛️', color: 'text-yellow-500', aura: 'shadow-[0_0_50px_rgba(234,179,8,0.6)]', animate: 'animate-glow' }
     };
 

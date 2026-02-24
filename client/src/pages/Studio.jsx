@@ -194,6 +194,31 @@ const Studio = () => {
         }
     };
 
+    const handlePromote = async (id) => {
+        if (!currentUser) return toast.error('Identification required.');
+        if (!window.confirm('Promote this transmission for 5,000 KPC? (7 Days Coverage)')) return;
+
+        try {
+            const response = await axios.post(`${API_BASE}/api/exchange/promote-project`, {
+                uid: currentUser.uid,
+                projectId: id
+            });
+
+            if (response.data.success) {
+                toast.success('TRANSMISSION_BOOSTED: Project is now sponsored!');
+                // Update local specific project state
+                setProjects(prev => prev.map(p => {
+                    if (p.id === id) {
+                        return { ...p, isSponsored: true, sponsoredUntil: Date.now() + 7 * 24 * 60 * 60 * 1000 };
+                    }
+                    return p;
+                }));
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Promotion failed.');
+        }
+    };
+
     const [transactions, setTransactions] = useState([]);
     const [isLedgerLoading, setIsLedgerLoading] = useState(false);
     const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -350,6 +375,7 @@ const Studio = () => {
                             <MenuButton id="DASHBOARD" icon={LayoutDashboard} label="Dashboard" />
                             <MenuButton id="ANALYTICS" icon={PieChart} label="Analytics" />
                             <MenuButton id="MONETIZATION" icon={Database} label="Ranks" />
+                            <MenuButton id="PROMOTIONS" icon={Zap} label="Promotions" />
                             <MenuButton
                                 id="SUPPORT"
                                 icon={LifeBuoy}
@@ -506,6 +532,70 @@ const Studio = () => {
                                         )}
                                     </div>
 
+                                </div>
+                            )}
+
+                            {view === 'PROMOTIONS' && (
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between flex-wrap gap-4">
+                                        <div>
+                                            <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter flex items-center gap-3">
+                                                <Zap className="w-8 h-8 text-yellow-500" />
+                                                Hype Engine
+                                            </h2>
+                                            <div className="text-xs font-mono text-gray-500">Maximize Transmission Broadcast Range</div>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        {projects.length > 0 ? (
+                                            projects.map((project, idx) => {
+                                                const isSponsored = project.sponsoredUntil && new Date(project.sponsoredUntil) > new Date();
+                                                const sponsoredRemaining = isSponsored ? Math.ceil((new Date(project.sponsoredUntil) - new Date()) / (1000 * 60 * 60 * 24)) : 0;
+
+                                                return (
+                                                    <div key={project.id || `proj-${idx}`} className={`glass-panel p-4 rounded-xl flex items-center justify-between gap-4 hover:bg-white/5 transition-all group border ${isSponsored ? 'border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.2)]' : 'border-white/5'}`}>
+                                                        <div className="flex items-center gap-4 min-w-0 flex-grow">
+                                                            <div className="w-16 h-12 bg-gray-900 rounded-lg overflow-hidden shrink-0 relative">
+                                                                {project.screenshots?.[0] ? (
+                                                                    <img src={project.screenshots[0]} className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center bg-gray-800"><Zap className="w-4 h-4 text-gray-600" /></div>
+                                                                )}
+                                                                {isSponsored && <div className="absolute inset-0 bg-yellow-500/10 mix-blend-overlay" />}
+                                                            </div>
+                                                            <div className="flex-grow min-w-0">
+                                                                <div className="flex items-center gap-2">
+                                                                    <h4 className="font-bold text-white truncate">{project.title}</h4>
+                                                                    {isSponsored && (
+                                                                        <span className="text-[8px] bg-yellow-500 text-black px-1.5 py-0.5 rounded font-black uppercase flex items-center gap-1 animate-pulse">
+                                                                            <Zap className="w-2 h-2 fill-current" /> {sponsoredRemaining}d left
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-center gap-3 text-[10px] text-gray-500 font-mono mt-1">
+                                                                    <span className="px-1.5 py-0.5 bg-gray-800 rounded text-gray-300">{project.category}</span>
+                                                                    <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {project.stats?.views || 0} views</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="shrink-0 pl-4 border-l border-white/5">
+                                                            <button
+                                                                onClick={() => handlePromote(project.id)}
+                                                                disabled={isSponsored}
+                                                                className={`px-4 py-2 font-black uppercase text-[10px] tracking-widest rounded-lg transition-all ${isSponsored ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 cursor-default' : 'bg-white/10 hover:bg-yellow-500 hover:text-black text-yellow-500 border border-white/10'}`}
+                                                            >
+                                                                {isSponsored ? 'SPONSORED' : 'PROMOTE_TRANSMISSION'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        ) : (
+                                            <div className="glass-panel p-8 rounded-xl text-center">
+                                                <p className="text-gray-500 font-mono text-sm mb-4">No active protocols deployed to hype.</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 

@@ -402,25 +402,6 @@ const ProjectDetails = () => {
         }
     };
 
-    const handlePromote = async () => {
-        if (!currentUser) return toast.error('Identification required.');
-        if (!window.confirm('Promote this transmission for 5,000 KPC? (7 Days Coverage)')) return;
-
-        try {
-            const response = await axios.post(`${API_BASE}/exchange/promote-project`, {
-                uid: currentUser.uid,
-                projectId: id
-            });
-
-            if (response.data.success) {
-                toast.success('TRANSMISSION_BOOSTED: Project is now sponsored!');
-                setProject(prev => ({ ...prev, isSponsored: true, sponsoredUntil: Date.now() + 7 * 24 * 60 * 60 * 1000 }));
-            }
-        } catch (error) {
-            toast.error(error.response?.data?.error || 'Promotion failed.');
-        }
-    };
-
     if (loading) return (
         <div className="min-h-screen bg-void flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
@@ -813,14 +794,6 @@ const ProjectDetails = () => {
                                 View Grid Profile
                             </Link>
 
-                            {currentUser?.uid === project.author?.uid && (
-                                <button
-                                    onClick={handlePromote}
-                                    className="block w-full py-3 bg-yellow-500/10 border border-yellow-500/30 hover:bg-yellow-500 hover:text-black text-yellow-500 text-center text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(234,179,8,0.1)] group mt-4"
-                                >
-                                    <Zap className="w-3 h-3 inline-block mr-1 group-hover:fill-current" /> Promote Transmission
-                                </button>
-                            )}
                         </div>
 
                         {/* Recent Activity / Devlog */}
