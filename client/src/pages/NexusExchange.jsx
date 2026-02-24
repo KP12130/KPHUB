@@ -161,8 +161,15 @@ const NexusExchange = () => {
                                 <div className="absolute top-4 right-4 bg-neon-green text-black px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest">ACTIVE_PROTOCOL</div>
                             )}
                             <div className="mb-6">
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${id === 'PRO' ? 'bg-neon-blue/10 text-neon-blue' : id === 'ELITE' ? 'bg-neon-purple/10 text-neon-purple' : 'bg-yellow-500/10 text-yellow-500'}`}>
-                                    {id === 'PRO' ? <Shield className="w-8 h-8" /> : id === 'ELITE' ? <Star className="w-8 h-8" /> : <Trophy className="w-8 h-8" />}
+                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${id === 'CITIZEN' ? 'bg-neon-blue/10 text-neon-blue' :
+                                        id === 'OPERATIVE' ? 'bg-neon-green/10 text-neon-green' :
+                                            id === 'COMMANDER' ? 'bg-neon-purple/10 text-neon-purple' :
+                                                'bg-red-500/10 text-red-500'
+                                    }`}>
+                                    {id === 'CITIZEN' ? <Globe className="w-8 h-8" /> :
+                                        id === 'OPERATIVE' ? <Shield className="w-8 h-8" /> :
+                                            id === 'COMMANDER' ? <Trophy className="w-8 h-8" /> :
+                                                <Zap className="w-8 h-8" />}
                                 </div>
                                 <h3 className="text-2xl font-black text-white italic tracking-tighter uppercase mb-2">{data.label}</h3>
                                 <p className="text-gray-400 text-xs font-mono leading-relaxed">{data.description}</p>

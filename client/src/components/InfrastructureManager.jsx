@@ -137,8 +137,8 @@ const InfrastructureManager = () => {
                         className="w-full h-1.5 bg-white/5 rounded-lg appearance-none cursor-pointer accent-neon-blue transition-all"
                     />
                     <div className="flex justify-between text-[8px] font-mono text-gray-700 uppercase">
-                        <span>Original Capacity</span>
-                        <span>+100 Slots (Pro Developer)</span>
+                        <span>Original Capacity (GHOST)</span>
+                        <span>Full Sector Allocation (TITAN)</span>
                     </div>
                 </div>
 
@@ -172,7 +172,7 @@ const InfrastructureManager = () => {
                         className="w-full h-1.5 bg-white/5 rounded-lg appearance-none cursor-pointer accent-neon-purple transition-all"
                     />
                     <div className="flex justify-between text-[8px] font-mono text-gray-700 uppercase">
-                        <span>100MB units</span>
+                        <span>250MB Base Units</span>
                         <span>20GB (Studio Pack)</span>
                     </div>
                 </div>

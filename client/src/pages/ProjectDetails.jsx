@@ -747,9 +747,14 @@ const ProjectDetails = () => {
                                 <div className="overflow-hidden">
                                     <h4 className="font-black text-white text-sm truncate tracking-tight">@{project.author?.name}</h4>
                                     <div className="flex items-center gap-2">
-                                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${project.author?.tier === 'PRO' ? 'bg-neon-purple text-white' : 'bg-gray-800 text-gray-400'
+                                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${project.author?.tier === 'TITAN' ? 'bg-red-600 text-white shadow-[0_0_10px_rgba(220,38,38,0.5)]' :
+                                                project.author?.tier === 'COMMANDER' ? 'bg-neon-purple text-white' :
+                                                    project.author?.tier === 'OPERATIVE' ? 'bg-neon-green text-black' :
+                                                        project.author?.tier === 'CITIZEN' ? 'bg-neon-blue text-black' :
+                                                            project.author?.tier === 'ARCHITECT' ? 'bg-yellow-500 text-black' :
+                                                                'bg-gray-800 text-gray-400'
                                             }`}>
-                                            {project.author?.tier}
+                                            {project.author?.tier || 'GHOST'}
                                         </span>
                                         {project.author?.isVerified && (
                                             <span className="text-[8px] font-black uppercase px-2 py-0.5 bg-neon-blue/20 text-neon-blue rounded border border-neon-blue/20">

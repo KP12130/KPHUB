@@ -160,7 +160,13 @@ const Navbar = ({ onOpenCommandPalette }) => {
                                                             <p className="text-xs text-gray-300 flex items-center gap-1 flex-wrap">
                                                                 <span className="text-neon-green font-bold">{n.senderName}</span>
                                                                 {n.senderTier && n.senderTier !== 'GHOST' && (
-                                                                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-black tracking-widest ${n.senderTier === 'ELITE' ? 'bg-neon-purple text-white' : 'bg-neon-green text-black'}`}>
+                                                                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-black tracking-widest ${n.senderTier === 'TITAN' ? 'bg-red-500 text-white shadow-[0_0_10px_rgba(239,68,68,0.5)]' :
+                                                                            n.senderTier === 'COMMANDER' ? 'bg-neon-purple text-white shadow-[0_0_10px_rgba(188,19,254,0.5)]' :
+                                                                                n.senderTier === 'OPERATIVE' ? 'bg-neon-green text-black' :
+                                                                                    n.senderTier === 'CITIZEN' ? 'bg-neon-blue text-black' :
+                                                                                        n.senderTier === 'ARCHITECT' ? 'bg-yellow-500 text-black shadow-[0_0_10px_rgba(234,179,8,0.5)]' :
+                                                                                            'bg-gray-600 text-white'
+                                                                        }`}>
                                                                         {n.senderTier}
                                                                     </span>
                                                                 )}

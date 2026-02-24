@@ -618,8 +618,9 @@ router.post('/unfollow/:id', async (req, res) => {
 // POST /api/users/upgrade (Simulated upgrade)
 router.post('/upgrade', async (req, res) => {
     try {
-        const { uid, tier } = req.body; // tier: PRO or ELITE
-        if (!['PRO', 'ELITE'].includes(tier)) return res.status(400).json({ error: 'Invalid tier' });
+        const { uid, tier } = req.body; // tier: GHOST, CITIZEN, OPERATIVE, COMMANDER, TITAN, ARCHITECT
+        const VALID_TIERS = ['GHOST', 'CITIZEN', 'OPERATIVE', 'COMMANDER', 'TITAN', 'ARCHITECT'];
+        if (!VALID_TIERS.includes(tier)) return res.status(400).json({ error: 'Invalid tier' });
 
         await db.collection('users').doc(uid).update({
             tier,

@@ -65,7 +65,7 @@ const Upload = () => {
         const EXECUTABLE_EXTENSIONS = ['.exe', '.bat', '.msi', '.cmd'];
         const hasExecutables = files.some(f => EXECUTABLE_EXTENSIONS.some(ext => f.name.toLowerCase().endsWith(ext)));
         if (hasExecutables && currentUser) {
-            const isVerified = (currentUser.stats?.extraSlots || 0) >= 10 || currentUser.tier === 'PRO' || currentUser.tier === 'ADMIN';
+            const isVerified = (currentUser.stats?.extraSlots || 0) >= 10 || ['OPERATIVE', 'COMMANDER', 'TITAN', 'ARCHITECT', 'ADMIN', 'PRO'].includes(currentUser.tier);
             if (!isVerified) {
                 setError('SECURITY_RESTRICTION: Uploading executable apps (.exe, .bat) requires Verified Developer status. Acquire a Small Booster (+10 Slots) in the Forge to verify your identity.');
                 return;
@@ -133,14 +133,21 @@ const Upload = () => {
                         <div className="flex flex-col items-end gap-1">
                             <div className="flex items-center gap-2 justify-end">
                                 <span className="text-white font-black text-sm">
-                                    {currentUser?.stats?.uploads || 0} / {(currentUser?.tier === 'GHOST' ? 5 : Infinity) + (currentUser?.stats?.extraSlots || 0)}
+                                    {currentUser?.stats?.uploads || 0} / {(() => {
+                                        const tiers = { 'GHOST': 15, 'CITIZEN': 30, 'OPERATIVE': 100, 'COMMANDER': 250, 'TITAN': 500, 'ARCHITECT': 1000, 'ADMIN': Infinity };
+                                        return (tiers[currentUser?.tier] || 15) + (currentUser?.stats?.extraSlots || 0);
+                                    })()}
                                 </span>
                                 <Link to="/forge" className="p-1.5 bg-neon-blue/10 border border-neon-blue/30 rounded text-neon-blue hover:bg-neon-blue hover:text-white transition-all shadow-[0_0_10px_rgba(0,212,255,0.2)]">
                                     <Plus className="w-3 h-3" />
                                 </Link>
                             </div>
-                            <span className="text-[8px] font-mono text-neon-purple uppercase font-black">
-                                Max_Payload: {100 + (currentUser?.stats?.extraStorageLifetimeMB || 0) + (Date.now() < (currentUser?.stats?.extraStorageExpiry || 0) ? (currentUser?.stats?.extraStorageSubMB || 0) : 0)}MB
+                            <span className="text-[8px] font-mono text-neon-purple uppercase font-black text-right min-w-[120px]">
+                                Max_Payload: {(() => {
+                                    const storage = { 'GHOST': 250, 'CITIZEN': 500, 'OPERATIVE': 1024, 'COMMANDER': 2560, 'TITAN': 5120, 'ARCHITECT': 10240, 'ADMIN': 51200 };
+                                    const base = storage[currentUser?.tier] || 250;
+                                    return base + (currentUser?.stats?.extraStorageLifetimeMB || 0) + (Date.now() < (currentUser?.stats?.extraStorageExpiry || 0) ? (currentUser?.stats?.extraStorageSubMB || 0) : 0);
+                                })()}MB
                             </span>
                         </div>
                     </div>

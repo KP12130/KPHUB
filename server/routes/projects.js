@@ -169,18 +169,28 @@ router.post('/', upload.fields([
         const projectCount = userData.stats?.uploads || 0;
 
         // Multi-tier & Upgradeable Limits
-        const baseSlots = userTier === 'GHOST' ? 5 : Infinity;
+        const TIER_CONFIG = {
+            'GHOST': { slots: 15, storage: 250 },
+            'CITIZEN': { slots: 30, storage: 500 },
+            'OPERATIVE': { slots: 100, storage: 1024 }, // 1GB
+            'COMMANDER': { slots: 250, storage: 2560 }, // 2.5GB
+            'TITAN': { slots: 500, storage: 5120 },     // 5GB
+            'ARCHITECT': { slots: 1000, storage: 10240 }, // 10GB
+            'ADMIN': { slots: Infinity, storage: 51200 }  // 50GB Admin
+        };
+
+        const config = TIER_CONFIG[userTier] || TIER_CONFIG['GHOST'];
         const extraSlots = userData.stats?.extraSlots || 0;
-        const maxSlots = baseSlots + extraSlots;
+        const maxSlots = config.slots + extraSlots;
 
         if (projectCount >= maxSlots) {
             return res.status(403).json({
-                error: `UPLOAD_LIMIT_REACHED: Your grid capacity is full (${projectCount}/${maxSlots} slots occupied). Upgrade to PRO or acquire extra infrastructure slots in the Forge.`
+                error: `UPLOAD_LIMIT_REACHED: Your grid capacity is full (${projectCount}/${maxSlots} slots occupied). Upgrade your rank to increase base capacity.`
             });
         }
 
         // Dynamic File Size Limit
-        const baseStorageMB = 100; // Base 100MB
+        const baseStorageMB = config.storage;
         const extraStorageLifetimeMB = userData.stats?.extraStorageLifetimeMB || 0;
         const extraStorageSubMB = userData.stats?.extraStorageSubMB || 0;
         const extraStorageExpiry = userData.stats?.extraStorageExpiry || 0;
@@ -188,7 +198,7 @@ router.post('/', upload.fields([
         // --- SECURITY: Verified Developer Check for Apps ---
         const hasExecutables = projectFiles.some(f => EXECUTABLE_EXTENSIONS.some(ext => f.originalname.toLowerCase().endsWith(ext)));
         if (hasExecutables) {
-            const isVerified = (userData.stats?.extraSlots || 0) >= 10 || userData.tier === 'PRO' || userData.tier === 'ADMIN';
+            const isVerified = (userData.stats?.extraSlots || 0) >= 10 || ['OPERATIVE', 'COMMANDER', 'TITAN', 'ARCHITECT', 'ADMIN', 'PRO'].includes(userTier);
             if (!isVerified) {
                 return res.status(403).json({
                     error: 'SECURITY_RESTRICTION: Uploading executable apps (.exe, .bat) requires Verified Developer status. Acquire a Small Booster (+10 Slots) in the Forge to verify your identity.'

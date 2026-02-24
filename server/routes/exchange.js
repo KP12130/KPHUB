@@ -9,9 +9,10 @@ const setClearUserCache = (fn) => { clearUserCache = fn; };
  * KPC MEMBERSHIP TIERS
  */
 const RANKS = {
-    'PRO': { kpcPrice: 5000, label: 'Pro Architect', description: 'Unlock advanced grid visualizers and priority upload streaming.', roles: ['PRO_ARCHITECT'], weight: 1, periodDays: 30 },
-    'ELITE': { kpcPrice: 15000, label: 'Elite Operator', description: 'Full access to experimental protocols and custom avatar flares.', roles: ['PRO_ARCHITECT', 'ELITE_OPERATOR'], weight: 2, periodDays: 30 },
-    'LEGEND': { kpcPrice: 50000, label: 'Grid Legend', description: 'Permanent footprint in the global leaderboard and exclusive badge metadata.', roles: ['PRO_ARCHITECT', 'ELITE_OPERATOR', 'GRID_LEGEND'], weight: 3, periodDays: 30 }
+    'CITIZEN': { kpcPrice: 2500, label: 'Verified Citizen', description: 'Acquire official grid citizenship. Increases storage to 500MB and slots to 30.', roles: ['CITIZEN'], weight: 1, periodDays: 365 },
+    'OPERATIVE': { kpcPrice: 10000, label: 'Grid Operative', description: 'Unlock advanced transmission protocols. 1GB storage, 100 upload slots.', roles: ['CITIZEN', 'OPERATIVE'], weight: 2, periodDays: 365 },
+    'COMMANDER': { kpcPrice: 30000, label: 'Sector Commander', description: 'High-level sector authority. 2.5GB storage, 250 slots, and custom flares.', roles: ['CITIZEN', 'OPERATIVE', 'COMMANDER'], weight: 3, periodDays: 365 },
+    'TITAN': { kpcPrice: 100000, label: 'Grid Titan', description: 'Absolute grid dominance. 5GB storage, 500 slots, and priority indexing.', roles: ['CITIZEN', 'OPERATIVE', 'COMMANDER', 'TITAN'], weight: 4, periodDays: 365 }
 };
 
 const WITHDRAWAL_MINIMUM = 5000;
