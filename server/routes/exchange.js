@@ -435,55 +435,45 @@ router.get('/gift-cards', (req, res) => {
     res.json(GIFT_CARDS);
 });
 
-// NEW: POST /api/exchange/support-ad - Ad-based Tipping system
-router.post('/support-ad', async (req, res) => {
+// POST /api/exchange/support-creator
+router.post('/support-creator', async (req, res) => {
     try {
-        const { viewerUid, receiverUid, projectId, projectTitle } = req.body;
-        if (!viewerUid || !receiverUid || !projectId) {
-            return res.status(400).json({ error: "Missing required parameters." });
+        const { senderUid, receiverUid, amount, projectId, projectTitle } = req.body;
+        if (!senderUid || !receiverUid || !amount || amount < 100) {
+            return res.status(400).json({ error: "Min support: 100 KPC." });
         }
-        if (viewerUid === receiverUid) {
+        if (senderUid === receiverUid) {
             return res.status(400).json({ error: "Cannot channel support to yourself." });
         }
 
-        const AD_REWARD_KPC = 10; // 10 KPC per ad view
-        const MAX_VIEWS = 4;
-
-        const viewRef = db.collection('ad_views').doc(`${viewerUid}_${projectId}`);
+        const senderRef = db.collection('users').doc(senderUid);
         const receiverRef = db.collection('users').doc(receiverUid);
 
         await db.runTransaction(async (transaction) => {
-            const viewDoc = await transaction.get(viewRef);
+            const senderDoc = await transaction.get(senderRef);
             const receiverDoc = await transaction.get(receiverRef);
 
-            if (!receiverDoc.exists) throw new Error('Recipient not found.');
+            if (!senderDoc.exists || !receiverDoc.exists) throw new Error('User not found.');
+            const senderData = senderDoc.data();
 
-            let viewsCount = 0;
-            if (viewDoc.exists) {
-                viewsCount = viewDoc.data().count || 0;
+            if ((senderData.stats?.kpcBalance || 0) < amount) {
+                throw new Error('INSUFFICIENT_CREDITS');
             }
 
-            if (viewsCount >= MAX_VIEWS) {
-                throw new Error('MAX_SUPPORT_REACHED');
-            }
+            const netAmount = Math.floor(amount * (1 - 0.15)); // Assuming PLATFORM_COMMISSION is 0.15
 
-            // Increment view count
-            transaction.set(viewRef, {
-                count: viewsCount + 1,
-                lastView: admin.firestore.FieldValue.serverTimestamp(),
-                viewerUid,
-                projectId
-            }, { merge: true });
-
-            const receiverData = receiverDoc.data();
+            // Deduct from sender's SPENDABLE balance
+            transaction.update(senderRef, {
+                'stats.kpcBalance': admin.firestore.FieldValue.increment(-amount)
+            });
 
             // Add to receiver's unified balance
             transaction.update(receiverRef, {
-                'stats.kpcBalance': admin.firestore.FieldValue.increment(AD_REWARD_KPC),
+                'stats.kpcBalance': admin.firestore.FieldValue.increment(netAmount),
                 'notifications': admin.firestore.FieldValue.arrayUnion({
                     type: 'CREATOR_SUPPORT',
-                    senderUsername: 'Anonymous Sponsor (Ad)',
-                    amount: AD_REWARD_KPC,
+                    senderUsername: senderData.username,
+                    amount: netAmount,
                     projectTitle: projectTitle || 'Generic Support',
                     timestamp: new Date().toISOString()
                 })
@@ -491,11 +481,11 @@ router.post('/support-ad', async (req, res) => {
 
             // Log entry
             transaction.set(db.collection('kpc_ledger').doc(), {
-                viewerUid,
+                senderUid,
                 receiverUid,
-                amount: AD_REWARD_KPC,
-                netAmount: AD_REWARD_KPC,
-                type: 'AD_SUPPORT',
+                amount,
+                netAmount,
+                type: 'CREATOR_SUPPORT',
                 projectId,
                 timestamp: admin.firestore.FieldValue.serverTimestamp()
             });
@@ -503,9 +493,6 @@ router.post('/support-ad', async (req, res) => {
 
         res.json({ success: true, message: "Support packet transmitted!" });
     } catch (e) {
-        if (e.message === 'MAX_SUPPORT_REACHED') {
-            return res.status(400).json({ error: "MAX_VIEWS: You have reached the maximum support limit (4) for this transmission." });
-        }
         res.status(400).json({ error: e.message });
     }
 });
