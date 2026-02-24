@@ -78,7 +78,7 @@ const AchievementHub = ({ currentUser }) => {
                         >
                             <Trophy className="w-32 h-32 text-neon-green shadow-glow" />
                         </motion.div>
-                        <h2 className="text-6xl font-black text-white italic tracking-tighter uppercase">GRID_ASCENSION_PROTOCOL</h2>
+                        <h2 className="text-6xl font-black text-white italic tracking-tighter uppercase">PURCHASE SUCCESSFUL</h2>
                         <p className="text-3xl font-black text-neon-green uppercase tracking-widest">{lastUnlocked.title}</p>
                     </div>
                 </motion.div>
