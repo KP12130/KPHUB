@@ -168,29 +168,33 @@ router.post('/', upload.fields([
         const userTier = userData.tier || 'GHOST';
         const projectCount = userData.stats?.uploads || 0;
 
-        // Multi-tier & Upgradeable Limits
+        // Rank-Based Transmission Limits & Total Capacity
         const TIER_CONFIG = {
-            'GHOST': { slots: 15, storage: 250 },
-            'CITIZEN': { slots: 30, storage: 500 },
-            'OPERATIVE': { slots: 100, storage: 1024 }, // 1GB
-            'COMMANDER': { slots: 250, storage: 2560 }, // 2.5GB
-            'TITAN': { slots: 500, storage: 5120 },     // 5GB
-            'ARCHITECT': { slots: 1000, storage: 10240 }, // 10GB
-            'ADMIN': { slots: Infinity, storage: 51200 }  // 50GB Admin
+            'GHOST': { maxFileSizeMB: 25 },
+            'CITIZEN': { maxFileSizeMB: 50 },
+            'OPERATIVE': { maxFileSizeMB: 150 },
+            'COMMANDER': { maxFileSizeMB: 500 },
+            'TITAN': { maxFileSizeMB: 1024 },    // 1GB
+            'ARCHITECT': { maxFileSizeMB: 5120 }, // 5GB
+            'ADMIN': { maxFileSizeMB: 10240 }    // 10GB
         };
 
         const config = TIER_CONFIG[userTier] || TIER_CONFIG['GHOST'];
+
+        // Base capacity is now standardized for all ranks. 
+        // Expansion is handled via Infinite_Forge upgrades.
+        const baseSlots = 15;
         const extraSlots = userData.stats?.extraSlots || 0;
-        const maxSlots = config.slots + extraSlots;
+        const maxSlots = baseSlots + extraSlots;
 
         if (projectCount >= maxSlots) {
             return res.status(403).json({
-                error: `UPLOAD_LIMIT_REACHED: Your grid capacity is full (${projectCount}/${maxSlots} slots occupied). Upgrade your rank to increase base capacity.`
+                error: `UPLOAD_LIMIT_REACHED: Your grid capacity is full (${projectCount}/${maxSlots} slots occupied). Expand your infra in the Forge.`
             });
         }
 
-        // Dynamic File Size Limit
-        const baseStorageMB = config.storage;
+        // Dynamic File Size Limit (Transmission Bandwidth)
+        const baseStorageLimitMB = config.maxFileSizeMB;
         const extraStorageLifetimeMB = userData.stats?.extraStorageLifetimeMB || 0;
         const extraStorageSubMB = userData.stats?.extraStorageSubMB || 0;
         const extraStorageExpiry = userData.stats?.extraStorageExpiry || 0;
@@ -206,16 +210,18 @@ router.post('/', upload.fields([
             }
         }
 
-        const activeSubStorage = (Date.now() < extraStorageExpiry) ? extraStorageSubMB : 0;
+        const baseGridLimitMB = 500; // Standard 500MB Base Grid
+        const totalGridStorageMB = baseGridLimitMB + extraStorageLifetimeMB + ((Date.now() < extraStorageExpiry) ? extraStorageSubMB : 0);
 
-        const totalStorageMB = baseStorageMB + extraStorageLifetimeMB + activeSubStorage;
-        const maxFileSize = totalStorageMB * 1024 * 1024;
+        // Transmission Cap (Single Project Size)
+        const maxPayloadMB = baseStorageLimitMB;
+        const maxPayloadBytes = maxPayloadMB * 1024 * 1024;
 
-        // Check total size of current upload
+        // Check total size of current upload against per-project transmission limit
         const totalUploadSize = projectFiles.reduce((sum, f) => sum + f.size, 0);
-        if (totalUploadSize > maxFileSize) {
+        if (totalUploadSize > maxPayloadBytes) {
             return res.status(413).json({
-                error: `SYSTEM_PAYLOAD_EXCEEDED: Your transmission size (${(totalUploadSize / (1024 * 1024)).toFixed(2)}MB) exceeds your current grid allocation (${totalStorageMB}MB). Acquire more storage in the Forge.`
+                error: `SYSTEM_PAYLOAD_EXCEEDED: This transmission (${(totalUploadSize / (1024 * 1024)).toFixed(2)}MB) exceeds your rank's per-project bandwidth (${maxPayloadMB}MB). Upgrade rank for more bandwidth.`
             });
         }
 

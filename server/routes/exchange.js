@@ -9,10 +9,42 @@ const setClearUserCache = (fn) => { clearUserCache = fn; };
  * KPC MEMBERSHIP TIERS
  */
 const RANKS = {
-    'CITIZEN': { kpcPrice: 2500, label: 'Verified Citizen', description: 'Acquire official grid citizenship. Increases storage to 500MB and slots to 30.', roles: ['CITIZEN'], weight: 1, periodDays: 365 },
-    'OPERATIVE': { kpcPrice: 10000, label: 'Grid Operative', description: 'Unlock advanced transmission protocols. 1GB storage, 100 upload slots.', roles: ['CITIZEN', 'OPERATIVE'], weight: 2, periodDays: 365 },
-    'COMMANDER': { kpcPrice: 30000, label: 'Sector Commander', description: 'High-level sector authority. 2.5GB storage, 250 slots, and custom flares.', roles: ['CITIZEN', 'OPERATIVE', 'COMMANDER'], weight: 3, periodDays: 365 },
-    'TITAN': { kpcPrice: 100000, label: 'Grid Titan', description: 'Absolute grid dominance. 5GB storage, 500 slots, and priority indexing.', roles: ['CITIZEN', 'OPERATIVE', 'COMMANDER', 'TITAN'], weight: 4, periodDays: 365 }
+    'CITIZEN': {
+        kpcPrice: 2500,
+        label: 'Verified Citizen',
+        description: 'Transmission Bandwidth: 50MB per project. Verified badge. Basic sector access.',
+        perks: ['50MB_UPLOAD_CAP', 'VERIFIED_BADGE', 'BASIC_PRIORITY'],
+        roles: ['CITIZEN'],
+        weight: 1,
+        periodDays: 365
+    },
+    'OPERATIVE': {
+        kpcPrice: 10000,
+        label: 'Grid Operative',
+        description: 'Transmission Bandwidth: 150MB per project. Priority support tickets. Unlocks Matrix Flow flare.',
+        perks: ['150MB_UPLOAD_CAP', 'PRIORITY_SUPPORT', 'MATRIX_FLARE_UNLOCK'],
+        roles: ['CITIZEN', 'OPERATIVE'],
+        weight: 2,
+        periodDays: 365
+    },
+    'COMMANDER': {
+        kpcPrice: 30000,
+        label: 'Sector Commander',
+        description: 'Transmission Bandwidth: 500MB per project. High priority support. Unlocks Neon/Glitch flares.',
+        perks: ['500MB_UPLOAD_CAP', 'HIGH_PRIORITY_SUPPORT', 'COSMETIC_BUNDLE_V1'],
+        roles: ['CITIZEN', 'OPERATIVE', 'COMMANDER'],
+        weight: 3,
+        periodDays: 365
+    },
+    'TITAN': {
+        kpcPrice: 100000,
+        label: 'Grid Titan',
+        description: 'Transmission Bandwidth: 1GB per project. Immediate support attention. Exclusive Titan Pulse styling.',
+        perks: ['1GB_UPLOAD_CAP', 'IMMEDIATE_RESPONSE', 'TITAN_GLOW_ACCESS', 'ALL_FLARES'],
+        roles: ['CITIZEN', 'OPERATIVE', 'COMMANDER', 'TITAN'],
+        weight: 4,
+        periodDays: 365
+    }
 };
 
 const WITHDRAWAL_MINIMUM = 5000;
@@ -63,9 +95,11 @@ const GIFT_CARDS = {
 };
 
 const KPC_BUNDLES = {
+    'STARTER': { amount: 2500, price: 4.99, label: 'Starter Hub' },
     'SMALL': { amount: 10000, price: 14.99, label: 'Small Pack' },
     'MEDIUM': { amount: 27500, price: 34.99, label: 'Medium Pack' },
-    'LARGE': { amount: 60000, price: 69.99, label: 'Large Pack' }
+    'LARGE': { amount: 60000, price: 69.99, label: 'Large Pack' },
+    'OMEGA': { amount: 150000, price: 149.99, label: 'Omega Core' }
 };
 
 const FLARES = {

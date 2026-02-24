@@ -60,9 +60,11 @@ const ForgeStore = ({ isEmbedded = false }) => {
     const getIcon = (id) => {
         const iconClass = "w-8 h-8";
         switch (id) {
+            case 'STARTER': return <Zap className={`${iconClass} text-white`} />;
             case 'SMALL': return <Box className={`${iconClass} text-neon-blue`} />;
             case 'MEDIUM': return <Layers className={`${iconClass} text-neon-green`} />;
             case 'LARGE': return <Cpu className={`${iconClass} text-neon-purple`} />;
+            case 'OMEGA': return <Sparkles className={`${iconClass} text-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.5)]`} />;
             default: return <Zap className={`${iconClass} text-white`} />;
         }
     };

@@ -137,8 +137,8 @@ const InfrastructureManager = () => {
                         className="w-full h-1.5 bg-white/5 rounded-lg appearance-none cursor-pointer accent-neon-blue transition-all"
                     />
                     <div className="flex justify-between text-[8px] font-mono text-gray-700 uppercase">
-                        <span>Original Capacity (GHOST)</span>
-                        <span>Full Sector Allocation (TITAN)</span>
+                        <span>Standard capacity (15)</span>
+                        <span>Max Infra Expansion (+100)</span>
                     </div>
                 </div>
 
