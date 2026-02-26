@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalLink, Heart, MessageSquare, Eye, Lock, Zap } from 'lucide-react';
+import { ExternalLink, Heart, MessageSquare, Eye, Lock, Zap, Shield } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -96,9 +96,16 @@ const ProjectCard = ({ project, loading, index = 0 }) => {
                             ) : (
                                 <div className={`w-5 h-5 rounded-full bg-gray-700 ${flair?.aura}`} />
                             )}
-                            <span className={`text-xs font-mono flex items-center gap-1 ${flair?.color || 'text-gray-300'}`}>
-                                @{project.author?.username || 'GHOST'} {flair?.emoji}
-                            </span>
+                            <div className="flex items-center gap-1">
+                                <span className={`text-xs font-mono flex items-center gap-1 ${flair?.color || 'text-gray-300'}`}>
+                                    @{project.author?.username || project.author?.name || 'GHOST'} {flair?.emoji}
+                                </span>
+                                {(project.author?.reputation || 0) > 0 && (
+                                    <span className="flex items-center gap-1 text-[8px] bg-orange-500/10 text-orange-500 px-1 py-0.5 rounded border border-orange-500/20 font-black">
+                                        <Shield className="w-2 h-2" /> RPT {project.author.reputation}
+                                    </span>
+                                )}
+                            </div>
                         </div>
 
                         <h3 className={`text-2xl font-black leading-none tracking-tight group-hover:text-neon-green transition-colors drop-shadow-lg ${flair?.animate}`}>

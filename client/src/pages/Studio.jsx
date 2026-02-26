@@ -446,6 +446,13 @@ const Studio = () => {
                                             <span className="text-2xl font-black text-white">{currentUser?.stats?.kpcBalance?.toLocaleString() || 0}</span>
                                             <span className="text-[8px] font-mono text-gray-500 uppercase">KPC Balance</span>
                                         </GlassCard>
+                                        <GlassCard className="flex flex-col items-center justify-center text-center p-4 border border-white/5 hover:border-orange-500/50 transition-all">
+                                            <motion.div whileHover={{ scale: 1.1 }} className="p-3 bg-orange-500/10 rounded-xl mb-3">
+                                                <Shield className="w-5 h-5 text-orange-500" />
+                                            </motion.div>
+                                            <span className="text-2xl font-black text-white">{currentUser?.stats?.reputation || 0}</span>
+                                            <span className="text-[8px] font-mono text-gray-500 uppercase">Grid Authority (RPT)</span>
+                                        </GlassCard>
                                         <GlassCard
                                             onClick={() => setView('REWARDS')}
                                             className="flex flex-col items-center justify-center text-center p-4 border border-white/5 hover:border-neon-purple/50 transition-all cursor-pointer group"

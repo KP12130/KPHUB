@@ -500,7 +500,14 @@ const ProjectDetails = () => {
                                     className="w-10 h-10 rounded-full border border-gray-600"
                                 />
                                 <div>
-                                    <p className="text-white font-bold leading-none">{project.author?.username}</p>
+                                    <div className="flex flex-col">
+                                        <p className="text-white font-bold leading-none">{project.author?.username}</p>
+                                        {(project.author?.reputation || 0) > 0 && (
+                                            <span className="flex items-center gap-1 text-[10px] text-orange-500 mt-1 font-black">
+                                                <Shield className="w-3 h-3" /> RPT {project.author.reputation}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>

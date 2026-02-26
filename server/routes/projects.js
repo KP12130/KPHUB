@@ -267,7 +267,8 @@ router.post('/', upload.fields([
             author: {
                 uid: authorId,
                 name: authorName,
-                avatar: authorAvatar
+                avatar: authorAvatar,
+                reputation: userData.stats?.reputation || 0
             },
             security: {
                 hasExecutables,

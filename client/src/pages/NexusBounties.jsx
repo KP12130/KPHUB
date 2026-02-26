@@ -57,7 +57,8 @@ const NexusBounties = () => {
                 ...newBounty,
                 authorUid: currentUser.uid,
                 authorName: currentUser.username || currentUser.displayName,
-                authorAvatar: currentUser.photoURL || currentUser.avatar
+                authorAvatar: currentUser.photoURL || currentUser.avatar,
+                authorReputation: currentUser.stats?.reputation || 0
             });
             toast.success("BOUNTY_POSTED: Escrow protocol engaged.");
             setIsCreateModalOpen(false);
@@ -76,6 +77,7 @@ const NexusBounties = () => {
                 uid: currentUser.uid,
                 username: currentUser.username || currentUser.displayName,
                 avatar: currentUser.photoURL || currentUser.avatar,
+                reputation: currentUser.stats?.reputation || 0,
                 content: submissionInput
             });
             toast.success("SUBMISSION_TRANSMITTED: Awaiting architect review.");
@@ -296,7 +298,14 @@ const NexusBounties = () => {
                                         <div className="flex items-center gap-3">
                                             <img src={selectedBounty.authorAvatar} className="w-10 h-10 rounded-full border border-neon-blue" />
                                             <div>
-                                                <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Architect</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Architect</p>
+                                                    {(selectedBounty.authorReputation || 0) > 0 && (
+                                                        <span className="flex items-center gap-1 text-[8px] bg-orange-500/10 text-orange-500 px-1.5 py-0.5 rounded border border-orange-500/20 font-black">
+                                                            <Shield className="w-2 h-2" /> RPT {selectedBounty.authorReputation}
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <p className="text-sm font-bold text-white">@{selectedBounty.authorName}</p>
                                             </div>
                                         </div>
@@ -360,7 +369,14 @@ const NexusBounties = () => {
                                                 <div className="flex items-center gap-3 mb-4">
                                                     <img src={sub.avatar} className="w-8 h-8 rounded-full border border-neon-blue" />
                                                     <div>
-                                                        <p className="text-xs font-bold text-white">@{sub.username}</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-xs font-bold text-white">@{sub.username}</p>
+                                                            {(sub.reputation || 0) > 0 && (
+                                                                <span className="flex items-center gap-1 text-[8px] bg-orange-500/10 text-orange-500 px-1.5 py-0.5 rounded border border-orange-500/20 font-black">
+                                                                    <Shield className="w-2 h-2" /> RPT {sub.reputation}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         <p className="text-[8px] text-gray-500 uppercase font-mono">{new Date(sub.createdAt).toLocaleString()}</p>
                                                     </div>
 

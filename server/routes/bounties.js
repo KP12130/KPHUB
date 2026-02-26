@@ -102,7 +102,7 @@ async function awardBountyInternal(bountyId, submissionId, authorUid = 'SYSTEM_A
 // POST /api/bounties - Create a new bounty (Escrow logic)
 router.post('/', checkMuteMiddleware, async (req, res) => {
     try {
-        const { authorUid, authorName, authorAvatar, title, description, rewardKpc, projectId, category } = req.body;
+        const { authorUid, authorName, authorAvatar, authorReputation, title, description, rewardKpc, projectId, category } = req.body;
 
         if (!title || !description || !rewardKpc || rewardKpc < 100) {
             return res.status(400).json({ error: 'Bounty requires title, description and min 100 KPC reward.' });
@@ -130,6 +130,7 @@ router.post('/', checkMuteMiddleware, async (req, res) => {
                 authorUid,
                 authorName,
                 authorAvatar,
+                authorReputation: authorReputation || 0,
                 title,
                 description,
                 rewardKpc,
@@ -160,7 +161,7 @@ router.post('/', checkMuteMiddleware, async (req, res) => {
 // POST /api/bounties/:id/submit - Submit a solution
 router.post('/:id/submit', checkMuteMiddleware, async (req, res) => {
     try {
-        const { uid, username, avatar, content, githubLink } = req.body;
+        const { uid, username, avatar, content, githubLink, reputation } = req.body;
         const { id } = req.params;
 
         if (!content) return res.status(400).json({ error: 'Submission requires content.' });
@@ -176,6 +177,7 @@ router.post('/:id/submit', checkMuteMiddleware, async (req, res) => {
             uid,
             username,
             avatar,
+            reputation: reputation || 0,
             content,
             githubLink: githubLink || null,
             status: 'PENDING',
