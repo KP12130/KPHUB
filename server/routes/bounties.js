@@ -23,13 +23,81 @@ router.get('/', async (req, res) => {
 // GET /api/bounties/:id - Get specific bounty details
 router.get('/:id', async (req, res) => {
     try {
-        const doc = await db.collection('bounties').doc(req.params.id).get();
+        const bountyRef = db.collection('bounties').doc(req.params.id);
+        const doc = await bountyRef.get();
         if (!doc.exists) return res.status(404).json({ error: 'Bounty not found.' });
-        res.json({ id: doc.id, ...doc.data() });
+
+        const data = doc.data();
+
+        // LAZY_AUTO_PAYOUT_LOGIC
+        if (data.status === 'OPEN' && data.submissions && data.submissions.length > 0) {
+            const now = new Date();
+            const oldestPending = data.submissions
+                .filter(s => s.status === 'PENDING')
+                .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))[0];
+
+            if (oldestPending && new Date(oldestPending.autoPayoutAt) < now) {
+                // Trigger Auto-Payout
+                console.log(`Auto-payout triggered for bounty ${req.params.id}`);
+                await awardBountyInternal(req.params.id, oldestPending.id, 'SYSTEM_AUTO_PAYOUT');
+
+                // Fetch fresh data after auto-payout
+                const freshDoc = await bountyRef.get();
+                return res.json({ id: freshDoc.id, ...freshDoc.data(), _autoPayout: true });
+            }
+        }
+
+        res.json({ id: doc.id, ...data });
     } catch (error) {
+        console.error("Bounty fetch/payout error:", error);
         res.status(500).json({ error: 'Bounty retrieval failed.' });
     }
 });
+
+// Internal helper for awarding (re-used by manual and auto payout)
+async function awardBountyInternal(bountyId, submissionId, authorUid = 'SYSTEM_AUTO_PAYOUT') {
+    const bountyRef = db.collection('bounties').doc(bountyId);
+
+    await db.runTransaction(async (transaction) => {
+        const bountyDoc = await transaction.get(bountyRef);
+        if (!bountyDoc.exists) throw new Error('Bounty not found.');
+
+        const bountyData = bountyDoc.data();
+        if (authorUid !== 'SYSTEM_AUTO_PAYOUT' && bountyData.authorUid !== authorUid) {
+            throw new Error('UNAUTHORIZED_MODIFICATION');
+        }
+        if (bountyData.status !== 'OPEN') throw new Error('BOUNTY_ALREADY_CLOSED');
+
+        const winnerSubmission = bountyData.submissions.find(s => s.id === submissionId);
+        if (!winnerSubmission) throw new Error('SUBMISSION_NOT_FOUND');
+
+        const winnerRef = db.collection('users').doc(winnerSubmission.uid);
+
+        // Release KPC to winner and increment reputation
+        transaction.update(winnerRef, {
+            'stats.kpcBalance': admin.firestore.FieldValue.increment(bountyData.rewardKpc),
+            'stats.reputation': admin.firestore.FieldValue.increment(10) // +10 reputation for mission completion
+        });
+
+        // Close bounty
+        transaction.update(bountyRef, {
+            status: 'COMPLETED',
+            winnerUid: winnerSubmission.uid,
+            winnerId: submissionId,
+            awardedBy: authorUid,
+            awardedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Log to ledger
+        transaction.set(db.collection('kpc_ledger').doc(), {
+            uid: winnerSubmission.uid,
+            amount: bountyData.rewardKpc,
+            type: authorUid === 'SYSTEM_AUTO_PAYOUT' ? 'BOUNTY_AUTO_PAYOUT' : 'BOUNTY_REWARD',
+            bountyId: bountyId,
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+    });
+}
 
 // POST /api/bounties - Create a new bounty (Escrow logic)
 router.post('/', checkMuteMiddleware, async (req, res) => {
@@ -110,11 +178,14 @@ router.post('/:id/submit', checkMuteMiddleware, async (req, res) => {
             avatar,
             content,
             githubLink: githubLink || null,
-            createdAt: new Date().toISOString()
+            status: 'PENDING',
+            createdAt: new Date().toISOString(),
+            autoPayoutAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString() // 48h from now
         };
 
         await bountyRef.update({
-            submissions: admin.firestore.FieldValue.arrayUnion(submission)
+            submissions: admin.firestore.FieldValue.arrayUnion(submission),
+            lastSubmissionAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
         // Notify author (optional, integrate with notifications if exists)
@@ -139,46 +210,181 @@ router.post('/:id/award', async (req, res) => {
         const { authorUid, submissionId } = req.body;
         const { id } = req.params;
 
+        await awardBountyInternal(id, submissionId, authorUid);
+
+        res.json({ success: true, message: 'Reward dispensed. Bounty finalized.' });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// POST /api/bounties/:id/cancel - Recall a bounty
+router.post('/:id/cancel', async (req, res) => {
+    try {
+        const { uid } = req.body;
+        const { id } = req.params;
+
         const bountyRef = db.collection('bounties').doc(id);
 
         await db.runTransaction(async (transaction) => {
-            const bountyDoc = await transaction.get(bountyRef);
-            if (!bountyDoc.exists) throw new Error('Bounty not found.');
+            const doc = await transaction.get(bountyRef);
+            if (!doc.exists) throw new Error('Bounty not found.');
 
-            const bountyData = bountyDoc.data();
-            if (bountyData.authorUid !== authorUid) throw new Error('UNAUTHORIZED_MODIFICATION');
-            if (bountyData.status !== 'OPEN') throw new Error('BOUNTY_ALREADY_CLOSED');
+            const data = doc.data();
+            if (data.authorUid !== uid) throw new Error('UNAUTHORIZED_MODIFICATION');
+            if (data.status !== 'OPEN') throw new Error('BOUNTY_NOT_ACTIVE');
 
-            const winnerSubmission = bountyData.submissions.find(s => s.id === submissionId);
-            if (!winnerSubmission) throw new Error('SUBMISSION_NOT_FOUND');
+            // If there are submissions, we don't allow simple cancellation
+            if (data.submissions && data.submissions.length > 0) {
+                throw new Error('SUBMISSIONS_EXIST: Please open a dispute if you wish to recall this bounty.');
+            }
 
-            const winnerRef = db.collection('users').doc(winnerSubmission.uid);
+            const userRef = db.collection('users').doc(uid);
 
-            // Release KPC to winner
-            transaction.update(winnerRef, {
-                'stats.kpcBalance': admin.firestore.FieldValue.increment(bountyData.rewardKpc)
+            // Refund KPC
+            transaction.update(userRef, {
+                'stats.kpcBalance': admin.firestore.FieldValue.increment(data.rewardKpc)
             });
 
-            // Close bounty
-            transaction.update(bountyRef, {
-                status: 'COMPLETED',
-                winnerUid: winnerSubmission.uid,
-                winnerId: submissionId
-            });
+            // Update status
+            transaction.update(bountyRef, { status: 'CANCELLED' });
 
-            // Log to ledger
+            // Log ledger
             transaction.set(db.collection('kpc_ledger').doc(), {
-                uid: winnerSubmission.uid,
-                amount: bountyData.rewardKpc,
-                type: 'BOUNTY_REWARD',
+                uid,
+                amount: data.rewardKpc,
+                type: 'BOUNTY_REFUND',
                 bountyId: id,
                 timestamp: admin.firestore.FieldValue.serverTimestamp()
             });
         });
 
-        res.json({ success: true, message: 'Reward dispensed. Bounty finalized.' });
+        res.json({ success: true, message: 'Bounty recalled. Credits refunded to your account.' });
     } catch (error) {
         res.status(400).json({ error: error.message });
+    }
+});
+
+// POST /api/bounties/:id/dispute - Flag a bounty for review
+router.post('/:id/dispute', async (req, res) => {
+    try {
+        const { uid, reason } = req.body;
+        const { id } = req.params;
+
+        const bountyRef = db.collection('bounties').doc(id);
+        const bountyDoc = await bountyRef.get();
+
+        if (!bountyDoc.exists) return res.status(404).json({ error: 'Bounty not found.' });
+
+        const data = bountyDoc.data();
+        const isAuthor = data.authorUid === uid;
+        const isSubmitter = data.submissions.some(s => s.uid === uid);
+
+        if (!isAuthor && !isSubmitter) {
+            return res.status(403).json({ error: 'Only involved parties can initiate a dispute.' });
+        }
+
+        await bountyRef.update({
+            status: 'DISPUTED',
+            disputeReason: reason || 'Generic dispute initiated.',
+            disputedBy: uid,
+            disputedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        res.json({ success: true, message: 'Dispute protocol initiated. An admin will review the sector shortly.' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to initiate dispute.' });
+    }
+});
+
+// GET /api/bounties/admin/disputes - List all disputed bounties (Admin only)
+router.get('/admin/disputes', async (req, res) => {
+    try {
+        const snapshot = await db.collection('bounties')
+            .where('status', '==', 'DISPUTED')
+            .orderBy('disputedAt', 'desc')
+            .get();
+
+        const bounties = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.json(bounties);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to access disputed sectors.' });
+    }
+});
+
+// POST /api/bounties/:id/resolve-dispute - Forcefully resolve a dispute (Admin only)
+router.post('/:id/resolve-dispute', async (req, res) => {
+    try {
+        const { submissionId, action, adminPass } = req.body;
+        const { id } = req.params;
+
+        // Simple admin check
+        if (adminPass !== "KxhTpq53249..__gKP") {
+            return res.status(403).json({ error: 'ADMIN_PROTOCOL_INVALID' });
+        }
+
+        const bountyRef = db.collection('bounties').doc(id);
+
+        if (action === 'AWARD') {
+            await awardBountyInternal(id, submissionId, 'SYSTEM_ADMIN_RESOLUTION');
+        } else if (action === 'REFUND') {
+            await db.runTransaction(async (transaction) => {
+                const doc = await transaction.get(bountyRef);
+                if (!doc.exists) throw new Error('Bounty not found.');
+                const data = doc.data();
+
+                const userRef = db.collection('users').doc(data.authorUid);
+                transaction.update(userRef, {
+                    'stats.kpcBalance': admin.firestore.FieldValue.increment(data.rewardKpc)
+                });
+
+                transaction.update(bountyRef, {
+                    status: 'REFUNDED_BY_ADMIN',
+                    resolvedAt: admin.firestore.FieldValue.serverTimestamp()
+                });
+
+                transaction.set(db.collection('kpc_ledger').doc(), {
+                    uid: data.authorUid,
+                    amount: data.rewardKpc,
+                    type: 'BOUNTY_ADMIN_REFUND',
+                    bountyId: id,
+                    timestamp: admin.firestore.FieldValue.serverTimestamp()
+                });
+            });
+        }
+
+        res.json({ success: true, message: `Dispute resolved via ${action} protocol.` });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// POST /api/bounties/:id/reject - Reject a submission
+router.post('/:id/reject', async (req, res) => {
+    try {
+        const { uid, submissionId, reason } = req.body;
+        const { id } = req.params;
+
+        const bountyRef = db.collection('bounties').doc(id);
+        const doc = await bountyRef.get();
+
+        if (!doc.exists) return res.status(404).json({ error: 'Bounty not found.' });
+        const data = doc.data();
+
+        if (data.authorUid !== uid) return res.status(403).json({ error: 'Unauthorized.' });
+
+        const submissions = data.submissions.map(s => {
+            if (s.id === submissionId) {
+                return { ...s, status: 'REJECTED', rejectionReason: reason, rejectedAt: new Date().toISOString() };
+            }
+            return s;
+        });
+
+        await bountyRef.update({ submissions });
+
+        res.json({ success: true, message: 'Submission rejected. Auto-payout aborted for this packet.' });
+    } catch (error) {
+        res.status(500).json({ error: 'Rejection failed.' });
     }
 });
 

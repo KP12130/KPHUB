@@ -60,12 +60,13 @@ const Admin = () => {
     const [pendingVerifications, setPendingVerifications] = useState([]);
     const [isVerifying, setIsVerifying] = useState(false);
     const [payoutRequests, setPayoutRequests] = useState([]);
+    const [disputedBounties, setDisputedBounties] = useState([]);
 
     useEffect(() => {
         if (isAuthenticated && activeTab === 'VERIFICATION') fetchPendingVerifications();
         if (isAuthenticated && activeTab === 'NEXUS_MANAGER') fetchHackathons();
         if (isAuthenticated && activeTab === 'PAYOUTS') fetchPayoutRequests();
-        if (isAuthenticated && activeTab === 'PAYOUTS') fetchPayoutRequests();
+        if (isAuthenticated && activeTab === 'BOUNTY_DISPUTES') fetchDisputedBounties();
 
         // Update URL query param when tab changes
         setSearchParams({ tab: activeTab }, { replace: true });

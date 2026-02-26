@@ -6,7 +6,8 @@ import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Zap, Terminal, Plus, Search, Filter, MessageSquare,
-    Send, CheckCircle2, X, ChevronRight, User, Globe, AlertCircle, Loader2
+    Send, CheckCircle2, X, ChevronRight, User, Globe, AlertCircle, Loader2,
+    ShieldAlert, Clock, RotateCcw, Scale
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -105,6 +106,59 @@ const NexusBounties = () => {
         }
     };
 
+    const handleCancelBounty = async () => {
+        if (!window.confirm("Are you sure you want to recall this bounty? Credits will be refunded to your account.")) return;
+
+        try {
+            await axios.post(`${API_BASE}/api/bounties/${selectedBounty.id}/cancel`, {
+                uid: currentUser.uid
+            });
+            toast.success("BOUNTY_RECALLED: Credits refunded.");
+            setSelectedBounty(null);
+            fetchBounties();
+        } catch (err) {
+            toast.error(err.response?.data?.error || "Recall failed.");
+        }
+    };
+
+    const handleDisputeBounty = async () => {
+        const reason = window.prompt("Enter reason for dispute (required):");
+        if (!reason) return;
+
+        try {
+            await axios.post(`${API_BASE}/api/bounties/${selectedBounty.id}/dispute`, {
+                uid: currentUser.uid,
+                reason
+            });
+            toast.success("DISPUTE_INITIALIZED: Admin audit requested.");
+            // Refresh details
+            const res = await axios.get(`${API_BASE}/api/bounties/${selectedBounty.id}`);
+            setSelectedBounty(res.data);
+            fetchBounties();
+        } catch (err) {
+            toast.error("Failed to initiate dispute.");
+        }
+    };
+
+    const handleRejectSubmission = async (submissionId) => {
+        const reason = window.prompt("REJECTION_REASON (Aborting 48h auto-payout):");
+        if (!reason) return;
+
+        try {
+            await axios.post(`${API_BASE}/api/bounties/${selectedBounty.id}/reject`, {
+                uid: currentUser.uid,
+                submissionId,
+                reason
+            });
+            toast.success("SUBMISSION_REJECTED: Developer notified.");
+            // Refresh details
+            const res = await axios.get(`${API_BASE}/api/bounties/${selectedBounty.id}`);
+            setSelectedBounty(res.data);
+        } catch (err) {
+            toast.error("Rejection failed.");
+        }
+    };
+
     const filteredBounties = (Array.isArray(bounties) ? bounties : []).filter(b =>
         activeCategory === 'All' || b.category === activeCategory
     );
@@ -170,8 +224,9 @@ const NexusBounties = () => {
                                     {bounty.category}
                                 </span>
                             </div>
-                            <h3 className="text-xl font-black text-white leading-tight group-hover:text-neon-blue transition-colors">
+                            <h3 className="text-xl font-black text-white leading-tight group-hover:text-neon-blue transition-colors flex items-center gap-2">
                                 {bounty.title}
+                                {bounty.status === 'DISPUTED' && <ShieldAlert className="w-4 h-4 text-red-500 animate-pulse" />}
                             </h3>
                             <p className="text-xs text-gray-400 line-clamp-2 italic font-mono">
                                 {bounty.description}
@@ -182,9 +237,16 @@ const NexusBounties = () => {
                                     <img src={bounty.authorAvatar} className="w-6 h-6 rounded-full border border-neon-blue" />
                                     <span className="text-[10px] font-bold text-gray-300">@{bounty.authorName}</span>
                                 </div>
-                                <div className="flex items-center gap-1 text-gray-500 text-[10px] font-black uppercase">
-                                    <MessageSquare className="w-3 h-3" />
-                                    {bounty.submissions?.length || 0} solutions
+                                <div className="flex items-center gap-2">
+                                    {bounty.status !== 'OPEN' && (
+                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded ${bounty.status === 'COMPLETED' ? 'bg-neon-green text-black' : 'bg-red-500/20 text-red-500'}`}>
+                                            {bounty.status}
+                                        </span>
+                                    )}
+                                    <div className="flex items-center gap-1 text-gray-500 text-[10px] font-black uppercase">
+                                        <MessageSquare className="w-3 h-3" />
+                                        {bounty.submissions?.length || 0}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -230,11 +292,31 @@ const NexusBounties = () => {
                                     <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase leading-none">
                                         {selectedBounty.title}
                                     </h2>
-                                    <div className="flex items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/5">
-                                        <img src={selectedBounty.authorAvatar} className="w-10 h-10 rounded-full border border-neon-blue" />
-                                        <div>
-                                            <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Architect</p>
-                                            <p className="text-sm font-bold text-white">@{selectedBounty.authorName}</p>
+                                    <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                                        <div className="flex items-center gap-3">
+                                            <img src={selectedBounty.authorAvatar} className="w-10 h-10 rounded-full border border-neon-blue" />
+                                            <div>
+                                                <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Architect</p>
+                                                <p className="text-sm font-bold text-white">@{selectedBounty.authorName}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            {currentUser?.uid === selectedBounty.authorUid && selectedBounty.status === 'OPEN' && selectedBounty.submissions?.length === 0 && (
+                                                <button
+                                                    onClick={handleCancelBounty}
+                                                    className="px-4 py-2 bg-red-500/10 border border-red-500/30 text-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center gap-2"
+                                                >
+                                                    <RotateCcw className="w-3 h-3" /> Recall_Escrow
+                                                </button>
+                                            )}
+                                            {(currentUser?.uid === selectedBounty.authorUid || selectedBounty.submissions?.some(s => s.uid === currentUser?.uid)) && selectedBounty.status === 'OPEN' && (
+                                                <button
+                                                    onClick={handleDisputeBounty}
+                                                    className="px-4 py-2 bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-yellow-500 hover:text-black transition-all flex items-center gap-2"
+                                                >
+                                                    <ShieldAlert className="w-3 h-3" /> Open_Dispute
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -282,13 +364,37 @@ const NexusBounties = () => {
                                                         <p className="text-[8px] text-gray-500 uppercase font-mono">{new Date(sub.createdAt).toLocaleString()}</p>
                                                     </div>
 
-                                                    {currentUser?.uid === selectedBounty.authorUid && (
-                                                        <button
-                                                            onClick={() => handleAwardBounty(sub.id)}
-                                                            className="ml-auto px-4 py-2 bg-neon-green/20 border border-neon-green/30 text-neon-green rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-neon-green hover:text-black transition-all"
-                                                        >
-                                                            Award_Bounty
-                                                        </button>
+                                                    {sub.status !== 'PENDING' ? (
+                                                        <span className={`ml-auto px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${sub.status === 'REJECTED' ? 'bg-red-500/20 text-red-500' : 'bg-neon-green/20 text-neon-green'}`}>
+                                                            {sub.status}
+                                                        </span>
+                                                    ) : (
+                                                        <>
+                                                            <div className="ml-auto text-right">
+                                                                <p className="text-[8px] text-gray-600 uppercase font-black mb-1 flex items-center gap-1 justify-end">
+                                                                    <Clock className="w-2 h-2" /> Auto_Payout_Timer
+                                                                </p>
+                                                                <p className="text-[10px] text-neon-blue font-mono font-bold tracking-tighter">
+                                                                    {Math.max(0, Math.floor((new Date(sub.autoPayoutAt) - new Date()) / (1000 * 60 * 60)))}h Remaining
+                                                                </p>
+                                                            </div>
+                                                            {currentUser?.uid === selectedBounty.authorUid && selectedBounty.status === 'OPEN' && (
+                                                                <div className="flex gap-2 ml-4">
+                                                                    <button
+                                                                        onClick={() => handleAwardBounty(sub.id)}
+                                                                        className="px-4 py-2 bg-neon-green/20 border border-neon-green/30 text-neon-green rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-neon-green hover:text-black transition-all"
+                                                                    >
+                                                                        Award
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleRejectSubmission(sub.id)}
+                                                                        className="px-4 py-2 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all"
+                                                                    >
+                                                                        Reject
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </>
                                                     )}
                                                 </div>
                                                 <div className="prose prose-invert prose-sm max-w-none font-mono text-xs text-gray-300">
@@ -296,6 +402,12 @@ const NexusBounties = () => {
                                                         {sub.content}
                                                     </ReactMarkdown>
                                                 </div>
+                                                {sub.status === 'REJECTED' && (
+                                                    <div className="mt-4 p-3 bg-red-500/5 border border-red-500/20 rounded-xl text-[10px] text-red-400 font-mono flex items-start gap-2">
+                                                        <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
+                                                        <span>REJECTION_LOG: {sub.rejectionReason}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                         {(!selectedBounty.submissions || selectedBounty.submissions.length === 0) && (

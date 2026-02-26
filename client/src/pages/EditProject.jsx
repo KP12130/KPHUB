@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import { Save, ChevronLeft, AlertCircle, Loader, Shield, File as FileIcon, ImageIcon, Folder } from 'lucide-react';
+import { Save, ChevronLeft, AlertCircle, Loader, Shield, File as FileIcon, ImageIcon, Folder, Zap } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE } from '../api';
 import { toast } from 'react-hot-toast';
@@ -197,7 +197,7 @@ const EditProject = () => {
                             <div className="p-6 bg-neon-green/5 border border-neon-green/20 rounded-2xl flex items-center justify-between col-span-1 md:col-span-2">
                                 <div className="flex items-center gap-4">
                                     <div className={`p-3 rounded-xl ${formData.isPremium ? 'bg-neon-blue/20 text-neon-blue animate-pulse' : 'bg-gray-800/50 text-gray-600'}`}>
-                                        <Shield className="w-6 h-6" />
+                                        <Zap className="w-6 h-6" />
                                     </div>
                                     <div>
                                         <h4 className="text-xs font-black text-white uppercase tracking-widest mb-1">Premium_Protocol</h4>
