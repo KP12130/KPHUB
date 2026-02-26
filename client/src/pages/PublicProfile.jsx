@@ -42,10 +42,7 @@ const PublicProfile = () => {
                 setAllFlares(flaresRes.data);
                 setTopDonors(donorsRes.data);
                 setRanks(ranksRes.data);
-
-                if (currentUser && res.data.user.followers?.includes(currentUser.uid)) {
-                    setIsFollowing(true);
-                }
+                setIsFollowing(res.data.isFollowing);
             } catch (err) {
                 console.error("Failed to fetch profile", err);
                 setError(err.response?.data?.error || 'Profile not found');
@@ -60,7 +57,7 @@ const PublicProfile = () => {
         if (!currentUser) return toast.error("Please login to follow creators!");
         try {
             if (isFollowing) {
-                await axios.post(`${API_BASE}/api/users/unfollow/${profile.user.uid}`, { followerId: currentUser.uid });
+                await axios.post(`${API_BASE}/api/users/unfollow/${profile.user.uid}`, { followerUid: currentUser.uid });
                 setIsFollowing(false);
                 setProfile(prev => ({
                     ...prev,
@@ -68,14 +65,13 @@ const PublicProfile = () => {
                         ...prev.user,
                         stats: {
                             ...prev.user.stats,
-                            followersCount: (prev.user.stats?.followersCount || 1) - 1
+                            followers: (prev.user.stats?.followers || 1) - 1
                         }
                     }
                 }));
             } else {
                 await axios.post(`${API_BASE}/api/users/follow/${profile.user.uid}`, {
-                    followerId: currentUser.uid,
-                    followerName: currentUser.displayName || currentUser.username
+                    followerUid: currentUser.uid
                 });
                 setIsFollowing(true);
                 setProfile(prev => ({
@@ -84,7 +80,7 @@ const PublicProfile = () => {
                         ...prev.user,
                         stats: {
                             ...prev.user.stats,
-                            followersCount: (prev.user.stats?.followersCount || 0) + 1
+                            followers: (prev.user.stats?.followers || 0) + 1
                         }
                     }
                 }));
@@ -223,12 +219,12 @@ const PublicProfile = () => {
                         <div className="flex flex-wrap justify-center md:justify-start gap-4">
                             <div className="flex items-center gap-6 bg-void px-4 py-2 rounded-lg border border-gray-800">
                                 <div className="flex flex-col items-center">
-                                    <span className="text-white font-black text-xs">{user.stats?.followersCount || user.followers?.length || 0}</span>
+                                    <span className="text-white font-black text-xs">{user.stats?.followers || 0}</span>
                                     <span className="text-[8px] text-gray-500 uppercase font-mono">Followers</span>
                                 </div>
                                 <div className="h-4 w-[1px] bg-gray-800" />
                                 <div className="flex flex-col items-center">
-                                    <span className="text-white font-black text-xs">{user.stats?.followingCount || user.following?.length || 0}</span>
+                                    <span className="text-white font-black text-xs">{user.stats?.following || 0}</span>
                                     <span className="text-[8px] text-gray-500 uppercase font-mono">Following</span>
                                 </div>
                             </div>

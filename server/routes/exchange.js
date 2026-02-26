@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { db, admin } = require('../config/firebase');
+const { recordProjectAnalytics } = require('../utils/analytics');
 
 let clearUserCache = () => { }; // Placeholder
 const setClearUserCache = (fn) => { clearUserCache = fn; };
@@ -490,6 +491,12 @@ router.post('/support-creator', async (req, res) => {
                 timestamp: admin.firestore.FieldValue.serverTimestamp()
             });
         });
+
+        // Record for time-series analytics (External to transaction to avoid locking)
+        // Convert KPC net amount to a "virtual USD" value or just track KPC? 
+        // Studio shows $ sign, so maybe amount/1000? Let's track absolute KPC for now and adjust UI.
+        // Actually, the implementation plan says "revenue".
+        await recordProjectAnalytics(receiverUid, 'revenue', netAmount);
 
         res.json({ success: true, message: "Support packet transmitted!" });
     } catch (e) {

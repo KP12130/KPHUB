@@ -204,8 +204,9 @@ const ProjectDetails = () => {
     const [comments, setComments] = useState([]);
     const [updates, setUpdates] = useState([]);
     const [commentInput, setCommentInput] = useState('');
+    const [replyTo, setReplyTo] = useState(null);
     const [likeSpamBlocked, setLikeSpamBlocked] = useState(false);
-    const likeClickCount = React.useRef(0);
+    const [likeClickCount] = useState({ current: 0 }); // Local state instead of ref for simpler persistence in this context
     const [isDownloading, setIsDownloading] = useState(false);
     const [isFileLoading, setIsFileLoading] = useState(false);
     const [isDangerZoneOpen, setIsDangerZoneOpen] = useState(false);
@@ -362,10 +363,12 @@ const ProjectDetails = () => {
                 userId: currentUser.uid,
                 userName: currentUser.displayName || currentUser.username,
                 userAvatar: currentUser.photoURL,
-                content: commentInput
+                content: commentInput,
+                parentId: replyTo
             });
-            setComments([res.data, ...comments]);
+            setComments([...comments, res.data]); // Keep natural order, UI handles nesting
             setCommentInput('');
+            setReplyTo(null);
             toast.success("Signal transmitted.");
         } catch (err) {
             // Sync user state on security blocks so RestrictionBanner can show.
@@ -615,35 +618,77 @@ const ProjectDetails = () => {
                                                     <div className="w-10 h-10 rounded-full bg-gray-800" />
                                                 )}
                                                 <div className="flex-grow space-y-2">
+                                                    {replyTo && (
+                                                        <div className="flex items-center justify-between bg-neon-blue/10 px-3 py-1 rounded border border-neon-blue/30 mb-2">
+                                                            <span className="text-[10px] text-neon-blue font-bold uppercase tracking-widest">Replying to signal...</span>
+                                                            <button onClick={() => setReplyTo(null)} className="text-gray-500 hover:text-white"><X className="w-3 h-3" /></button>
+                                                        </div>
+                                                    )}
                                                     <textarea
                                                         value={commentInput}
                                                         onChange={(e) => setCommentInput(e.target.value)}
-                                                        placeholder="Broadcast a signal to the creator..."
+                                                        placeholder={replyTo ? "Compose reply..." : "Broadcast a signal to the creator..."}
                                                         className="w-full bg-black/30 border border-white/10 rounded-xl p-4 text-white focus:border-neon-green outline-none min-h-[100px]"
                                                     />
                                                     <button
                                                         onClick={handlePostComment}
-                                                        className="px-6 py-2 bg-white/5 hover:bg-neon-green hover:text-black text-white font-bold uppercase text-xs tracking-widest rounded-lg transition-colors border border-white/10"
+                                                        className={`px-6 py-2 font-bold uppercase text-xs tracking-widest rounded-lg transition-colors border ${replyTo ? 'bg-neon-blue/20 text-neon-blue border-neon-blue/30 hover:bg-neon-blue hover:text-black' : 'bg-white/5 text-white border-white/10 hover:bg-neon-green hover:text-black'}`}
                                                     >
-                                                        Transmit
+                                                        {replyTo ? 'Reply' : 'Transmit'}
                                                     </button>
                                                 </div>
                                             </div>
 
                                             <div className="space-y-4">
-                                                {comments.map(comment => (
-                                                    <div key={comment.id} className="p-4 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                                                        <div className="flex justify-between items-start mb-2">
-                                                            <div className="flex items-center gap-3">
-                                                                <span className="text-neon-green font-bold text-sm">{comment.userName}</span>
-                                                                <span className="text-gray-600 text-xs font-mono">
-                                                                    {comment.createdAt?.seconds
-                                                                        ? new Date(comment.createdAt.seconds * 1000).toLocaleDateString()
-                                                                        : new Date(comment.createdAt).toLocaleDateString()}
-                                                                </span>
+                                                {comments.filter(c => !c.parentId).map(comment => (
+                                                    <div key={comment.id} className="space-y-3">
+                                                        <div className="p-4 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <div className="flex items-center gap-3">
+                                                                    <span className="text-neon-green font-bold text-sm tracking-tight">{comment.userName}</span>
+                                                                    <span className="text-gray-600 text-[10px] font-mono">
+                                                                        {comment.createdAt?.seconds
+                                                                            ? new Date(comment.createdAt.seconds * 1000).toLocaleDateString()
+                                                                            : new Date(comment.createdAt).toLocaleDateString()}
+                                                                    </span>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setReplyTo(comment.id);
+                                                                        setCommentInput(`@${comment.userName} `);
+                                                                        document.querySelector('textarea')?.focus();
+                                                                    }}
+                                                                    className="text-[10px] font-black uppercase text-gray-500 hover:text-neon-blue transition-colors"
+                                                                >
+                                                                    Reply
+                                                                </button>
+                                                            </div>
+                                                            <div className="text-gray-300 text-sm leading-relaxed prose prose-invert prose-sm max-w-none">
+                                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                                    {comment.content || comment.text}
+                                                                </ReactMarkdown>
                                                             </div>
                                                         </div>
-                                                        <p className="text-gray-300 text-sm leading-relaxed">{comment.content || comment.text}</p>
+
+                                                        {/* Replies */}
+                                                        {comments.filter(reply => reply.parentId === comment.id).map(reply => (
+                                                            <div key={reply.id} className="ml-10 p-4 bg-white/5 border-l-2 border-neon-blue/20 rounded-r-xl relative">
+                                                                <div className="absolute -left-6 top-1/2 w-4 h-[1px] bg-neon-blue/20" />
+                                                                <div className="flex items-center gap-3 mb-2">
+                                                                    <span className="text-neon-blue font-bold text-xs">@{reply.userName}</span>
+                                                                    <span className="text-gray-600 text-[9px] font-mono">
+                                                                        {reply.createdAt?.seconds
+                                                                            ? new Date(reply.createdAt.seconds * 1000).toLocaleDateString()
+                                                                            : new Date(reply.createdAt).toLocaleDateString()}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="text-gray-400 text-xs leading-relaxed prose prose-invert prose-xs max-w-none opacity-80">
+                                                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                                        {reply.content || reply.text}
+                                                                    </ReactMarkdown>
+                                                                </div>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 ))}
                                             </div>

@@ -404,13 +404,95 @@ router.get('/profile/:username', async (req, res) => {
             return dateB - dateA;
         });
 
+        // Fetch current month's analytics for historical charts
+        const monthStr = new Date().toISOString().substring(0, 7);
+        const analyticsDoc = await db.collection('analytics').doc(`${userId}_${monthStr}`).get();
+        const history = analyticsDoc.exists ? (analyticsDoc.data().history || []) : [];
+
+        // Check for new achievements
+        const newBadges = checkAchievements(userData);
+        if (newBadges.length > 0) {
+            await db.collection('users').doc(userId).update({
+                badges: admin.firestore.FieldValue.arrayUnion(...newBadges)
+            });
+            // Update local copy for response
+            userData.badges = [...(userData.badges || []), ...newBadges];
+        }
+
+        // Check if viewer is following this user
+        let isFollowing = false;
+        if (viewerId && viewerId !== userId) {
+            const followDoc = await db.collection('follows').doc(`${viewerId}_${userId}`).get();
+            isFollowing = followDoc.exists;
+        }
+
         res.json({
-            user: userData,
-            projects
+            user: {
+                ...userData,
+                stats: {
+                    ...(userData.stats || {}),
+                    history: history // Inject history into stats for Studio.jsx
+                }
+            },
+            projects,
+            isFollowing
         });
     } catch (error) {
         console.error('Fetch Public Profile Error:', error);
         res.status(500).json({ error: 'Failed to fetch public profile' });
+    }
+});
+
+// POST /api/users/sync - Daily Streak & Login Logic
+router.post('/sync', async (req, res) => {
+    try {
+        const { uid } = req.body;
+        if (!uid) return res.status(400).json({ error: 'UID required' });
+
+        const userRef = db.collection('users').doc(uid);
+        const userDoc = await userRef.get();
+        if (!userDoc.exists) return res.status(404).json({ error: 'User not found' });
+
+        const userData = userDoc.data();
+        const now = new Date();
+        const lastLogin = userData.lastLoginDate ? (userData.lastLoginDate.toDate ? userData.lastLoginDate.toDate() : new Date(userData.lastLoginDate)) : null;
+
+        let streak = userData.stats?.streak || 0;
+        let awardedKpc = 0;
+        let message = "Handshake successful. Grid link maintained.";
+
+        const isToday = lastLogin && lastLogin.toDateString() === now.toDateString();
+        const isYesterday = lastLogin && new Date(lastLogin.getTime() + 86400000).toDateString() === now.toDateString();
+
+        if (!isToday) {
+            if (isYesterday) {
+                streak += 1;
+            } else {
+                streak = 1;
+            }
+            awardedKpc = 5; // Daily bonus for maintaining the link
+
+            await db.runTransaction(async (transaction) => {
+                transaction.update(userRef, {
+                    'lastLoginDate': admin.firestore.FieldValue.serverTimestamp(),
+                    'stats.streak': streak,
+                    'stats.kpcBalance': admin.firestore.FieldValue.increment(awardedKpc)
+                });
+
+                transaction.set(db.collection('kpc_ledger').doc(), {
+                    receiverUid: uid,
+                    amount: awardedKpc,
+                    type: 'DAILY_SYNC_REWARD',
+                    timestamp: admin.firestore.FieldValue.serverTimestamp()
+                });
+            });
+            message = `Daily Sync Complete: +${awardedKpc} KPC rewarded. Streak: ${streak} days.`;
+        }
+
+        res.json({ success: true, message, streak, awardedKpc });
+    } catch (error) {
+        console.error('Sync Error:', error);
+        res.status(500).json({ error: 'Failed to sync with the grid.' });
     }
 });
 
@@ -761,25 +843,85 @@ router.post('/quests/complete', async (req, res) => {
         res.status(500).json({ error: 'Failed' });
     }
 });
-// GET /api/users/admin/violations?uid=...&period=1h|1d|7d|30d|365d|lifetime
-router.get('/admin/violations', async (req, res) => {
+// POST /api/users/follow/:uid
+router.post('/follow/:targetUid', async (req, res) => {
     try {
-        const { uid, period = 'lifetime' } = req.query;
-        if (!uid) return res.status(400).json({ error: 'uid required' });
+        const { followerUid } = req.body;
+        const { targetUid } = req.params;
 
-        const periodMap = { '1h': 1 / 24, '1d': 1, '7d': 7, '30d': 30, '365d': 365 };
-        let query = db.collection('violations').where('uid', '==', uid).orderBy('appliedAt', 'desc');
+        if (!followerUid || !targetUid) return res.status(400).json({ error: 'UIDs required' });
+        if (followerUid === targetUid) return res.status(400).json({ error: 'Cannot follow yourself' });
 
-        if (period !== 'lifetime' && periodMap[period]) {
-            const since = new Date(Date.now() - periodMap[period] * 24 * 60 * 60 * 1000).toISOString();
-            query = query.where('appliedAt', '>=', since);
-        }
+        const followRef = db.collection('follows').doc(`${followerUid}_${targetUid}`);
+        const followerRef = db.collection('users').doc(followerUid);
+        const targetRef = db.collection('users').doc(targetUid);
 
-        const snap = await query.limit(100).get();
-        res.json(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (err) {
-        console.error('Violations Error:', err);
-        res.status(500).json({ error: 'Failed to fetch violations.' });
+        await db.runTransaction(async (transaction) => {
+            const followDoc = await transaction.get(followRef);
+            if (followDoc.exists) throw new Error('ALREADY_FOLLOWING');
+
+            transaction.set(followRef, {
+                followerUid,
+                targetUid,
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            transaction.update(followerRef, {
+                'stats.following': admin.firestore.FieldValue.increment(1)
+            });
+
+            transaction.update(targetRef, {
+                'stats.followers': admin.firestore.FieldValue.increment(1)
+            });
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Follow Error:', error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// POST /api/users/unfollow/:uid
+router.post('/unfollow/:targetUid', async (req, res) => {
+    try {
+        const { followerUid } = req.body;
+        const { targetUid } = req.params;
+
+        const followRef = db.collection('follows').doc(`${followerUid}_${targetUid}`);
+        const followerRef = db.collection('users').doc(followerUid);
+        const targetRef = db.collection('users').doc(targetUid);
+
+        await db.runTransaction(async (transaction) => {
+            const followDoc = await transaction.get(followRef);
+            if (!followDoc.exists) throw new Error('NOT_FOLLOWING');
+
+            transaction.delete(followRef);
+
+            transaction.update(followerRef, {
+                'stats.following': admin.firestore.FieldValue.increment(-1)
+            });
+
+            transaction.update(targetRef, {
+                'stats.followers': admin.firestore.FieldValue.increment(-1)
+            });
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Unfollow Error:', error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// GET /api/users/follow-status/:followerUid/:targetUid
+router.get('/follow-status/:followerUid/:targetUid', async (req, res) => {
+    try {
+        const { followerUid, targetUid } = req.params;
+        const followDoc = await db.collection('follows').doc(`${followerUid}_${targetUid}`).get();
+        res.json({ isFollowing: followDoc.exists });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed' });
     }
 });
 

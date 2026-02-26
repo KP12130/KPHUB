@@ -16,13 +16,14 @@ const Leaderboard = () => {
     const [votedProjectId, setVotedProjectId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('wealth'); // Default to wealth
+    const [timeframe, setTimeframe] = useState('all-time'); // Default to all-time
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
                 const [repRes, auditRes, voteRes] = await Promise.all([
-                    axios.get(`${API_BASE}/api/leaderboard?sort=${activeTab}`),
+                    axios.get(`${API_BASE}/api/leaderboard?sort=${activeTab}&timeframe=${timeframe}`),
                     axios.get(`${API_BASE}/api/reviews/leaderboard`),
                     axios.get(`${API_BASE}/api/voting/candidates?userId=${currentUser?.uid || ''}`)
                 ]);
@@ -38,7 +39,7 @@ const Leaderboard = () => {
             }
         };
         fetchData();
-    }, [activeTab, currentUser]);
+    }, [activeTab, timeframe, currentUser]);
 
     const getRankIcon = (index) => {
         switch (index) {
@@ -153,7 +154,27 @@ const Leaderboard = () => {
                                 {activeTab === 'reputation' ? 'Top Architects' : 'Grid Overlords'}
                             </h2>
                         </div>
-                        <div className="flex bg-white/5 p-1 rounded-lg border border-white/10">
+                        <div className="flex bg-white/5 p-1 rounded-lg border border-white/10 gap-2">
+                            <div className="flex bg-black/40 p-0.5 rounded-md border border-white/5 mr-4">
+                                <button
+                                    onClick={() => setTimeframe('all-time')}
+                                    className={`px-3 py-1 rounded text-[8px] font-black uppercase transition-all ${timeframe === 'all-time' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                                >
+                                    All-Time
+                                </button>
+                                <button
+                                    onClick={() => setTimeframe('monthly')}
+                                    className={`px-3 py-1 rounded text-[8px] font-black uppercase transition-all ${timeframe === 'monthly' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                                >
+                                    Monthly
+                                </button>
+                            </div>
+                            <button
+                                onClick={() => setActiveTab('reputation')}
+                                className={`px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'reputation' ? 'bg-neon-green text-black shadow-[0_0_10px_rgba(57,255,20,0.3)]' : 'text-gray-500 hover:text-white'}`}
+                            >
+                                Reputation
+                            </button>
                             <button
                                 onClick={() => setActiveTab('wealth')}
                                 className={`px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'wealth' ? 'bg-yellow-400 text-black shadow-[0_0_10px_rgba(250,204,21,0.3)]' : 'text-gray-500 hover:text-white'}`}

@@ -138,15 +138,22 @@ const Home = () => {
   const categories = ['All', 'Web', 'Game', 'Tool', 'AI', 'Script', 'Module', 'Mobile'];
 
   const [sortBy, setSortBy] = useState('newest');
+  const [viewMode, setViewMode] = useState('global'); // 'global' or 'feed'
 
 
   useEffect(() => {
     const fetchProjects = async () => {
       setLoading(true);
       try {
-        const res = await axios.get(`${API_BASE}/api/projects`, {
-          params: { search, category, sort: sortBy }
-        });
+        let url = `${API_BASE}/api/projects`;
+        let params = { search, category, sort: sortBy };
+
+        if (viewMode === 'feed' && currentUser) {
+          url = `${API_BASE}/api/projects/feed/${currentUser.uid}`;
+          params = { limit: 40 }; // Simplified for feed
+        }
+
+        const res = await axios.get(url, { params });
         setProjects(res.data);
       } catch (err) {
         console.error("Error fetching projects:", err);
@@ -155,9 +162,9 @@ const Home = () => {
       }
     };
 
-    const timeoutId = setTimeout(fetchProjects, 500); // 500ms debounce
+    const timeoutId = setTimeout(fetchProjects, 500);
     return () => clearTimeout(timeoutId);
-  }, [search, category, sortBy]); // Added sortBy to dependencies
+  }, [search, category, sortBy, viewMode, currentUser]);
 
   // Sync search with URL for tags
   useEffect(() => {
@@ -281,24 +288,42 @@ const Home = () => {
       {/* Trending Grid */}
       <div className="max-w-7xl mx-auto px-4">
         <section className="space-y-10">
-          <div className="flex justify-between items-end border-b border-glass-border pb-6">
-            <div>
-              <h2 className="text-4xl font-black text-white tracking-tighter mb-2 flex items-center gap-3">
-                <Trophy className="w-8 h-8 text-neon-green" />
-                Trending Protocols
-              </h2>
-              <p className="text-gray-500 font-mono text-sm">Most active systems in the last 24 cycles.</p>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-glass-border pb-6 gap-6">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-6">
+                <button
+                  onClick={() => setViewMode('global')}
+                  className={`text-2xl md:text-4xl font-black tracking-tighter transition-all uppercase flex items-center gap-3 ${viewMode === 'global' ? 'text-white text-glow-sm' : 'text-gray-600 hover:text-gray-400'}`}
+                >
+                  <Trophy className={`w-8 h-8 ${viewMode === 'global' ? 'text-neon-green' : 'text-gray-700'}`} />
+                  Trending_Protocols
+                </button>
+                {currentUser && (
+                  <button
+                    onClick={() => setViewMode('feed')}
+                    className={`text-2xl md:text-4xl font-black tracking-tighter transition-all uppercase flex items-center gap-3 ${viewMode === 'feed' ? 'text-white text-glow-sm' : 'text-gray-600 hover:text-gray-400'}`}
+                  >
+                    <Target className={`w-8 h-8 ${viewMode === 'feed' ? 'text-neon-blue' : 'text-gray-700'}`} />
+                    Personal_Feed
+                  </button>
+                )}
+              </div>
+              <p className="text-gray-500 font-mono text-xs uppercase">
+                {viewMode === 'global' ? 'Synchronizing with global trending data clusters.' : `Accessing data streams from ${currentUser?.stats?.following || 0} followed nodes.`}
+              </p>
             </div>
             <div className="flex items-center gap-4">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="bg-void border border-gray-800 text-gray-500 text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-lg focus:border-neon-blue outline-none cursor-pointer hover:text-white transition-all"
-              >
-                <option value="newest">Latest</option>
-                <option value="liked">Top_Rated</option>
-                <option value="viewed">Most_Viewed</option>
-              </select>
+              {viewMode === 'global' && (
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="bg-void border border-gray-800 text-gray-500 text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-lg focus:border-neon-blue outline-none cursor-pointer hover:text-white transition-all"
+                >
+                  <option value="newest">Latest</option>
+                  <option value="liked">Top_Rated</option>
+                  <option value="viewed">Most_Viewed</option>
+                </select>
+              )}
               <Link to="/explore" className="text-neon-green font-bold uppercase tracking-widest text-xs hover:underline flex items-center gap-1">
                 View_All <ChevronDown className="w-3 h-3 -rotate-90" />
               </Link>

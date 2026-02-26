@@ -115,7 +115,7 @@ router.get('/:projectId', async (req, res) => {
 // POST /api/comments/:projectId - Add a new comment
 router.post('/:projectId', checkMuteMiddleware, commentLimiter, async (req, res) => {
     try {
-        const { userId, userName, userAvatar, content } = req.body;
+        const { userId, userName, userAvatar, content, parentId } = req.body;
         const { projectId } = req.params;
 
         if (!content) return res.status(400).json({ error: 'Comment content is required.' });
@@ -133,6 +133,7 @@ router.post('/:projectId', checkMuteMiddleware, commentLimiter, async (req, res)
             userName,
             userAvatar,
             content, // Uncensored, because it passed the filter check above
+            parentId: parentId || null,
             createdAt: new Date().toISOString()
         };
 

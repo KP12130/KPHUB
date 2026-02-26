@@ -7,13 +7,14 @@ import { db } from '../firebase';
 import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import {
     LayoutDashboard, Trophy, Code, Upload as UploadIcon, HelpCircle,
-    Bell, BellDot, User, LogOut, Menu, X, Terminal, ShoppingCart, Zap, TrendingUp, Plus, ShoppingBag
+    Bell, BellDot, User, LogOut, Menu, X, Terminal, ShoppingCart, Zap, TrendingUp, Plus, ShoppingBag, Flame
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import useSound from '../hooks/useSound';
+import { toast } from 'react-hot-toast';
 
 const Navbar = ({ onOpenCommandPalette }) => {
-    const { currentUser, logout, setIsRedemptionOpen } = useAuth();
+    const { currentUser, logout, setIsRedemptionOpen, updateUser } = useAuth();
     const navigate = useNavigate();
     const { playSound } = useSound();
     const [notifications, setNotifications] = useState([]);
@@ -35,6 +36,35 @@ const Navbar = ({ onOpenCommandPalette }) => {
         };
         fetchFlares();
     }, []);
+
+    useEffect(() => {
+        const syncDaily = async () => {
+            if (!currentUser) return;
+            try {
+                const res = await axios.post(`${API_BASE}/api/users/sync`, { uid: currentUser.uid });
+                if (res.data.awardedKpc > 0) {
+                    toast.success(res.data.message, {
+                        icon: '🔥',
+                        duration: 5000,
+                        style: {
+                            borderRadius: '12px',
+                            background: '#000',
+                            color: '#fff',
+                            border: '1px solid #ff4d00',
+                            fontSize: '12px',
+                            fontFamily: 'monospace'
+                        }
+                    });
+                    // Refresh user data to show new streak/balance
+                    const profileRes = await axios.get(`${API_BASE}/api/users/profile/${currentUser.username}?viewerId=${currentUser.uid}`);
+                    if (updateUser) updateUser(profileRes.data.user);
+                }
+            } catch (err) {
+                console.error("Daily sync failed", err);
+            }
+        };
+        syncDaily();
+    }, [currentUser?.uid]);
 
     useEffect(() => {
         if (!currentUser || currentUser.tier === 'BANNED') return;
@@ -161,11 +191,11 @@ const Navbar = ({ onOpenCommandPalette }) => {
                                                                 <span className="text-neon-green font-bold">{n.senderName}</span>
                                                                 {n.senderTier && n.senderTier !== 'GHOST' && (
                                                                     <span className={`px-1.5 py-0.5 rounded text-[8px] font-black tracking-widest ${n.senderTier === 'TITAN' ? 'bg-red-500 text-white shadow-[0_0_10px_rgba(239,68,68,0.5)]' :
-                                                                            n.senderTier === 'COMMANDER' ? 'bg-neon-purple text-white shadow-[0_0_10px_rgba(188,19,254,0.5)]' :
-                                                                                n.senderTier === 'OPERATIVE' ? 'bg-neon-green text-black' :
-                                                                                    n.senderTier === 'CITIZEN' ? 'bg-neon-blue text-black' :
-                                                                                        n.senderTier === 'ARCHITECT' ? 'bg-yellow-500 text-black shadow-[0_0_10px_rgba(234,179,8,0.5)]' :
-                                                                                            'bg-gray-600 text-white'
+                                                                        n.senderTier === 'COMMANDER' ? 'bg-neon-purple text-white shadow-[0_0_10px_rgba(188,19,254,0.5)]' :
+                                                                            n.senderTier === 'OPERATIVE' ? 'bg-neon-green text-black' :
+                                                                                n.senderTier === 'CITIZEN' ? 'bg-neon-blue text-black' :
+                                                                                    n.senderTier === 'ARCHITECT' ? 'bg-yellow-500 text-black shadow-[0_0_10px_rgba(234,179,8,0.5)]' :
+                                                                                        'bg-gray-600 text-white'
                                                                         }`}>
                                                                         {n.senderTier}
                                                                     </span>
@@ -200,6 +230,12 @@ const Navbar = ({ onOpenCommandPalette }) => {
                                     <Zap className="w-3 h-3 text-neon-green group-hover/spend:animate-pulse" />
                                     <span className="text-[10px] font-black text-white">{currentUser?.stats?.kpcBalance?.toLocaleString() || 0}</span>
                                     <span className="text-[7px] font-mono text-neon-green uppercase tracking-tighter">KPC</span>
+                                    {currentUser?.stats?.streak > 0 && (
+                                        <div className="flex items-center gap-1 ml-2 px-1.5 py-0.5 bg-orange-500/10 border border-orange-500/20 rounded text-orange-500 font-black text-[8px] animate-pulse" title={`${currentUser.stats.streak} Day Sync Streak`}>
+                                            <Flame className="w-2.5 h-2.5 fill-current" />
+                                            {currentUser.stats.streak}
+                                        </div>
+                                    )}
                                     <Link to="/forge" className="ml-1 p-1 rounded-md bg-neon-green/10 hover:bg-neon-green/20 text-neon-green transition-colors">
                                         <Plus className="w-3 h-3" />
                                     </Link>

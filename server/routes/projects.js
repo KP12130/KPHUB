@@ -8,6 +8,7 @@ const { uploadFile, getFileUrl, getFileBuffer } = require('../utils/storage');
 const { createNotification } = require('./notifications');
 const rateLimit = require('express-rate-limit');
 const { triggerAutoModeration, checkMuteMiddleware } = require('../middleware/security');
+const { recordProjectAnalytics } = require('../utils/analytics');
 
 // --- BACKGROUND SECURITY TASKS ---
 const triggerSecurityScan = async (projectId, hashes, title, authorName) => {
@@ -492,14 +493,13 @@ router.post('/:id/view', checkMuteMiddleware, viewLimiter, async (req, res) => {
 
         let shouldIncrement = false;
 
+        const docSnap = await docRef.get();
+        if (!docSnap.exists) return res.status(404).json({ error: 'Project not found' });
+        const project = docSnap.data();
+
         if (userId) {
-            const doc = await docRef.get();
-            if (doc.exists) {
-                const project = doc.data();
-                const viewedBy = project.viewedBy || [];
-
-                if (viewedBy.includes(userId)) return res.json({ success: true });
-
+            const viewedBy = project.viewedBy || [];
+            if (!viewedBy.includes(userId)) {
                 await docRef.update({
                     viewedBy: admin.firestore.FieldValue.arrayUnion(userId),
                     'stats.views': admin.firestore.FieldValue.increment(1)
@@ -512,18 +512,18 @@ router.post('/:id/view', checkMuteMiddleware, viewLimiter, async (req, res) => {
         }
 
         if (shouldIncrement) {
-            const doc = await docRef.get();
-            const project = doc.data();
-            if (project && project.author && project.author.uid) {
+            if (project.author && project.author.uid) {
                 await db.collection('users').doc(project.author.uid).update({
                     'stats.views': admin.firestore.FieldValue.increment(1)
                 });
+                // Record for time-series analytics
+                await recordProjectAnalytics(project.author.uid, 'views', 1);
             }
         }
 
         res.json({ success: true });
     } catch (error) {
-        console.error('[DATABASE_ERROR] Fetch Files failed:', error);
+        console.error('[DATABASE_ERROR] View Registry failed:', error);
         res.status(500).json({ error: 'Failed' });
     }
 });
@@ -648,6 +648,48 @@ router.get('/', async (req, res) => {
     } catch (error) {
         console.error('[DATABASE_ERROR] Project List Fetch failed:', error);
         res.status(500).json({ error: 'Failed' });
+    }
+});
+
+// GET /api/projects/feed/:uid
+router.get('/feed/:uid', async (req, res) => {
+    try {
+        const { uid } = req.params;
+        const { limit = 20 } = req.query;
+
+        // 1. Get authors this user follows
+        const followsSnapshot = await db.collection('follows')
+            .where('followerUid', '==', uid)
+            .get();
+
+        if (followsSnapshot.empty) {
+            return res.json([]);
+        }
+
+        const followedUids = followsSnapshot.docs.map(doc => doc.data().targetUid);
+
+        // 2. Fetch projects from these authors
+        // Firestore 'in' query limit is 30. If more, we'd need to batch. 
+        // For now, let's just take the first 30 followed authors.
+        const batchUids = followedUids.slice(0, 30);
+
+        const projectsSnapshot = await db.collection('projects')
+            .where('author.uid', 'in', batchUids)
+            .where('isPrivate', '==', false)
+            .where('moderationStatus', '==', 'APPROVED')
+            .orderBy('createdAt', 'desc')
+            .limit(Number(limit))
+            .get();
+
+        const feed = projectsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+
+        res.json(feed);
+    } catch (error) {
+        console.error('Feed Error:', error);
+        res.status(500).json({ error: 'Failed to synchronize feed. Grid interference detected.' });
     }
 });
 
