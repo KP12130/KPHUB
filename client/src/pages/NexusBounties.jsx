@@ -105,7 +105,7 @@ const NexusBounties = () => {
         }
     };
 
-    const filteredBounties = bounties.filter(b =>
+    const filteredBounties = (Array.isArray(bounties) ? bounties : []).filter(b =>
         activeCategory === 'All' || b.category === activeCategory
     );
 
@@ -140,8 +140,8 @@ const NexusBounties = () => {
                         key={cat}
                         onClick={() => setActiveCategory(cat)}
                         className={`px-6 py-2 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all border ${activeCategory === cat
-                                ? 'bg-neon-blue border-neon-blue text-black shadow-[0_0_15px_rgba(0,183,235,0.4)]'
-                                : 'bg-white/5 border-white/10 text-gray-500 hover:border-white/20'
+                            ? 'bg-neon-blue border-neon-blue text-black shadow-[0_0_15px_rgba(0,183,235,0.4)]'
+                            : 'bg-white/5 border-white/10 text-gray-500 hover:border-white/20'
                             }`}
                     >
                         {cat}

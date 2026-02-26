@@ -38,8 +38,9 @@ const Hackathons = () => {
         return `${days}d ${hours}h ${minutes}m`;
     };
 
-    const activeHackathons = hackathons.filter(h => h.status !== 'COMPLETED' && getTimeRemaining(h.endDate) !== 'EVENT_CONCLUDED');
-    const pastHackathons = hackathons.filter(h => h.status === 'COMPLETED' || getTimeRemaining(h.endDate) === 'EVENT_CONCLUDED');
+    const safeHackathons = Array.isArray(hackathons) ? hackathons : [];
+    const activeHackathons = safeHackathons.filter(h => h.status !== 'COMPLETED' && getTimeRemaining(h.endDate) !== 'EVENT_CONCLUDED');
+    const pastHackathons = safeHackathons.filter(h => h.status === 'COMPLETED' || getTimeRemaining(h.endDate) === 'EVENT_CONCLUDED');
 
     useEffect(() => {
         fetchHackathons();

@@ -42,7 +42,7 @@ const Explore = () => {
     };
 
     const filterProjects = () => {
-        let result = projects;
+        let result = Array.isArray(projects) ? projects : [];
 
         if (activeCategory !== 'ALL') {
             result = result.filter(p => p.category === activeCategory);

@@ -245,7 +245,7 @@ const ProjectDetails = () => {
 
                 // Fetch Related
                 const relatedRes = await axios.get(`${API_BASE}/api/projects?category=${res.data.category}&limit=3`);
-                setRelatedProjects(relatedRes.data.filter(p => p.id !== id));
+                setRelatedProjects(Array.isArray(relatedRes.data) ? relatedRes.data.filter(p => p.id !== id) : []);
 
                 // Fetch Comments
                 const commentsRes = await axios.get(`${API_BASE}/api/comments/${id}`);
