@@ -96,7 +96,7 @@ const Admin = () => {
         setIsLoading(true);
         try {
             const res = await axios.get(`${API_BASE}/api/support/tickets`);
-            setTickets(res.data);
+            setTickets(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
             toast.error("Data extraction failure.");
         } finally {
@@ -108,7 +108,7 @@ const Admin = () => {
         setIsLoading(true);
         try {
             const res = await axios.get(`${API_BASE}/api/exchange/admin/pending-verifications`);
-            setPendingVerifications(res.data);
+            setPendingVerifications(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
             toast.error("Verification data sync failure.");
         } finally {
@@ -149,7 +149,7 @@ const Admin = () => {
         setIsLoading(true);
         try {
             const res = await axios.get(`${API_BASE}/api/bounties/admin/disputes`);
-            setDisputedBounties(res.data);
+            setDisputedBounties(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
             toast.error("Failed to fetch disputed zones.");
         } finally {
@@ -242,7 +242,7 @@ const Admin = () => {
         setIsLoading(true);
         try {
             const res = await axios.get(`${API_BASE}/api/exchange/admin/payout-requests`);
-            setPayoutRequests(res.data);
+            setPayoutRequests(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
             toast.error("Payout data sync failure.");
         } finally {
@@ -585,7 +585,7 @@ const Admin = () => {
                                             </div>
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                                                {bounty.submissions?.map(sub => (
+                                                {(Array.isArray(bounty.submissions) ? bounty.submissions : []).map(sub => (
                                                     <div key={sub.id} className="p-4 bg-white/5 border border-white/5 rounded-2xl relative group">
                                                         <div className="flex items-center gap-2 mb-2">
                                                             <img src={sub.avatar} className="w-6 h-6 rounded-full" />

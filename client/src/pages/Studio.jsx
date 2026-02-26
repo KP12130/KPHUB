@@ -83,7 +83,7 @@ const Studio = () => {
                 ]);
 
                 const { user, projects } = profileRes.data;
-                setProjects(projects);
+                setProjects(Array.isArray(projects) ? projects : []);
                 setAllFlares(flaresRes.data);
                 setRankDefs(ranksRes.data);
 
@@ -288,7 +288,7 @@ const Studio = () => {
         setIsPayoutHistoryLoading(true);
         try {
             const res = await axios.get(`${API_BASE}/api/exchange/payout-requests/${currentUser.uid}`);
-            setPayoutHistory(res.data);
+            setPayoutHistory(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
             console.error('Error fetching payout history:', err);
         } finally {
@@ -308,7 +308,7 @@ const Studio = () => {
             setIsLedgerLoading(true);
             try {
                 const res = await axios.get(`${API_BASE}/api/exchange/ledger/${currentUser.uid}`);
-                setTransactions(res.data);
+                setTransactions(Array.isArray(res.data) ? res.data : []);
             } catch (err) {
                 console.error("Ledger fetch failed", err);
             } finally {

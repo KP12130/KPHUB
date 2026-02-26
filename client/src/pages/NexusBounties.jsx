@@ -40,7 +40,7 @@ const NexusBounties = () => {
         setLoading(true);
         try {
             const res = await axios.get(`${API_BASE}/api/bounties`);
-            setBounties(res.data);
+            setBounties(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
             toast.error("Failed to sync with Bounty Grid.");
         } finally {
@@ -364,7 +364,7 @@ const NexusBounties = () => {
 
                                     {/* List Submissions */}
                                     <div className="space-y-6">
-                                        {selectedBounty.submissions?.map(sub => (
+                                        {(Array.isArray(selectedBounty.submissions) ? selectedBounty.submissions : []).map(sub => (
                                             <div key={sub.id} className="p-6 bg-white/5 rounded-3xl border border-white/10 relative group">
                                                 <div className="flex items-center gap-3 mb-4">
                                                     <img src={sub.avatar} className="w-8 h-8 rounded-full border border-neon-blue" />

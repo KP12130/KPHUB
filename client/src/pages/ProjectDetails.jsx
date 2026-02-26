@@ -249,7 +249,7 @@ const ProjectDetails = () => {
 
                 // Fetch Comments
                 const commentsRes = await axios.get(`${API_BASE}/api/comments/${id}`);
-                setComments(commentsRes.data);
+                setComments(Array.isArray(commentsRes.data) ? commentsRes.data : []);
 
                 // Fetch Devlogs
                 try {
