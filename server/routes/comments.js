@@ -95,8 +95,22 @@ router.get('/:projectId', async (req, res) => {
         const cached = commentsCache.get(projectId);
         if (cached) return res.json(cached);
 
+        const projectDoc = await db.collection('projects').doc(projectId).get();
+        if (!projectDoc.exists) return res.status(404).json({ error: 'Project not found.' });
+
+        const projectData = projectDoc.data();
+        if (projectData.isPrivate) {
+            // Check if requester is author (this would require userId in query/body)
+            // For now, let's just block public access to private project comments.
+            const userId = req.query.userId || req.body.userId;
+            if (projectData.author?.uid !== userId) {
+                return res.status(403).json({ error: 'PRIVATE_SYSTEM: Access restricted.' });
+            }
+        }
+
         const snapshot = await db.collection('comments')
             .where('projectId', '==', projectId)
+            .orderBy('createdAt', 'desc')
             .get();
 
         const comments = snapshot.docs.map(doc => ({

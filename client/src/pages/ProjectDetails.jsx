@@ -206,7 +206,7 @@ const ProjectDetails = () => {
     const [commentInput, setCommentInput] = useState('');
     const [replyTo, setReplyTo] = useState(null);
     const [likeSpamBlocked, setLikeSpamBlocked] = useState(false);
-    const [likeClickCount] = useState({ current: 0 }); // Local state instead of ref for simpler persistence in this context
+    const likeClickCount = useRef(0);
     const [isDownloading, setIsDownloading] = useState(false);
     const [isFileLoading, setIsFileLoading] = useState(false);
     const [isDangerZoneOpen, setIsDangerZoneOpen] = useState(false);
@@ -366,7 +366,7 @@ const ProjectDetails = () => {
                 content: commentInput,
                 parentId: replyTo
             });
-            setComments([...comments, res.data]); // Keep natural order, UI handles nesting
+            setComments([res.data, ...comments]);
             setCommentInput('');
             setReplyTo(null);
             toast.success("Signal transmitted.");
@@ -671,24 +671,30 @@ const ProjectDetails = () => {
                                                         </div>
 
                                                         {/* Replies */}
-                                                        {comments.filter(reply => reply.parentId === comment.id).map(reply => (
-                                                            <div key={reply.id} className="ml-10 p-4 bg-white/5 border-l-2 border-neon-blue/20 rounded-r-xl relative">
-                                                                <div className="absolute -left-6 top-1/2 w-4 h-[1px] bg-neon-blue/20" />
-                                                                <div className="flex items-center gap-3 mb-2">
-                                                                    <span className="text-neon-blue font-bold text-xs">@{reply.userName}</span>
-                                                                    <span className="text-gray-600 text-[9px] font-mono">
-                                                                        {reply.createdAt?.seconds
-                                                                            ? new Date(reply.createdAt.seconds * 1000).toLocaleDateString()
-                                                                            : new Date(reply.createdAt).toLocaleDateString()}
-                                                                    </span>
+                                                        {comments.filter(reply => reply.parentId === comment.id)
+                                                            .sort((a, b) => {
+                                                                const dateA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : new Date(a.createdAt).getTime();
+                                                                const dateB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : new Date(b.createdAt).getTime();
+                                                                return dateA - dateB; // Ascending for replies
+                                                            })
+                                                            .map(reply => (
+                                                                <div key={reply.id} className="ml-10 p-4 bg-white/5 border-l-2 border-neon-blue/20 rounded-r-xl relative">
+                                                                    <div className="absolute -left-6 top-1/2 w-4 h-[1px] bg-neon-blue/20" />
+                                                                    <div className="flex items-center gap-3 mb-2">
+                                                                        <span className="text-neon-blue font-bold text-xs">@{reply.userName}</span>
+                                                                        <span className="text-gray-600 text-[9px] font-mono">
+                                                                            {reply.createdAt?.seconds
+                                                                                ? new Date(reply.createdAt.seconds * 1000).toLocaleDateString()
+                                                                                : new Date(reply.createdAt).toLocaleDateString()}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="text-gray-400 text-xs leading-relaxed prose prose-invert prose-xs max-w-none opacity-80">
+                                                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                                            {reply.content || reply.text}
+                                                                        </ReactMarkdown>
+                                                                    </div>
                                                                 </div>
-                                                                <div className="text-gray-400 text-xs leading-relaxed prose prose-invert prose-xs max-w-none opacity-80">
-                                                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                                        {reply.content || reply.text}
-                                                                    </ReactMarkdown>
-                                                                </div>
-                                                            </div>
-                                                        ))}
+                                                            ))}
                                                     </div>
                                                 ))}
                                             </div>
