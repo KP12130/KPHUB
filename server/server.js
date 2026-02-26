@@ -197,6 +197,7 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/comments', commentsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/activity', activityRoutes);
+app.use('/api/bounties', require('./routes/bounties'));
 app.use('/api/hackathons', require('./routes/hackathons'));
 app.use('/api/voting', require('./routes/voting'));
 

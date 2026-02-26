@@ -24,6 +24,8 @@ const Upload = () => {
         repoUrl: '',
         memberOnly: false,
         isPrivate: false,
+        isPremium: false,
+        unlockKpc: 500
     });
 
     const handleFileChange = (e) => {
@@ -90,6 +92,8 @@ const Upload = () => {
         data.append('authorAvatar', currentUser?.photoURL || '');
         data.append('memberOnly', formData.memberOnly);
         data.append('isPrivate', formData.isPrivate);
+        data.append('isPremium', formData.isPremium);
+        data.append('unlockKpc', formData.unlockKpc);
 
         try {
             await axios.post(`${API_BASE}/api/projects`, data);
@@ -323,6 +327,36 @@ const Upload = () => {
                                 </button>
                             </div>
                         )}
+
+                        <div className="p-6 bg-neon-green/5 border border-neon-green/20 rounded-2xl flex items-center justify-between col-span-1 md:col-span-2">
+                            <div className="flex items-center gap-4">
+                                <Zap className={`w-6 h-6 ${formData.isPremium ? 'text-neon-blue animate-pulse' : 'text-gray-800'}`} />
+                                <div>
+                                    <h4 className="text-white font-black text-xs uppercase tracking-[0.15em]">Premium System</h4>
+                                    <p className="text-[10px] text-gray-500 font-mono mt-1 uppercase text-left">Require KPC unlock for transmission.</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-6">
+                                {formData.isPremium && (
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-[8px] font-black text-gray-600 uppercase">Unlock_KPC</label>
+                                        <input
+                                            type="number" min="100"
+                                            value={formData.unlockKpc}
+                                            onChange={(e) => setFormData({ ...formData, unlockKpc: parseInt(e.target.value) })}
+                                            className="w-20 bg-void border border-gray-800 rounded-lg p-2 text-white font-mono text-center text-xs focus:border-neon-blue outline-none"
+                                        />
+                                    </div>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, isPremium: !formData.isPremium })}
+                                    className={`min-w-[56px] h-7 rounded-full p-1 transition-all flex items-center ${formData.isPremium ? 'bg-neon-blue' : 'bg-void border border-gray-800'}`}
+                                >
+                                    <div className={`w-5 h-5 rounded-full bg-white transition-all ${formData.isPremium ? 'translate-x-7' : 'translate-x-0'}`} />
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="pt-8 border-t border-gray-900 flex justify-between items-center">

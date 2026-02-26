@@ -280,6 +280,8 @@ router.post('/', upload.fields([
             stats: { likes: 0, views: 0, downloads: 0, comments: 0 },
             memberOnly: req.body.memberOnly === 'true' || req.body.memberOnly === true,
             isPrivate: req.body.isPrivate === 'true' || req.body.isPrivate === true,
+            isPremium: req.body.isPremium === 'true' || req.body.isPremium === true,
+            unlockKpc: parseInt(req.body.unlockKpc) || 0,
             moderationStatus: hasExecutables ? 'PENDING' : 'APPROVED',
             createdAt: new Date().toISOString()
         };
@@ -338,6 +340,20 @@ router.get('/:id/download', async (req, res) => {
             const userData = userDoc.data();
             if (userData.tier === 'GHOST' || !userData.tier) {
                 return res.status(403).json({ error: 'PRO tier membership required to access this system.' });
+            }
+        }
+
+        // Premium Content Check
+        if (project.isPremium && project.author.uid !== userId) {
+            if (!userId) return res.status(403).json({ error: 'AUTHENTICATION_REQUIRED: Unlock protocol requires citizen ID.' });
+
+            const purchaseDoc = await db.collection('purchases')
+                .where('userId', '==', userId)
+                .where('projectId', '==', req.params.id)
+                .get();
+
+            if (purchaseDoc.empty) {
+                return res.status(403).json({ error: 'PROTOCOL_LOCKED: Content must be unlocked via KPC transaction.' });
             }
         }
 
@@ -797,6 +813,8 @@ router.put('/:id', async (req, res) => {
             category: category || project.category,
             demoUrl: demoUrl !== undefined ? demoUrl : project.demoUrl,
             repoUrl: repoUrl !== undefined ? repoUrl : project.repoUrl,
+            isPremium: req.body.isPremium !== undefined ? (req.body.isPremium === 'true' || req.body.isPremium === true) : project.isPremium,
+            unlockKpc: req.body.unlockKpc !== undefined ? parseInt(req.body.unlockKpc) : project.unlockKpc,
             tags: tagsArray,
             updatedAt: new Date().toISOString()
         };
@@ -905,6 +923,96 @@ router.get('/admin/pending', async (req, res) => {
     } catch (error) {
         console.error('[ADMIN_MOD] Pending fetch failed:', error);
         res.status(500).json({ error: 'Failed to fetch pending projects.' });
+    }
+});
+
+// POST /api/projects/:id/unlock
+router.post('/:id/unlock', async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const projectId = req.params.id;
+
+        if (!userId) return res.status(400).json({ error: 'USER_ID_REQUIRED' });
+
+        const projectRef = db.collection('projects').doc(projectId);
+        const userRef = db.collection('users').doc(userId);
+
+        await db.runTransaction(async (transaction) => {
+            const projectSnap = await transaction.get(projectRef);
+            const userSnap = await transaction.get(userRef);
+
+            if (!projectSnap.exists) throw new Error('PROJECT_NOT_FOUND');
+            if (!userSnap.exists) throw new Error('USER_NOT_FOUND');
+
+            const project = projectSnap.data();
+            const buyer = userSnap.data();
+
+            if (!project.isPremium) throw new Error('PROJECT_NOT_PREMIUM');
+            if (project.author.uid === userId) throw new Error('AUTHOR_OWNERSHIP_OVERRIDE');
+
+            const unlockPrice = project.unlockKpc || 0;
+            const buyerBalance = buyer.stats?.kpcBalance || 0;
+
+            if (buyerBalance < unlockPrice) throw new Error('INSUFFICIENT_KPC_FUNDS');
+
+            // Check if already unlocked
+            const purchases = await db.collection('purchases')
+                .where('userId', '==', userId)
+                .where('projectId', '==', projectId)
+                .get();
+            if (!purchases.empty) throw new Error('PROTOCOL_ALREADY_UNLOCKED');
+
+            const commission = Math.floor(unlockPrice * 0.10);
+            const authorShare = unlockPrice - commission;
+
+            // 1. Deduct from buyer
+            transaction.update(userRef, {
+                'stats.kpcBalance': admin.firestore.FieldValue.increment(-unlockPrice)
+            });
+
+            // 2. Add to author
+            const authorRef = db.collection('users').doc(project.author.uid);
+            transaction.update(authorRef, {
+                'stats.kpcBalance': admin.firestore.FieldValue.increment(authorShare)
+            });
+
+            // 3. Record Purchase
+            const purchaseRef = db.collection('purchases').doc();
+            transaction.set(purchaseRef, {
+                userId,
+                projectId,
+                authorId: project.author.uid,
+                amount: unlockPrice,
+                commission,
+                authorShare,
+                createdAt: new Date().toISOString()
+            });
+
+            // 4. Ledger entries
+            const ledgerRefBuyer = db.collection('ledger').doc();
+            transaction.set(ledgerRefBuyer, {
+                userId,
+                type: 'PROJECT_UNLOCK',
+                amount: -unlockPrice,
+                projectId,
+                createdAt: new Date().toISOString()
+            });
+
+            const ledgerRefAuthor = db.collection('ledger').doc();
+            transaction.set(ledgerRefAuthor, {
+                userId: project.author.uid,
+                type: 'PROJECT_SALE',
+                amount: authorShare,
+                projectId,
+                buyerId: userId,
+                createdAt: new Date().toISOString()
+            });
+        });
+
+        res.json({ success: true, message: 'PROTOCOL_UNLOCKED: Grid access granted.' });
+    } catch (error) {
+        console.error('Unlock Error:', error);
+        res.status(500).json({ error: error.message || 'Failed to unlock system.' });
     }
 });
 

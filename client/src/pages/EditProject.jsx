@@ -23,7 +23,9 @@ const EditProject = () => {
         demoUrl: '',
         repoUrl: '',
         isPrivate: false,
-        memberOnly: false
+        memberOnly: false,
+        isPremium: false,
+        unlockKpc: 500
     });
 
     useEffect(() => {
@@ -46,7 +48,9 @@ const EditProject = () => {
                     demoUrl: project.demoUrl || '',
                     repoUrl: project.repoUrl || '',
                     isPrivate: project.isPrivate || false,
-                    memberOnly: project.memberOnly || false
+                    memberOnly: project.memberOnly || false,
+                    isPremium: project.isPremium || false,
+                    unlockKpc: project.unlockKpc || 500
                 });
             } catch (err) {
                 console.error(err);
@@ -188,6 +192,38 @@ const EditProject = () => {
                                 >
                                     <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${formData.isPrivate ? 'left-7' : 'left-1'}`} />
                                 </button>
+                            </div>
+
+                            <div className="p-6 bg-neon-green/5 border border-neon-green/20 rounded-2xl flex items-center justify-between col-span-1 md:col-span-2">
+                                <div className="flex items-center gap-4">
+                                    <div className={`p-3 rounded-xl ${formData.isPremium ? 'bg-neon-blue/20 text-neon-blue animate-pulse' : 'bg-gray-800/50 text-gray-600'}`}>
+                                        <Shield className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xs font-black text-white uppercase tracking-widest mb-1">Premium_Protocol</h4>
+                                        <p className="text-[9px] text-gray-500 font-mono">Require KPC unlock for system access.</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-6">
+                                    {formData.isPremium && (
+                                        <div className="flex items-center gap-2">
+                                            <label className="text-[8px] font-black text-gray-600 uppercase">Unlock_KPC</label>
+                                            <input
+                                                type="number" min="100"
+                                                value={formData.unlockKpc}
+                                                onChange={(e) => setFormData({ ...formData, unlockKpc: parseInt(e.target.value) })}
+                                                className="w-20 bg-void border border-gray-800 rounded-lg p-2 text-white font-mono text-center text-xs focus:border-neon-blue outline-none"
+                                            />
+                                        </div>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, isPremium: !formData.isPremium })}
+                                        className={`w-12 h-6 rounded-full relative transition-all ${formData.isPremium ? 'bg-neon-blue shadow-[0_0_10px_#00D4FF]' : 'bg-gray-800'}`}
+                                    >
+                                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${formData.isPremium ? 'left-7' : 'left-1'}`} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
 

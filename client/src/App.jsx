@@ -19,6 +19,7 @@ import Explore from './pages/Explore';
 import Admin from './pages/Admin';
 import About from './pages/About';
 import NexusExchange from './pages/NexusExchange';
+import NexusBounties from './pages/NexusBounties';
 import PulseForge from './pages/PulseForge';
 import Changelog from './pages/Changelog';
 import Economy from './pages/Economy';
@@ -107,6 +108,7 @@ const App = () => {
             <Route path="/forge" element={<PulseForge />} />
             <Route path="/changelog" element={<Changelog />} />
             <Route path="/economy" element={<Economy />} />
+            <Route path="/nexus-bounties" element={<NexusBounties />} />
 
 
             <Route path="/studio" element={<Studio />} />

@@ -210,6 +210,8 @@ const ProjectDetails = () => {
     const [isDownloading, setIsDownloading] = useState(false);
     const [isFileLoading, setIsFileLoading] = useState(false);
     const [isDangerZoneOpen, setIsDangerZoneOpen] = useState(false);
+    const [isUnlocked, setIsUnlocked] = useState(false);
+    const [isUnlocking, setIsUnlocking] = useState(false);
 
     // Fetch Logic
     // Capture uid on mount only — do NOT put currentUser in deps or the project
@@ -254,6 +256,19 @@ const ProjectDetails = () => {
                     const updatesRes = await axios.get(`${API_BASE}/api/projects/${id}/updates`);
                     setUpdates(updatesRes.data);
                 } catch (e) { console.warn("Devlog fetch failed", e); }
+
+                // Check Unlock Status for Premium Projects
+                if (res.data.isPremium && uid && res.data.author?.uid !== uid) {
+                    try {
+                        const checkUrl = `${API_BASE}/api/projects/${id}/download?userId=${uid}`;
+                        await axios.head(checkUrl); // Use HEAD or a simple GET to check permission
+                        setIsUnlocked(true);
+                    } catch (e) {
+                        setIsUnlocked(false);
+                    }
+                } else if (res.data.author?.uid === uid) {
+                    setIsUnlocked(true);
+                }
 
             } catch (err) {
                 console.error(err);
@@ -338,6 +353,25 @@ const ProjectDetails = () => {
             toast.error(err.response?.data?.error || "Download connection lost.");
         } finally {
             setIsDownloading(false);
+        }
+    };
+
+    const handleUnlock = async () => {
+        if (!currentUser) return toast.error("LOGIN_REQUIRED: Identification protocol failure.");
+        if (isUnlocking) return;
+
+        if (!window.confirm(`Initialize protocol: Unlock this system for ${project.unlockKpc} KPC?`)) return;
+
+        setIsUnlocking(true);
+        try {
+            await axios.post(`${API_BASE}/api/projects/${id}/unlock`, { userId: currentUser.uid });
+            toast.success("PROTOCOL_UNLOCKED: Grid access authorized.");
+            setIsUnlocked(true);
+            refreshUser(currentUser.uid); // Update KPC balance
+        } catch (err) {
+            toast.error(err.response?.data?.error || "Unlock transition failed.");
+        } finally {
+            setIsUnlocking(false);
         }
     };
 
@@ -737,14 +771,21 @@ const ProjectDetails = () => {
                             </div>
 
                             <button
-                                onClick={handleDownload}
-                                disabled={isDownloading}
-                                className="w-full py-4 bg-neon-green text-black font-black uppercase tracking-widest rounded-xl hover:bg-white hover:scale-[1.02] transition-all shadow-[0_0_20px_rgba(57,255,20,0.3)] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                onClick={project.isPremium && !isUnlocked ? handleUnlock : handleDownload}
+                                disabled={isDownloading || isUnlocking}
+                                className={`w-full py-4 text-black font-black uppercase tracking-tighter rounded-2xl flex items-center justify-center gap-3 transition-all relative overflow-hidden group/btn ${project.isPremium && !isUnlocked
+                                    ? 'bg-neon-blue shadow-[0_0_30px_rgba(0,183,235,0.3)] hover:scale-[1.02]'
+                                    : 'bg-neon-green shadow-neon-glow hover:scale-[1.02]'}`}
                             >
-                                {isDownloading ? (
+                                <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000" />
+                                {isDownloading || isUnlocking ? (
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                                        <span className="animate-pulse">{isUnlocking ? 'UNLOCK_INIT...' : 'DOWNLOADING...'}</span>
+                                    </div>
+                                ) : project.isPremium && !isUnlocked ? (
                                     <>
-                                        <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                                        ARCHIVING...
+                                        <Lock className="w-5 h-5" /> Unlock_Protocol ({project.unlockKpc} KPC)
                                     </>
                                 ) : (
                                     <>

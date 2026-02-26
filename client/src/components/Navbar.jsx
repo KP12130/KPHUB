@@ -7,7 +7,7 @@ import { db } from '../firebase';
 import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import {
     LayoutDashboard, Trophy, Code, Upload as UploadIcon, HelpCircle,
-    Bell, BellDot, User, LogOut, Menu, X, Terminal, ShoppingCart, Zap, TrendingUp, Plus, ShoppingBag, Flame
+    Bell, BellDot, User, LogOut, Menu, X, Terminal, ShoppingCart, Zap, TrendingUp, Plus, ShoppingBag, Flame, Target
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import useSound from '../hooks/useSound';
@@ -146,6 +146,7 @@ const Navbar = ({ onOpenCommandPalette }) => {
                         <>
                             <div className="flex bg-black/20 rounded-full px-4 py-2 border border-white/5 backdrop-blur-sm shadow-inner gap-4">
                                 <Link to="/studio" onMouseEnter={() => playSound('hover')} className="text-gray-400 hover:text-neon-green transition-all hover:scale-110" title="Creator Studio"><LayoutDashboard className="w-5 h-5" /></Link>
+                                <Link to="/nexus-bounties" onMouseEnter={() => playSound('hover')} className="text-gray-400 hover:text-neon-blue transition-all hover:scale-110" title="Nexus Bounties"><Target className="w-5 h-5" /></Link>
                                 <Link to="/hackathons" onMouseEnter={() => playSound('hover')} className="text-gray-400 hover:text-neon-purple transition-all hover:scale-110" title="Hackathons"><Trophy className="w-5 h-5" /></Link>
                                 <Link to="/upload" onMouseEnter={() => playSound('hover')} className="text-gray-400 hover:text-neon-green transition-all hover:scale-110" title="Deploy"><UploadIcon className="w-5 h-5" /></Link>
                                 <Link to="/support" onMouseEnter={() => playSound('hover')} className="text-gray-400 hover:text-white transition-all hover:scale-110" title="Support"><HelpCircle className="w-5 h-5" /></Link>
@@ -316,7 +317,8 @@ const Navbar = ({ onOpenCommandPalette }) => {
 
                                 <div className="flex flex-col gap-6">
                                     <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-black text-white hover:text-neon-green tracking-tighter">HOME</Link>
-                                    <Link to="/explore" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-black text-gray-500 hover:text-white tracking-tighter">DISCOVERY</Link>
+                                    <Link to="/explore" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-black text-gray-400 hover:text-white tracking-tighter uppercase">DISCOVERY</Link>
+                                    <Link to="/nexus-bounties" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-black text-neon-blue hover:text-white tracking-tighter uppercase">NEXUS_BOUNTIES</Link>
                                     {currentUser && <Link to="/studio" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-black text-neon-green tracking-tighter">STUDIO_ACCESS</Link>}
                                     <Link to="/about" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-gray-600 tracking-widest uppercase">ABOUT_SYSTEM</Link>
                                 </div>
